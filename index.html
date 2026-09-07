@@ -128,6 +128,30 @@ button{font:inherit;color:inherit;cursor:pointer}
 .needle{position:absolute;top:-4px;width:3px;height:15px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--sunk)}
 .thermal .cap{font-size:11.5px;color:var(--ink2);margin-top:8px;line-height:1.4}
 
+/* barometer band */
+.baro{padding:11px 16px 13px;border-top:1px solid var(--line-soft)}
+.baro-top{display:flex;align-items:center;gap:7px;min-height:24px}
+.baro-lab{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.baro-delta{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;margin-left:auto}
+.baro-body{display:flex;gap:13px;align-items:baseline;margin-top:5px}
+.baro-read{flex:none;display:flex;align-items:baseline;gap:5px}
+.baro-val{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.baro-unit{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink3)}
+.baro-arrow{font-size:15px;line-height:1;font-weight:700;color:var(--ink3)}
+.baro-arrow.good{color:var(--verd)} .baro-arrow.warn{color:var(--sulphur)} .baro-arrow.bad{color:var(--accent-ink)}
+.baro-state{flex:none;font-size:14px;font-weight:600;line-height:1}
+.baro-state.good{color:var(--verd)} .baro-state.warn{color:var(--sulphur)}
+.baro-line{font-size:11.5px;color:var(--ink2);line-height:1.45;margin-top:7px}
+.baro-trace{flex:none;width:60px;height:22px;opacity:.8;align-self:center}
+.baro-trace polyline{fill:none;stroke:var(--ink2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+
+/* ---------- controls (directly under the dashboard) ---------- */
+.controls{margin-top:12px}
+.controls .refine{margin-top:0}
+.refine-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px}
+.refine-head h2{font-family:Fraunces,Georgia,serif;font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+.refine-head .rh-src{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+
 /* ---------- tabs ---------- */
 .tabs{
   position:sticky;top:0;z-index:20;display:flex;gap:4px;margin:16px -16px 0;padding:8px 16px;
@@ -312,6 +336,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 <div class="wrap">
   <section class="reading" id="reading"></section>
+  <section class="controls" id="controls"></section>
 
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
     <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
@@ -648,10 +673,28 @@ const T = {
    ============================================================ */
 
 const state = {
-  waterId:"wbd", when:new Date(), geo:null, live:null,
-  ov:{flow:null, clarity:null, sky:null},   // optional one-tap overrides
+  waterId:"wbd", when:new Date(), geo:null, live:null, baro:null,
+  ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plays", checked:new Set(),
 };
+
+/* --- barometer ----------------------------------------------
+   Trend, not absolute height, is what moves fish. Weights below
+   are differential nudges applied to play scores in recommend().
+------------------------------------------------------------ */
+const BARO_STATES = {
+  falling:{k:"falling", label:"Falling", arrow:"\u2193", tone:"good",
+    line:"Dropping ahead of a front \u2014 the best window there is. Fish feed hard and ride higher in the column.",
+    w:{surf:1.08, deep:0.97, swing:1.05}},
+  steady:{k:"steady", label:"Steady", arrow:"\u2192", tone:"",
+    line:"Flat pressure. Nothing pushing the fish either way \u2014 read the hatch and the water, not the sky.",
+    w:{surf:1, deep:1, swing:1}},
+  rising:{k:"rising", label:"Rising", arrow:"\u2191", tone:"warn",
+    line:"Climbing behind a front \u2014 the classic bluebird slog. Fish sit deep and eat small. Go down, and downsize.",
+    w:{surf:0.92, deep:1.08, swing:0.97}},
+};
+const HPA_IN = 0.02953;               // hPa \u2192 inches of mercury
+const BARO_STEP = 0.7;                // hPa over 3 h that counts as a real move
 
 function water(){ return WATERS.find(w=>w.id===state.waterId) || WATERS[0]; }
 function doy(d){ return Math.floor((d - new Date(d.getFullYear(),0,0)) / 86400000); }
@@ -841,11 +884,36 @@ function buildContext(){
   let clarity = state.ov.clarity ? CLARITY[state.ov.clarity] : modelClarity(fs,w);
   const sky = state.ov.sky || "partly";
   const lw = lightWindow(h,sun);
+  const baro = resolveBaro(w);
 
-  const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live,
+  const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live, baro,
           isGL: w.sp==="steelhead"};
   base.acc=access(base);
   return base;
+}
+
+/* Pressure is never modeled from the calendar \u2014 it isn't seasonal.
+   Live reading first, then the angler's tap, then an honest blank. */
+function resolveBaro(w){
+  const b = state.baro;
+  const fresh = b && Math.abs(b.lat-w.lat)<0.5 && Math.abs(b.lon-w.lon)<0.5;
+
+  if(state.ov.baro){
+    const st=BARO_STATES[state.ov.baro];
+    return Object.assign({}, st, {source:"you", hPa: fresh?b.hPa:null, hist: fresh?b.hist:null,
+      delta: fresh?b.delta3h:null, srcLabel:"Your read", chipLabel:"your read"});
+  }
+  if(fresh){
+    const d=b.delta3h;
+    const st = d<=-BARO_STEP ? BARO_STATES.falling : d>=BARO_STEP ? BARO_STATES.rising : BARO_STATES.steady;
+    const high = b.hPa>=1025, low = b.hPa<=1005;
+    let line=st.line;
+    if(st.k==="steady" && high) line="Flat and high \u2014 settled, bright, and usually stingy. Fish early, late, and small.";
+    if(st.k==="steady" && low)  line="Flat but low \u2014 unsettled air sitting over the river. Fish are usually willing.";
+    return Object.assign({}, st, {source:"live", hPa:b.hPa, hist:b.hist, delta:d, srcLabel:"Live", chipLabel:"live"});
+  }
+  return Object.assign({}, BARO_STATES.steady, {source:"assumed", hPa:null, hist:null, delta:null,
+    srcLabel:"Assumed", chipLabel:"not measured here", line:"No pressure reading here. Riffle assumes flat, which nudges nothing. If the glass is moving, tap it below and the plays re-rank."});
 }
 
 /* --- which hatches are on ---------------------------------- */
@@ -1542,6 +1610,13 @@ function fmtHr(h){
   return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
 }
 
+function baroFam(technique){
+  const t=String(technique).toLowerCase();
+  if(t.startsWith("streamer")||t.startsWith("swung")||t.startsWith("wet fly")) return "swing";
+  if(t.includes("nymph")||t.startsWith("tight-line")) return "deep";
+  return "surf";
+}
+
 function recommend(ctx){
   const ah=activeHatches(ctx), runs=activeRuns(ctx);
   let out=[];
@@ -1550,6 +1625,9 @@ function recommend(ctx){
     try{ r=p.build(ctx,ah,runs); }catch(e){ r=null; }
     if(r && isFinite(r.score)) out.push(Object.assign({key:p.key},r));
   }
+  // barometer: a differential nudge, never more than +/-8%
+  const bw=(ctx.baro&&ctx.baro.w)||{};
+  out.forEach(p=>{ p.score *= (bw[baroFam(p.technique)] || 1); });
   out.sort((a,b)=>b.score-a.score);
   // keep the top three, preferring distinct techniques
   const picked=[], seen=new Set();
@@ -1588,6 +1666,41 @@ async function tryLive(gauge){
     if(cfs==null&&tempC==null) return null;
     return {gauge, cfs, tempF: tempC==null?null:Math.round((tempC*9/5+32)*10)/10, at:new Date()};
   }catch(e){ return null; }
+}
+
+/* Open-Meteo needs no key. Blocked by CSP in some embeds, in which
+   case we fall back to the angler's own read of the sky. */
+async function tryBaro(lat, lon){
+  try{
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),4500);
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}`
+            + `&hourly=surface_pressure&past_days=1&forecast_days=1&timezone=auto`;
+    const res=await fetch(url,{signal:c.signal}); clearTimeout(t);
+    if(!res.ok) return null;
+    const j=await res.json();
+    const times=j.hourly?.time||[], vals=j.hourly?.surface_pressure||[];
+    if(times.length!==vals.length || !times.length) return null;
+    const now=Date.now();
+    let i=-1;
+    for(let k=0;k<times.length;k++){
+      if(!isFinite(vals[k])||vals[k]==null) continue;
+      if(new Date(times[k]).getTime()<=now) i=k; else break;
+    }
+    if(i<3) return null;
+    const hPa=vals[i], prev=vals[i-3];
+    if(!isFinite(hPa)||!isFinite(prev)) return null;
+    const hist=vals.slice(Math.max(0,i-6), i+1).filter(v=>isFinite(v));
+    return {lat, lon, hPa, delta3h: hPa-prev, hist, at:new Date()};
+  }catch(e){ return null; }
+}
+
+/* one round trip for everything the network can tell us */
+async function refreshLive(w){
+  const [live, baro] = await Promise.all([tryLive(w.gauge), tryBaro(w.lat, w.lon)]);
+  let changed=false;
+  if(live){ state.live=live; changed=true; }
+  if(baro){ state.baro=baro; changed=true; }
+  if(changed) draw();
 }
 
 /* ============================================================
@@ -1665,6 +1778,7 @@ function renderReading(ctx){
         <div class="note">Sunrise to sunset</div>
       </div>
     </div>
+    ${baroBand(ctx)}
     <div class="access">
       <div class="acc-top">
         <span class="acc-call ${ctx.acc.tone}">${esc(ctx.acc.call)}</span>
@@ -1690,6 +1804,41 @@ function renderReading(ctx){
       <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
       <div class="cap">${esc(w.note)}</div>
     </div>`;
+}
+
+function baroTrace(hist){
+  if(!hist || hist.length<3) return "";
+  const lo=Math.min(...hist), hi=Math.max(...hist), span=Math.max(hi-lo, 1.5);
+  const pts=hist.map((v,i)=>{
+    const x=(i/(hist.length-1))*58+1;
+    const y=20-((v-lo)/span)*18;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="baro-trace" viewBox="0 0 60 22" aria-hidden="true"
+            role="img" aria-label="Pressure over the last six hours"><polyline points="${pts}"/></svg>`;
+}
+
+function baroBand(ctx){
+  const b=ctx.baro;
+  const val = b.hPa!=null ? (b.hPa*HPA_IN).toFixed(2) : "\u2014";
+  const delta = b.delta!=null ? `${b.delta>0?"+":""}${(b.delta*HPA_IN).toFixed(2)}\u2033 / 3h` : "";
+  return `<div class="baro">
+    <div class="baro-top">
+      <span class="baro-lab">Barometer</span>
+      <span class="srcpill ${b.source==="live"?"live":""}">${esc(b.srcLabel)}</span>
+      ${delta?`<span class="baro-delta">${esc(delta)}</span>`:""}
+    </div>
+    <div class="baro-body">
+      <span class="baro-read">
+        <span class="baro-val">${val}</span>
+        <span class="baro-unit">inHg</span>
+        <span class="baro-arrow ${b.tone}">${b.arrow}</span>
+      </span>
+      <span class="baro-state ${b.tone}">${esc(b.label)}</span>
+      ${baroTrace(b.hist)}
+    </div>
+    <div class="baro-line">${esc(b.line)}</div>
+  </div>`;
 }
 
 function flyItem(f){
@@ -1773,12 +1922,15 @@ function renderPlays(res, ctx){
         </dl>
       </div>
     </article>`).join("")}
-  </div>
-  ${renderRefine()}`;
+  </div>`;
+}
+
+function renderControls(ctx){
+  $("#controls").innerHTML=renderRefine(ctx);
   wireRefine();
 }
 
-function renderRefine(){
+function renderRefine(ctx){
   const g=(lab,key,opts)=>`
     <div class="rgroup">
       <div class="rlab">${lab}</div>
@@ -1787,8 +1939,14 @@ function renderRefine(){
         ${opts.map(o=>`<button class="rchip" data-k="${key}" data-v="${o[0]}" aria-pressed="${state.ov[key]===o[0]}">${o[1]}</button>`).join("")}
       </div>
     </div>`;
+  const bsrc = ctx && ctx.baro ? ctx.baro.chipLabel : "";
   return `<div class="refine">
-    <p>Everything above is already decided for you. Tap only if the water disagrees with the model — the boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
+    <div class="refine-head">
+      <h2>What you're seeing</h2>
+      <span class="rh-src">Feeds the plays</span>
+    </div>
+    <p>Everything below is already decided for you. Tap only where the river disagrees with the model \u2014 the boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
+    ${g("Barometer \u2014 "+bsrc,"baro",[["falling","Falling"],["steady","Steady"],["rising","Rising"]])}
     ${g("Flow","flow",[["low","Low"],["normal","Normal"],["pushy","Pushy"],["high","High"],["blown","Blown"]])}
     ${g("Clarity","clarity",[["gin","Gin clear"],["clear","Clear"],["green","Green"],["stained","Stained"],["muddy","Muddy"]])}
     ${g("Sky","sky",[["bright","Bluebird"],["partly","Partly cloudy"],["overcast","Overcast"]])}
@@ -1971,9 +2129,8 @@ function renderWater(ctx){
       </div>
     </div>`;
   document.querySelectorAll(".wbtn").forEach(b=>b.addEventListener("click",async()=>{
-    state.waterId=b.dataset.w; state.live=null; draw();
-    const w=water(); const live=await tryLive(w.gauge);
-    if(live){ state.live=live; draw(); }
+    state.waterId=b.dataset.w; state.live=null; state.baro=null; draw();
+    refreshLive(water());
   }));
 }
 
@@ -2044,8 +2201,7 @@ function locate(explicit){
       const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
       if(d<bd){bd=d;best=w;}
     }
-    if(best){ state.waterId=best.id; state.live=null; draw();
-      const live=await tryLive(best.gauge); if(live){ state.live=live; draw(); } }
+    if(best){ state.waterId=best.id; state.live=null; state.baro=null; draw(); refreshLive(best); }
     else draw();
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
 }
@@ -2056,6 +2212,7 @@ function draw(){
   const ctx=buildContext();
   const res=recommend(ctx);
   renderReading(ctx);
+  renderControls(ctx);
   renderPlays(res,ctx);
   renderShop(res,ctx);
   renderHatch(res,ctx);
@@ -2066,7 +2223,7 @@ function draw(){
   seam(); wireTabs(); wireChrome();
   draw();
   locate(false);
-  tryLive(water().gauge).then(l=>{ if(l){ state.live=l; draw(); } });
+  refreshLive(water());
   tick=setInterval(draw, 10*60*1000);   // re-read the clock every ten minutes
 })();
 </script>
