@@ -68,6 +68,19 @@ Fonts load from Google Fonts and gauge data from USGS, so a network connection
 gets you the intended typography and live readings; offline it still runs on
 the modeled values with fallback fonts.
 
+## Tests
+
+`test/` drives the app in a real browser behind the deploy's own
+Content-Security-Policy, with the upstream services mocked:
+
+```
+cd test && npm install && npm test
+```
+
+It covers the access flow and, deliberately, the four ways it can degrade —
+Overpass down, no drainage area, no map library, no tiles. See
+[test/README.md](test/README.md).
+
 ## Deploying to Netlify
 
 `netlify.toml` in the repo root holds the whole deploy configuration — there is

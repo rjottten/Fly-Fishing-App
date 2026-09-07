@@ -1,0 +1,13 @@
+{
+  "name": "riffle-test",
+  "private": true,
+  "type": "module",
+  "description": "Browser tests for Riffle. The app itself has no dependencies; these are the test's.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "leaflet": "1.9.4",
+    "playwright-core": "^1.49.0"
+  }
+}
