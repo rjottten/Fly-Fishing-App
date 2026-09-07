@@ -2656,11 +2656,18 @@ function scaleBands(tmpl, ratio){
   };
 }
 
+function gaugeAway(m){
+  const mi=m/1609.34;
+  if(mi<0.6) return "right at the pin";
+  return `${mi<10?mi.toFixed(1):Math.round(mi)} miles from the pin`;
+}
+
 function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
   const calibrated = isFinite(ratio) && ratio>0;
   const bands = calibrated ? scaleBands(tmpl, ratio) : {flow:tmpl.flow, wade:tmpl.wade};
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
+  const ownGauge = !!gauge && gauge.id===tmpl.gauge;
   return {
     id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
     hatchKey: tmpl.id,                       // borrow this water's hatch calendar
@@ -2676,10 +2683,11 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
     note: `Seasonal temperature, hatch timing and flow character are modeled on `
         + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
         + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
-                 + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${Math.round(gauge.dist/1609.34)} miles from the pin. `
+                 + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
                  : `No live gauge was found nearby, so the numbers are modeled. `)
-        + (calibrated ? `Flow bands are scaled by drainage area (×${ratio.toFixed(2)}).`
-                      : `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`),
+        + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
+           : ownGauge  ? `The flow bands are this gauge's own.`
+                       : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`),
     spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
   };
 }
@@ -3282,9 +3290,12 @@ function renderAccessCard(){
           <span class="wd">${esc(milesOf(a.dist))}</span>
         </button>`).join("")}
         ${pinRowHTML()}</div>`
-    + `<p class="hint" role="note"><b>Check before you park.</b> These are features mapped in OpenStreetMap —
-        a launch, a lot, a trailhead. They are not a statement that the bank is public or that fishing is
-        permitted. Verify with the state agency or posted signs.</p>`;
+    + `<div class="hint" role="note">
+        <span>\u26A0</span>
+        <span><b>Check before you park.</b> These are features mapped in OpenStreetMap — a launch, a lot,
+          a trailhead. They are not a statement that the bank is public or that fishing is permitted.
+          Verify with the state agency or posted signs.</span>
+       </div>`;
   wireAccessRows();
 }
 
@@ -3321,12 +3332,16 @@ function renderWater(ctx){
       <h3>How this reading was built</h3>
       <p>${sp
           ? `You picked <b>${esc(ctx.w.name)}</b>${ctx.w.place?" — "+esc(ctx.w.place):""}. `
-            + `Seasonal curves come from <b>${esc(sp.template.name)}</b> — ${esc(sp.away)}.`
+            + `Seasonal curves come from <b>${esc(sp.template.name)}</b> — ${sp.templateMiles<1?"you are on it":esc(sp.away)}.`
           : (g?`Your location put you <b>${haversine(g.lat,g.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
               :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Search above, tap the map, or pick from the list.`)}</p>
       <p><b>Gauge ${esc(ctx.w.gauge)}</b> · ideal ${ctx.w.flow.ideal[0]}–${ctx.w.flow.ideal[1]} ${esc(ctx.w.unit)} · blown above ${ctx.w.flow.blown}.
       ${ctx.flowSource==="live"?"Reading live.":"No live reading here — flow and temperature are modeled from the date and this water's seasonal character."}</p>
-      ${sp&&!sp.calibrated?`<p class="hint" role="note"><b>Flow bands are uncalibrated.</b> Drainage area was unavailable for one of the gauges, so the numbers above are ${esc(sp.template.name)}'s. Read the band, not the threshold.</p>`:""}
+      ${sp&&!sp.calibrated?`<div class="hint" role="note">
+        <span>\u2691</span>
+        <span><b>Flow bands are uncalibrated.</b> Drainage area was unavailable for one of the gauges, so the
+          numbers above are ${esc(sp.template.name)}'s. Read the band, not the threshold.</span>
+       </div>`:""}
       <p style="color:var(--ink3)">${esc(ctx.w.note)}</p>
     </div>
     <div class="wcard">
