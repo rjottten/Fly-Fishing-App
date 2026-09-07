@@ -314,6 +314,705 @@ button{font:inherit;color:inherit;cursor:pointer}
   .brand h1{font-size:27px}
   .brand .tag{display:none}
 }
+
+/* ---------- where: search, map, access ---------- */
+.findrow{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+.findrow input{
+  flex:1 1 180px;min-width:0;font:inherit;font-size:14px;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+}
+.findrow input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.findbtn{
+  flex:none;background:var(--ink);color:var(--ground);border:1px solid var(--ink);
+  border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:600;
+}
+.findbtn.ghost{background:transparent;color:var(--ink2);border-color:var(--line)}
+.findbtn.ghost:hover{border-color:var(--accent);color:var(--accent-ink)}
+.findout{margin-top:9px}
+.findout .wbtn{border:1px solid var(--line-soft);margin-bottom:3px}
+.muted{margin:9px 0 0;font-size:12.5px;color:var(--ink3);line-height:1.5}
+
+.mapcard{padding:0;overflow:hidden}
+#map{height:280px;width:100%;position:relative;z-index:0;background:var(--sunk)}
+.mapnote{margin:0;padding:9px 14px;font-size:11.5px;color:var(--ink3);border-top:1px solid var(--line-soft);line-height:1.45}
+.leaflet-container{font:inherit;background:var(--sunk)}
+.leaflet-control-attribution{font-size:9.5px}
+.pin-i i{
+  display:block;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);border:3px solid var(--surface);box-shadow:0 1px 6px rgba(0,0,0,.45);
+}
+.acc-i i{
+  display:block;width:14px;height:14px;border-radius:50%;
+  background:var(--verd);border:2px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.acc-i i.k-parking{background:var(--ink3)}
+.acc-i i.k-slipway,.acc-i i.k-fishing{background:var(--verd)}
+.acc-i i.k-pier,.acc-i i.k-trailhead{background:var(--sulphur)}
+
+.wbtn.apt{align-items:flex-start;gap:9px}
+.akind{
+  flex:none;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  border-radius:5px;padding:3px 6px;margin-top:1px;background:var(--raised);color:var(--ink2);white-space:nowrap;
+}
+.akind.k-slipway,.akind.k-fishing{background:var(--verd-soft);color:var(--verd)}
+.akind.k-pier,.akind.k-trailhead{background:var(--sulphur-soft);color:var(--sulphur)}
+.akind.k-pin{background:var(--accent-soft);color:var(--accent-ink)}
+.wcard .hint{margin-top:12px}
+</style>
+
+<style>
+/* Leaflet 1.9.4 — BSD-2-Clause, (c) 2010-2023 Volodymyr Agafonkin, CloudMade.
+   Inlined and trimmed of its two image-backed rules (layers control, default
+   marker icon); Riffle draws its markers with divIcons. */
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
 </style>
 
 <header class="mast">
@@ -342,7 +1041,7 @@ button{font:inherit;color:inherit;cursor:pointer}
     <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop list</button>
     <button class="tab" role="tab" id="tab-hatch" aria-controls="panel-hatch" aria-selected="false">Hatch</button>
-    <button class="tab" role="tab" id="tab-water" aria-controls="panel-water" aria-selected="false">Water</button>
+    <button class="tab" role="tab" id="tab-water" aria-controls="panel-water" aria-selected="false">Where</button>
   </nav>
 
   <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays"></div>
@@ -356,6 +1055,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   </p>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 "use strict";
 
@@ -674,6 +1374,9 @@ const T = {
 
 const state = {
   waterId:"wbd", when:new Date(), geo:null, live:null, baro:null,
+  pin:null,                                    // {lat,lon,label} — where the angler pointed
+  spot:null,                                   // water-shaped profile synthesized for that point
+  access:{status:"idle", list:[], radius:8000, chosen:null},
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plays", checked:new Set(),
 };
@@ -696,7 +1399,11 @@ const BARO_STATES = {
 const HPA_IN = 0.02953;               // hPa \u2192 inches of mercury
 const BARO_STEP = 0.7;                // hPa over 3 h that counts as a real move
 
-function water(){ return WATERS.find(w=>w.id===state.waterId) || WATERS[0]; }
+function water(){ return state.spot || WATERS.find(w=>w.id===state.waterId) || WATERS[0]; }
+
+/* A synthesized spot borrows its hatch calendar from the water
+   it was modeled on, so water-specific bugs still resolve. */
+const hatchKeyOf=(w)=>w.hatchKey||w.id;
 function doy(d){ return Math.floor((d - new Date(d.getFullYear(),0,0)) / 86400000); }
 function hoursOf(d){ return d.getHours() + d.getMinutes()/60; }
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -954,7 +1661,7 @@ function rankOf(o){
 }
 function activeHatches(ctx){
   return HATCHES
-    .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(ctx.w.id))
+    .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(hatchKeyOf(ctx.w)))
     .map(hx=>({hx, i:hatchIntensity(hx,ctx), clock:inClock(hx,ctx)}))
     .filter(o=>o.i>0.02)
     .map(o=>(o.rank=rankOf(o), o))
@@ -962,7 +1669,7 @@ function activeHatches(ctx){
 }
 function activeRuns(ctx){
   if(!ctx.isGL) return [];
-  return RUNS.filter(r => r.waters==="gl" || r.waters.includes(ctx.w.id))
+  return RUNS.filter(r => r.waters==="gl" || r.waters.includes(hatchKeyOf(ctx.w)))
     .map(r=>{
       const [s,p,e]=r.win;
       let d=ctx.day, i=0;
@@ -1704,6 +2411,299 @@ async function refreshLive(w){
 }
 
 /* ============================================================
+   4b. WHERE — address, map pin, public access points
+
+   The engine above only ever asks water() for one object. So a
+   spot the angler picks off the map is answered with an object
+   of exactly that shape: seasonal curves borrowed from the
+   nearest water in the book, flow bands rescaled by drainage
+   area, and a live gauge of its own. Everything downstream —
+   plays, shop list, hatch, access ladder — runs unchanged.
+   ============================================================ */
+
+const NOMINATIM = "https://nominatim.openstreetmap.org";
+const OVERPASS  = ["https://overpass-api.de/api/interpreter",
+                   "https://overpass.kumi.systems/api/interpreter"];
+
+/* --- kinds of access, best first ---------------------------
+   OSM tags say what a thing IS, never who may stand on it.
+   Ranking reflects how likely a feature is to be a genuine
+   put-in; the UI never claims any of them is legal access.
+------------------------------------------------------------ */
+const ACCESS_KINDS = {
+  slipway:   {label:"Boat launch",     pri:0, hint:"ramp or slipway"},
+  fishing:   {label:"Fishing access",  pri:0, hint:"mapped as fishing access"},
+  pier:      {label:"Pier or dock",    pri:1, hint:"structure over the water"},
+  trailhead: {label:"Trailhead",       pri:1, hint:"foot access"},
+  parking:   {label:"Parking",         pri:2, hint:"lot within walking distance of the water"},
+};
+const PRIVATE_ACCESS = /^(private|no|customers|permit|permissive)$/i;
+const PARK_MAX_M = 400;      // a lot further than this from water is not access
+
+function kindOf(tags){
+  if(!tags) return null;
+  if(tags.leisure==="slipway")   return "slipway";
+  if(tags.leisure==="fishing")   return "fishing";
+  if(tags.man_made==="pier")     return "pier";
+  if(tags.highway==="trailhead") return "trailhead";
+  if(tags.amenity==="parking")   return "parking";
+  return null;
+}
+
+/* metres between two lat/lons — the display helper works in miles */
+function metres(a,b,c,d){
+  const R=6371000, rad=Math.PI/180;
+  const dLat=(c-a)*rad, dLon=(d-b)*rad;
+  const s=Math.sin(dLat/2)**2 + Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+async function withTimeout(url, opts, ms){
+  const c=new AbortController(); const t=setTimeout(()=>c.abort(), ms||9000);
+  try{ return await fetch(url, Object.assign({signal:c.signal}, opts||{})); }
+  finally{ clearTimeout(t); }
+}
+
+/* --- geocoding ---------------------------------------------- */
+async function geocode(q){
+  const url=`${NOMINATIM}/search?format=jsonv2&limit=6&countrycodes=us&q=${encodeURIComponent(q)}`;
+  const res=await withTimeout(url, null, 9000);
+  if(!res.ok) throw new Error("geocoder "+res.status);
+  const j=await res.json();
+  return (j||[]).map(r=>({
+    label: r.display_name,
+    short: (r.display_name||"").split(",").slice(0,3).join(",").trim(),
+    lat: parseFloat(r.lat), lon: parseFloat(r.lon),
+  })).filter(r=>isFinite(r.lat)&&isFinite(r.lon));
+}
+
+async function reverseGeocode(lat, lon){
+  try{
+    const url=`${NOMINATIM}/reverse?format=jsonv2&zoom=14&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`;
+    const res=await withTimeout(url, null, 8000);
+    if(!res.ok) return null;
+    const j=await res.json();
+    if(!j || !j.display_name) return null;
+    return j.display_name.split(",").slice(0,3).join(",").trim();
+  }catch(e){ return null; }
+}
+
+/* --- public access points, from OpenStreetMap ---------------- */
+function overpassQL(lat, lon, r){
+  const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
+  return `[out:json][timeout:25];
+(
+  nwr${at}["leisure"="slipway"];
+  nwr${at}["leisure"="fishing"];
+  nwr${at}["man_made"="pier"];
+  nwr${at}["highway"="trailhead"];
+  nwr${at}["amenity"="parking"];
+);
+out tags center 120;
+way${at}["waterway"~"^(river|stream|canal|tidal_channel)$"];
+out geom 80;`;
+}
+
+async function overpass(ql){
+  let last=null;
+  for(const host of OVERPASS){
+    try{
+      const res=await withTimeout(host, {
+        method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body:"data="+encodeURIComponent(ql),
+      }, 30000);
+      if(!res.ok){ last=new Error("overpass "+res.status); continue; }
+      return await res.json();
+    }catch(e){ last=e; }
+  }
+  throw last || new Error("overpass unreachable");
+}
+
+/* Nearest point on a mapped waterway, and what it is called. */
+function nearestWater(lat, lon, ways){
+  let best=null, bd=Infinity;
+  for(const w of ways){
+    for(const g of (w.geometry||[])){
+      if(g==null) continue;
+      const d=metres(lat,lon,g.lat,g.lon);
+      if(d<bd){ bd=d; best=w; }
+    }
+  }
+  return best ? {name: best.tags && best.tags.name || null, dist: bd} : null;
+}
+
+async function accessPoints(lat, lon, radiusM){
+  const j=await overpass(overpassQL(lat, lon, radiusM));
+  const els=(j && j.elements) || [];
+  const ways=els.filter(e=>e.type==="way" && e.tags && e.tags.waterway);
+  const out=[];
+
+  for(const el of els){
+    if(el.tags && el.tags.waterway) continue;             // that is the river, not a way in
+    const kind=kindOf(el.tags);
+    if(!kind) continue;
+
+    const access=(el.tags.access||"").trim();
+    if(PRIVATE_ACCESS.test(access)) continue;             // signed private — do not send anyone there
+    if(el.tags.fee==="yes" && kind==="parking" && !el.tags.name) continue;
+
+    const p = el.type==="node" ? {lat:el.lat, lon:el.lon}
+            : el.center ? {lat:el.center.lat, lon:el.center.lon} : null;
+    if(!p || !isFinite(p.lat) || !isFinite(p.lon)) continue;
+
+    const near=nearestWater(p.lat, p.lon, ways);
+    if(kind==="parking" && (!near || near.dist>PARK_MAX_M)) continue;
+
+    out.push({
+      id: el.type+"/"+el.id,
+      kind,
+      name: (el.tags.name||"").trim() || null,
+      waterway: near && near.name || null,
+      toWater: near ? near.dist : null,
+      lat:p.lat, lon:p.lon,
+      fee: el.tags.fee==="yes",
+      surface: el.tags.surface||null,
+      dist: metres(lat, lon, p.lat, p.lon),
+      access,
+    });
+  }
+
+  out.sort((a,b)=> (ACCESS_KINDS[a.kind].pri-ACCESS_KINDS[b.kind].pri) || (a.dist-b.dist));
+  const seen=new Set(), uniq=[];
+  for(const a of out){
+    const key=(a.name||a.kind)+"|"+a.lat.toFixed(3)+","+a.lon.toFixed(3);
+    if(seen.has(key)) continue;
+    seen.add(key); uniq.push(a);
+    if(uniq.length>=14) break;
+  }
+  return uniq;
+}
+
+/* --- USGS gauges --------------------------------------------- */
+function parseRDB(text){
+  const rows=[]; let head=null;
+  for(const line of text.split("\n")){
+    if(!line || line[0]==="#") continue;
+    const cells=line.split("\t");
+    if(!head){ head=cells; continue; }
+    if(/^\d+[a-z]$/i.test(cells[0]||"")) continue;                 // the RDB format line
+    const o={}; head.forEach((h,i)=>o[h]=cells[i]);
+    rows.push(o);
+  }
+  return rows;
+}
+
+async function nearestGauge(lat, lon){
+  for(const pad of [0.25, 0.6]){
+    const bbox=[(lon-pad).toFixed(4),(lat-pad).toFixed(4),(lon+pad).toFixed(4),(lat+pad).toFixed(4)].join(",");
+    const url=`https://waterservices.usgs.gov/nwis/site/?format=rdb&bBox=${bbox}`
+            + `&siteType=ST&siteStatus=active&hasDataTypeCd=iv&parameterCd=00060&siteOutput=expanded`;
+    try{
+      const res=await withTimeout(url, null, 12000);
+      if(!res.ok) continue;
+      const rows=parseRDB(await res.text());
+      let best=null, bd=Infinity;
+      for(const r of rows){
+        const la=parseFloat(r.dec_lat_va), lo=parseFloat(r.dec_long_va);
+        if(!isFinite(la)||!isFinite(lo)) continue;
+        const d=metres(lat,lon,la,lo);
+        if(d<bd){ bd=d; best={id:r.site_no, name:(r.station_nm||"").trim(), lat:la, lon:lo,
+                              area:parseFloat(r.drain_area_va), dist:bd}; }
+      }
+      if(best) return best;
+    }catch(e){ /* try the wider box, then give up */ }
+  }
+  return null;
+}
+
+/* Drainage area for a pair of sites, so flow bands can be scaled. */
+async function drainAreas(sites){
+  try{
+    const url=`https://waterservices.usgs.gov/nwis/site/?format=rdb&sites=${sites.join(",")}&siteOutput=expanded`;
+    const res=await withTimeout(url, null, 12000);
+    if(!res.ok) return {};
+    const out={};
+    for(const r of parseRDB(await res.text())){
+      const a=parseFloat(r.drain_area_va);
+      if(isFinite(a)&&a>0) out[r.site_no]=a;
+    }
+    return out;
+  }catch(e){ return {}; }
+}
+
+/* --- the spot profile ---------------------------------------- */
+function templateFor(lat, lon){
+  let best=WATERS[0], bd=Infinity;
+  for(const w of WATERS){
+    const d=metres(lat,lon,w.lat,w.lon);
+    if(d<bd){ bd=d; best=w; }
+  }
+  return {w:best, dist:bd};
+}
+
+/* Flow scales roughly with the area that drains into the gauge,
+   so a template river's bands can be carried to a different
+   gauge when both areas are known. When they are not, the bands
+   travel unscaled and the panel says so rather than pretending. */
+function scaleBands(tmpl, ratio){
+  const s=v=>Math.max(1, Math.round(v*ratio));
+  return {
+    flow:{low:s(tmpl.flow.low), ideal:[s(tmpl.flow.ideal[0]), s(tmpl.flow.ideal[1])],
+          high:s(tmpl.flow.high), blown:s(tmpl.flow.blown)},
+    wade:{full:s(tmpl.wade.full), good:s(tmpl.wade.good),
+          limited:s(tmpl.wade.limited), max:s(tmpl.wade.max)},
+  };
+}
+
+function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
+  const calibrated = isFinite(ratio) && ratio>0;
+  const bands = calibrated ? scaleBands(tmpl, ratio) : {flow:tmpl.flow, wade:tmpl.wade};
+  const miles = Math.round(tmplDistM/1609.34);
+  const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
+  return {
+    id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
+    hatchKey: tmpl.id,                       // borrow this water's hatch calendar
+    name: point.name || "Selected spot",
+    place: point.place || "",
+    lat: point.lat, lon: point.lon,
+    type: tmpl.type, sp: tmpl.sp, size: tmpl.size,
+    gauge: gauge ? gauge.id : tmpl.gauge,
+    unit: "cfs",
+    flow: bands.flow, wade: bands.wade, float: tmpl.float,
+    temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
+    shift: tmpl.shift, char: tmpl.char,
+    note: `Seasonal temperature, hatch timing and flow character are modeled on `
+        + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
+        + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
+                 + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${Math.round(gauge.dist/1609.34)} miles from the pin. `
+                 : `No live gauge was found nearby, so the numbers are modeled. `)
+        + (calibrated ? `Flow bands are scaled by drainage area (×${ratio.toFixed(2)}).`
+                      : `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`),
+    spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
+  };
+}
+
+/* Assemble everything for a chosen point. Network failures are
+   degradations, never dead ends: worst case the angler still
+   gets the nearest water in the book, modeled. */
+async function buildSpot(point){
+  const {w:tmpl, dist} = templateFor(point.lat, point.lon);
+  let gauge=null, ratio=NaN;
+  try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; }
+  if(gauge && gauge.id!==tmpl.gauge){
+    const areas = await drainAreas([gauge.id, tmpl.gauge]);
+    const a=areas[gauge.id], b=areas[tmpl.gauge];
+    if(isFinite(gauge.area) && gauge.area>0 && isFinite(b) && b>0) ratio=gauge.area/b;
+    else if(isFinite(a) && a>0 && isFinite(b) && b>0) ratio=a/b;
+    if(isFinite(ratio)) ratio=clamp(ratio, 0.02, 50);
+  } else if(gauge && gauge.id===tmpl.gauge){
+    ratio=1;
+  }
+  return spotProfile(point, tmpl, dist, gauge, ratio);
+}
+
+/* ============================================================
    5. RENDER
    ============================================================ */
 const $=(s,r)=>(r||document).querySelector(s);
@@ -2039,7 +3039,7 @@ function renderHatch(res, ctx){
   const now=res.ah.filter(o=>o.i>0.28);
   const soon=HATCHES.filter(hx=>{
     if(ctx.w.sp!=="trout") return false;
-    if(hx.waters!=="all"&&!hx.waters.includes(ctx.w.id)) return false;
+    if(hx.waters!=="all"&&!hx.waters.includes(hatchKeyOf(ctx.w))) return false;
     const s=hx.win[0]+ctx.w.shift;
     return s>ctx.day && s<=ctx.day+28;
   }).sort((a,b)=>a.win[0]-b.win[0]);
@@ -2093,17 +3093,240 @@ function haversine(a,b,c,d){
   const h=Math.sin(dLat/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLon/2)**2;
   return Math.round(2*R*Math.asin(Math.sqrt(h)));
 }
-function renderWater(ctx){
-  const g=state.geo;
-  const list=WATERS.map(w=>({w, d:g?haversine(g.lat,g.lon,w.lat,w.lon):null}))
-    .sort((a,b)=> g ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
+/* --- the Where panel ----------------------------------------
+   The map is expensive to build and must survive the ten-minute
+   redraw, so the shell is rendered once and only the cards
+   around the map are re-rendered.
+------------------------------------------------------------ */
+let whereMap=null, pinMarker=null, accLayer=null, whereBuilt=false, mapDead=false;
+
+function whereShell(){
+  if(whereBuilt) return;
   $("#panel-water").innerHTML=`
     <div class="wcard">
-      <h3>How this water was chosen</h3>
-      <p>${g?`Your location put you <b>${haversine(g.lat,g.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
-            :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Tap the target icon in the header to use your position, or pick from the list.`}</p>
+      <h3>Where are you fishing?</h3>
+      <p>Search an address, a town or a water — or tap the map to drop a pin. Riffle then looks up the
+         public access mapped around that point and reads the river from the nearest gauge.</p>
+      <form class="findrow" id="findForm" role="search">
+        <input id="findQ" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Address, town, or water" aria-label="Address, town, or water">
+        <button class="findbtn" type="submit">Find</button>
+        <button class="findbtn ghost" type="button" id="findMe" title="Use my location">Near me</button>
+      </form>
+      <div id="findOut" class="findout" aria-live="polite"></div>
+    </div>
+    <div class="wcard mapcard" id="mapCard">
+      <div id="map" role="application" aria-label="Map. Tap to choose where you are fishing."></div>
+      <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
+    </div>
+    <div class="wcard" id="accessCard"></div>
+    <div id="waterMeta"></div>`;
+  wireWhere();
+  whereBuilt=true;
+}
+
+function wireWhere(){
+  $("#findForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const q=$("#findQ").value.trim();
+    if(!q) return;
+    const out=$("#findOut");
+    out.innerHTML=`<p class="muted">Searching…</p>`;
+    try{
+      const hits=await geocode(q);
+      if(!hits.length){ out.innerHTML=`<p class="muted">Nothing found for “${esc(q)}”. Try a town and state, or tap the map.</p>`; return; }
+      if(hits.length===1){ out.innerHTML=""; setPin(hits[0].lat, hits[0].lon, hits[0].short); return; }
+      out.innerHTML=`<div class="wlist">${hits.map((h,i)=>
+        `<button class="wbtn geo" data-i="${i}"><span class="wn">${esc(h.short)}<span class="wt">${esc(h.label)}</span></span></button>`).join("")}</div>`;
+      out.querySelectorAll(".geo").forEach(b=>b.addEventListener("click",()=>{
+        const h=hits[+b.dataset.i]; out.innerHTML=""; $("#findQ").value=h.short;
+        setPin(h.lat, h.lon, h.short);
+      }));
+    }catch(err){
+      out.innerHTML=`<p class="muted">The address lookup did not answer. Check the connection, or tap the map instead.</p>`;
+    }
+  });
+  $("#findMe").addEventListener("click", ()=>locate(true));
+}
+
+function initMap(){
+  if(whereMap || mapDead) return;
+  if(typeof L==="undefined"){
+    mapDead=true;
+    const c=$("#mapCard"); if(c) c.innerHTML=`<p class="muted">The map library did not load. Search an address above — everything else still works.</p>`;
+    return;
+  }
+  const start = state.pin || {lat:water().lat, lon:water().lon};
+  whereMap = L.map("map", {scrollWheelZoom:false}).setView([start.lat, start.lon], state.pin?12:10);
+  const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {maxZoom:18, attribution:"&copy; OpenStreetMap contributors"}).addTo(whereMap);
+  accLayer = L.layerGroup().addTo(whereMap);
+  whereMap.on("click", e=> setPin(e.latlng.lat, e.latlng.lng, null));
+  let tileFails=0;
+  tiles.on("tileerror", ()=>{                      // fires on the layer, never on the map
+    if(++tileFails===3){
+      const n=$("#mapNote");
+      if(n) n.innerHTML=`Map tiles are blocked here, so the map is blank — the pin and the access lookup still work.`;
+    }
+  });
+  if(state.pin) drawPin();
+}
+
+function whereShown(){
+  whereShell(); initMap();
+  if(whereMap) setTimeout(()=>whereMap.invalidateSize(), 30);
+}
+
+function drawPin(){
+  if(!whereMap || !state.pin) return;
+  const ll=[state.pin.lat, state.pin.lon];
+  if(!pinMarker){
+    pinMarker=L.marker(ll, {draggable:true, icon:L.divIcon({className:"pin-i", html:'<i></i>', iconSize:[20,20], iconAnchor:[10,10]})}).addTo(whereMap);
+    pinMarker.on("dragend", ()=>{ const p=pinMarker.getLatLng(); setPin(p.lat, p.lng, null); });
+  } else pinMarker.setLatLng(ll);
+  whereMap.setView(ll, Math.max(whereMap.getZoom(), 12));
+}
+
+function plotAccess(){
+  if(!whereMap || !accLayer) return;
+  accLayer.clearLayers();
+  for(const a of (state.access.list||[])){
+    const m=L.marker([a.lat,a.lon], {icon:L.divIcon({className:"acc-i", html:`<i class="k-${a.kind}"></i>`, iconSize:[14,14], iconAnchor:[7,7]})});
+    m.bindTooltip(`${a.name||ACCESS_KINDS[a.kind].label}${a.waterway?" · "+a.waterway:""}`);
+    m.on("click", ()=>chooseAccess(a.id));
+    m.addTo(accLayer);
+  }
+}
+
+async function setPin(lat, lon, label){
+  state.pin={lat, lon, label:label||null};
+  drawPin();
+  renderAccessCard();
+  if(!label){
+    reverseGeocode(lat,lon).then(name=>{
+      if(name && state.pin && state.pin.lat===lat && state.pin.lon===lon){ state.pin.label=name; renderAccessCard(); }
+    });
+  }
+  await loadAccess(lat, lon);
+}
+
+async function loadAccess(lat, lon){
+  state.access={status:"loading", list:[], radius:8000, chosen:state.access.chosen};
+  renderAccessCard();
+  try{
+    let list=await accessPoints(lat, lon, 8000), radius=8000;
+    if(!list.length){ list=await accessPoints(lat, lon, 20000); radius=20000; }
+    state.access={status: list.length?"ok":"empty", list, radius, chosen:state.access.chosen};
+  }catch(e){
+    state.access={status:"error", list:[], radius:8000, chosen:state.access.chosen};
+  }
+  renderAccessCard();
+  plotAccess();
+}
+
+async function chooseAccess(id){
+  const a=(state.access.list||[]).find(x=>x.id===id);
+  if(!a) return;
+  state.access.chosen=id;
+  const name = a.name || (ACCESS_KINDS[a.kind].label + (a.waterway ? " on "+a.waterway : ""));
+  await selectSpot({lat:a.lat, lon:a.lon, name, place: state.pin && state.pin.label || ""});
+}
+
+async function selectSpot(point){
+  const card=$("#accessCard");
+  if(card) card.setAttribute("aria-busy","true");
+  try{
+    state.spot = await buildSpot(point);
+    state.live=null; state.baro=null;
+    draw();
+    refreshLive(water());
+  }finally{
+    const c=$("#accessCard"); if(c) c.removeAttribute("aria-busy");
+  }
+}
+
+function milesOf(m){
+  const mi=m/1609.34;
+  return mi<0.1 ? Math.round(m)+" m" : (mi<10 ? mi.toFixed(1) : Math.round(mi))+" mi";
+}
+
+function renderAccessCard(){
+  const el=$("#accessCard"); if(!el) return;
+  const st=state.access||{status:"idle"};
+  const where = state.pin ? (state.pin.label || `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`) : null;
+
+  if(!state.pin){
+    el.innerHTML=`<h3>Public access</h3><p class="muted">Drop a pin or search an address and Riffle will list the access mapped nearby.</p>`;
+    return;
+  }
+  const head=`<h3>Public access near ${esc(where)}</h3>`;
+  if(st.status==="loading"){ el.innerHTML=head+`<p class="muted">Looking up mapped access…</p>`; return; }
+  if(st.status==="error"){
+    el.innerHTML=head+`<p class="muted">The OpenStreetMap lookup did not answer. Try again, or read the pin itself.</p>`
+      + `<div class="wlist">${pinRowHTML()}</div>`;
+    wireAccessRows(); return;
+  }
+  if(st.status==="empty"){
+    el.innerHTML=head+`<p class="muted">Nothing is mapped as access within ${Math.round(st.radius/1609.34)} miles of that pin.
+      That means OpenStreetMap has no record here — not that there is none.</p>
+      <div class="wlist">${pinRowHTML()}</div>`;
+    wireAccessRows(); return;
+  }
+  el.innerHTML = head
+    + `<p class="muted">From OpenStreetMap, within ${Math.round(st.radius/1609.34)} miles. Tap one to read that water.</p>`
+    + `<div class="wlist">${st.list.map(a=>`
+        <button class="wbtn apt" data-a="${esc(a.id)}" aria-current="${st.chosen===a.id}">
+          <span class="akind k-${a.kind}">${esc(ACCESS_KINDS[a.kind].label)}</span>
+          <span class="wn">${esc(a.name||ACCESS_KINDS[a.kind].label)}
+            <span class="wt">${a.waterway?esc(a.waterway):esc(ACCESS_KINDS[a.kind].hint)}${a.fee?" · fee":""}</span></span>
+          <span class="wd">${esc(milesOf(a.dist))}</span>
+        </button>`).join("")}
+        ${pinRowHTML()}</div>`
+    + `<p class="hint" role="note"><b>Check before you park.</b> These are features mapped in OpenStreetMap —
+        a launch, a lot, a trailhead. They are not a statement that the bank is public or that fishing is
+        permitted. Verify with the state agency or posted signs.</p>`;
+  wireAccessRows();
+}
+
+function pinRowHTML(){
+  return `<button class="wbtn apt" data-a="__pin__" aria-current="${state.access.chosen==="__pin__"}">
+      <span class="akind k-pin">Pin</span>
+      <span class="wn">Read the pin itself<span class="wt">Skip the access list and read the water at the marker</span></span>
+    </button>`;
+}
+
+function wireAccessRows(){
+  document.querySelectorAll(".apt").forEach(b=>b.addEventListener("click", async ()=>{
+    const id=b.dataset.a;
+    if(id==="__pin__"){
+      state.access.chosen="__pin__";
+      await selectSpot({lat:state.pin.lat, lon:state.pin.lon,
+        name: state.pin.label || "Your pin", place:""});
+    } else await chooseAccess(id);
+  }));
+}
+
+function renderWater(ctx){
+  whereShell();
+  if(state.tab==="water") initMap();
+  renderAccessCard();
+
+  const g=state.geo;
+  const sp=ctx.w.spot;
+  const list=WATERS.map(w=>({w, d:g?haversine(g.lat,g.lon,w.lat,w.lon):null}))
+    .sort((a,b)=> g ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
+
+  $("#waterMeta").innerHTML=`
+    <div class="wcard">
+      <h3>How this reading was built</h3>
+      <p>${sp
+          ? `You picked <b>${esc(ctx.w.name)}</b>${ctx.w.place?" — "+esc(ctx.w.place):""}. `
+            + `Seasonal curves come from <b>${esc(sp.template.name)}</b> — ${esc(sp.away)}.`
+          : (g?`Your location put you <b>${haversine(g.lat,g.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
+              :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Search above, tap the map, or pick from the list.`)}</p>
       <p><b>Gauge ${esc(ctx.w.gauge)}</b> · ideal ${ctx.w.flow.ideal[0]}–${ctx.w.flow.ideal[1]} ${esc(ctx.w.unit)} · blown above ${ctx.w.flow.blown}.
       ${ctx.flowSource==="live"?"Reading live.":"No live reading here — flow and temperature are modeled from the date and this water's seasonal character."}</p>
+      ${sp&&!sp.calibrated?`<p class="hint" role="note"><b>Flow bands are uncalibrated.</b> Drainage area was unavailable for one of the gauges, so the numbers above are ${esc(sp.template.name)}'s. Read the band, not the threshold.</p>`:""}
       <p style="color:var(--ink3)">${esc(ctx.w.note)}</p>
     </div>
     <div class="wcard">
@@ -2119,17 +3342,18 @@ function renderWater(ctx){
       </div>
     </div>
     <div class="wcard">
-      <h3>${g?"Nearest waters":"All waters"}</h3>
+      <h3>${g?"Nearest waters in the book":"Waters in the book"}</h3>
       <div class="wlist">
         ${list.map(({w,d})=>`
-          <button class="wbtn" data-w="${w.id}" aria-current="${w.id===ctx.w.id}">
+          <button class="wbtn" data-w="${w.id}" aria-current="${!sp&&w.id===ctx.w.id}">
             <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
             ${d!=null?`<span class="wd">${d} mi</span>`:""}
           </button>`).join("")}
       </div>
     </div>`;
-  document.querySelectorAll(".wbtn").forEach(b=>b.addEventListener("click",async()=>{
-    state.waterId=b.dataset.w; state.live=null; state.baro=null; draw();
+  document.querySelectorAll("#waterMeta .wbtn").forEach(b=>b.addEventListener("click",async()=>{
+    state.waterId=b.dataset.w; state.spot=null; state.access.chosen=null;
+    state.live=null; state.baro=null; draw();
     refreshLive(water());
   }));
 }
@@ -2178,6 +3402,7 @@ function wireTabs(){
       state.tab=t.id.replace("tab-","");
       document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x===t));
       document.querySelectorAll(".panel").forEach(p=>{ p.hidden = p.id!=="panel-"+state.tab; });
+      if(state.tab==="water") whereShown();
       window.scrollTo({top:0,behavior:"smooth"});
     });
   });
@@ -2196,14 +3421,25 @@ function locate(explicit){
   if(!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
     state.geo={lat:pos.coords.latitude, lon:pos.coords.longitude};
-    let best=null,bd=1e9;
-    for(const w of WATERS){
-      const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
-      if(d<bd){bd=d;best=w;}
+    if(!state.spot){
+      let best=null,bd=1e9;
+      for(const w of WATERS){
+        const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
+        if(d<bd){bd=d;best=w;}
+      }
+      if(best){ state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best); }
     }
-    if(best){ state.waterId=best.id; state.live=null; state.baro=null; draw(); refreshLive(best); }
-    else draw();
+    draw();
+    if(explicit){
+      showTab("water");
+      setPin(state.geo.lat, state.geo.lon, "Your location");
+    }
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
+}
+
+function showTab(name){
+  const t=document.getElementById("tab-"+name);
+  if(t) t.click();
 }
 
 let tick=null;
