@@ -37,3 +37,22 @@ then visit http://localhost:8000/.
 Fonts load from Google Fonts and gauge data from USGS, so a network connection
 gets you the intended typography and live readings; offline it still runs on
 the modeled values with fallback fonts.
+
+## Deploying to Netlify
+
+`netlify.toml` in the repo root holds the whole deploy configuration — there is
+no build step, so Netlify publishes the repository root as-is:
+
+- **Publish directory** `.` with no build command.
+- **Redirects** — every path rewrites to `/index.html` (status 200), so a
+  bookmarked or mistyped URL still lands on the app instead of a 404.
+- **Caching** — `index.html` is served `must-revalidate` so a new deploy is
+  picked up on the next load rather than from a stale cache.
+- **Headers** — `nosniff`, a strict referrer policy, a locked-down permissions
+  policy, and a Content-Security-Policy that allows only what the page actually
+  uses: its own inline styles and script, Google Fonts, and the USGS gauge API.
+
+Point a Netlify site at this repository (or run `netlify deploy --prod` from the
+root) and the config is applied automatically. If you add an external script,
+stylesheet or data source, widen the matching CSP directive in `netlify.toml` or
+the browser will block it.

@@ -1,0 +1,28 @@
+# Riffle — static single-file site, no build step.
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  publish = "."
+
+# The app is one self-contained page with no client-side router, so any
+# unknown path is served the same document rather than Netlify's 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# index.html carries the whole app, so it must never be served stale.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), interest-cohort=()"
+    # Styles and scripts are inline in index.html; fonts come from Google Fonts
+    # and gauge readings from the USGS Instantaneous Values service.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://waterservices.usgs.gov; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
