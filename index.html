@@ -145,9 +145,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .baro-trace{flex:none;width:60px;height:22px;opacity:.8;align-self:center}
 .baro-trace polyline{fill:none;stroke:var(--ink2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 
-/* ---------- controls (directly under the dashboard) ---------- */
-.controls{margin-top:12px}
-.controls .refine{margin-top:0}
+/* ---------- conditions, on the On river tab ---------- */
+.panel .refine{margin-top:16px}
 .refine-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px}
 .refine-head h2{font-family:Fraunces,Georgia,serif;font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
 .refine-head .rh-src{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
@@ -160,8 +159,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 }
 .tab{
   flex:1;background:transparent;border:1px solid transparent;border-radius:9px;padding:7px 4px;
-  font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--ink3);
+  font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--ink3);white-space:nowrap;
 }
+@media (max-width:430px){ .tab{font-size:11.5px;padding:7px 2px;letter-spacing:0} }
 .tab[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:var(--shadow)}
 .panel[hidden]{display:none}
 
@@ -1035,19 +1035,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <div class="wrap">
   <section class="reading" id="reading"></section>
-  <section class="controls" id="controls"></section>
-
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
+    <button class="tab" role="tab" id="tab-where" aria-controls="panel-where" aria-selected="false">Where</button>
     <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop list</button>
     <button class="tab" role="tab" id="tab-hatch" aria-controls="panel-hatch" aria-selected="false">Hatch</button>
-    <button class="tab" role="tab" id="tab-water" aria-controls="panel-water" aria-selected="false">Where</button>
+    <button class="tab" role="tab" id="tab-onriver" aria-controls="panel-onriver" aria-selected="false">On river</button>
   </nav>
 
+  <div class="panel" id="panel-where" role="tabpanel" aria-labelledby="tab-where" hidden></div>
   <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays"></div>
   <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
   <div class="panel" id="panel-hatch" role="tabpanel" aria-labelledby="tab-hatch" hidden></div>
-  <div class="panel" id="panel-water" role="tabpanel" aria-labelledby="tab-water" hidden></div>
+  <div class="panel" id="panel-onriver" role="tabpanel" aria-labelledby="tab-onriver" hidden></div>
 
   <p class="foot">
     Water temperature and flow are <b>modeled</b> from date, water type and season unless a live gauge reading is shown.
@@ -2934,7 +2934,7 @@ function renderPlays(res, ctx){
 }
 
 function renderControls(ctx){
-  $("#controls").innerHTML=renderRefine(ctx);
+  $("#panel-onriver").innerHTML=renderRefine(ctx);
   wireRefine();
 }
 
@@ -2953,7 +2953,7 @@ function renderRefine(ctx){
       <h2>What you're seeing</h2>
       <span class="rh-src">Feeds the plays</span>
     </div>
-    <p>Everything below is already decided for you. Tap only where the river disagrees with the model \u2014 the boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
+    <p>Standing in it, you know things the model does not. Everything here is already decided for you — tap only where the river disagrees. The boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
     ${g("Barometer \u2014 "+bsrc,"baro",[["falling","Falling"],["steady","Steady"],["rising","Rising"]])}
     ${g("Flow","flow",[["low","Low"],["normal","Normal"],["pushy","Pushy"],["high","High"],["blown","Blown"]])}
     ${g("Clarity","clarity",[["gin","Gin clear"],["clear","Clear"],["green","Green"],["stained","Stained"],["muddy","Muddy"]])}
@@ -3030,7 +3030,7 @@ function renderShop(res, ctx){
 
     <div class="hint">
       <span>⚑</span>
-      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip under the dashboard.</span>
+      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip on the On river tab.</span>
     </div>`;
 
   document.querySelectorAll(".sitem").forEach(li=>{
@@ -3110,7 +3110,7 @@ let whereMap=null, pinMarker=null, accLayer=null, whereBuilt=false, mapDead=fals
 
 function whereShell(){
   if(whereBuilt) return;
-  $("#panel-water").innerHTML=`
+  $("#panel-where").innerHTML=`
     <div class="wcard">
       <h3>Where are you fishing?</h3>
       <p>Search an address, a town or a water — or tap the map to drop a pin. Riffle then looks up the
@@ -3319,7 +3319,7 @@ function wireAccessRows(){
 
 function renderWater(ctx){
   whereShell();
-  if(state.tab==="water") initMap();
+  if(state.tab==="where") initMap();
   renderAccessCard();
 
   const g=state.geo;
@@ -3417,7 +3417,7 @@ function wireTabs(){
       state.tab=t.id.replace("tab-","");
       document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x===t));
       document.querySelectorAll(".panel").forEach(p=>{ p.hidden = p.id!=="panel-"+state.tab; });
-      if(state.tab==="water") whereShown();
+      if(state.tab==="where") whereShown();
       window.scrollTo({top:0,behavior:"smooth"});
     });
   });
@@ -3446,7 +3446,7 @@ function locate(explicit){
     }
     draw();
     if(explicit){
-      showTab("water");
+      showTab("where");
       setPin(state.geo.lat, state.geo.lon, "Your location");
     }
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
