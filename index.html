@@ -1,0 +1,2074 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>Riffle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#EDF1EC; --surface:#FFFFFF; --raised:#E2E8E1; --sunk:#DAE1D9;
+  --line:#C9D2CA; --line-soft:#DDE4DC;
+  --ink:#141E1B; --ink2:#495852; --ink3:#6E7D77;
+  --accent:#C74E19; --accent-ink:#C74E19; --accent-soft:#FAE6DB;
+  --verd:#2C7B69; --verd-soft:#DCEDE8;
+  --sulphur:#A8790A; --sulphur-soft:#F7EBCD;
+  --copper:#8F5426;
+  --ring:rgba(0,0,0,.20);
+  --shadow:0 1px 2px rgba(20,30,27,.06), 0 8px 24px -12px rgba(20,30,27,.18);
+  --shadow-lift:0 2px 4px rgba(20,30,27,.08), 0 16px 40px -16px rgba(20,30,27,.28);
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1517; --surface:#151F22; --raised:#1C282B; --sunk:#111A1C;
+    --line:#2A393C; --line-soft:#222F32;
+    --ink:#E7EEEA; --ink2:#A2B1AC; --ink3:#7A8985;
+    --accent:#F0703A; --accent-ink:#FF8552; --accent-soft:#3A1F14;
+    --verd:#4EB49A; --verd-soft:#10312B;
+    --sulphur:#E0B040; --sulphur-soft:#31280F;
+    --copper:#C98650; --ring:rgba(255,255,255,.32);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 16px 40px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1517; --surface:#151F22; --raised:#1C282B; --sunk:#111A1C;
+  --line:#2A393C; --line-soft:#222F32;
+  --ink:#E7EEEA; --ink2:#A2B1AC; --ink3:#7A8985;
+  --accent:#F0703A; --accent-ink:#FF8552; --accent-soft:#3A1F14;
+  --verd:#4EB49A; --verd-soft:#10312B;
+  --sulphur:#E0B040; --sulphur-soft:#31280F;
+  --copper:#C98650; --ring:rgba(255,255,255,.32);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 16px 40px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 120px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+
+/* ---------- masthead ---------- */
+.mast{position:relative;margin:0 -16px;padding:0;overflow:hidden;border-bottom:1px solid var(--line)}
+#seam{display:block;width:100%;height:86px}
+.mast-in{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:12px}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{
+  font-family:Fraunces,Georgia,serif;font-weight:700;font-size:32px;letter-spacing:-.02em;
+  margin:0;line-height:1;font-variation-settings:"SOFT" 0,"WONK" 1;
+}
+.brand .tag{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.mast-right{display:flex;align-items:center;gap:8px}
+.icon-btn{
+  background:var(--surface);border:1px solid var(--line);border-radius:9px;
+  width:34px;height:34px;display:grid;place-items:center;padding:0;color:var(--ink2);
+}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ---------- reading panel ---------- */
+.reading{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  margin-top:16px;box-shadow:var(--shadow);overflow:hidden;
+}
+.rd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px 12px}
+.rd-water{min-width:0}
+.rd-water h2{
+  font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;margin:0;line-height:1.15;
+  letter-spacing:-.01em;text-wrap:balance;
+}
+.rd-sub{font-size:12.5px;color:var(--ink3);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.dot{width:3px;height:3px;border-radius:50%;background:var(--line);display:inline-block;flex:none}
+.srcpill{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink3);flex:none;
+}
+.srcpill.live{border-color:var(--verd);color:var(--verd);background:var(--verd-soft)}
+.gauges{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-soft)}
+.g{padding:11px 8px 12px;border-right:1px solid var(--line-soft);text-align:center}
+.g:last-child{border-right:0}
+.g .lab{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
+.g .val{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.g .note{font-size:10.5px;color:var(--ink2);margin-top:4px;line-height:1.25}
+.g.warn .val{color:var(--sulphur)}
+.g.bad .val{color:var(--accent-ink)}
+.g.good .val{color:var(--verd)}
+
+/* access band */
+.access{padding:13px 16px 14px;border-top:1px solid var(--line-soft);background:var(--sunk)}
+.acc-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.acc-call{
+  font-family:Fraunces,Georgia,serif;font-size:25px;font-weight:700;line-height:1;letter-spacing:-.02em;
+}
+.acc-call.good{color:var(--verd)} .acc-call.warn{color:var(--sulphur)} .acc-call.bad{color:var(--accent-ink)}
+.acc-eyebrow{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.acc-line{font-size:13px;color:var(--ink2);line-height:1.5;margin-top:6px}
+.ladder{display:flex;gap:2px;margin-top:11px;position:relative}
+.ladder span{flex:1;height:6px;border-radius:2px;background:var(--line)}
+.ladder span.s1{background:var(--verd)} .ladder span.s2{background:var(--verd);opacity:.6}
+.ladder span.s3{background:var(--sulphur)} .ladder span.s4{background:var(--accent);opacity:.85}
+.ladder .mk{position:absolute;top:-5px;width:3px;height:16px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--sunk)}
+.ladder-key{display:flex;justify-content:space-between;margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.acc-rows{margin:11px 0 0;padding:0;display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px}
+.acc-rows dt{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3);padding-top:3px;white-space:nowrap}
+.acc-rows dd{margin:0;color:var(--ink2);line-height:1.45}
+.acc-flip{margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink3);line-height:1.5}
+.acc-flip b{color:var(--ink);font-weight:600}
+
+/* thermal bar */
+.thermal{padding:12px 16px 14px;border-top:1px solid var(--line-soft);background:var(--sunk)}
+.thermal .tl{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px}
+.track{position:relative;height:7px;border-radius:4px;background:linear-gradient(90deg,#3F6E8C,#3F8C7A,#7FA23C,#C79A17,#C74E19);overflow:visible}
+:root[data-theme="dark"] .track,:root:not([data-theme="light"]) .track{opacity:.85}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .track{opacity:1}}
+.needle{position:absolute;top:-4px;width:3px;height:15px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--sunk)}
+.thermal .cap{font-size:11.5px;color:var(--ink2);margin-top:8px;line-height:1.4}
+
+/* ---------- tabs ---------- */
+.tabs{
+  position:sticky;top:0;z-index:20;display:flex;gap:4px;margin:16px -16px 0;padding:8px 16px;
+  background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line-soft);
+}
+.tab{
+  flex:1;background:transparent;border:1px solid transparent;border-radius:9px;padding:7px 4px;
+  font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--ink3);
+}
+.tab[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:var(--shadow)}
+.panel[hidden]{display:none}
+
+/* ---------- play cards ---------- */
+.plays{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.play{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.play.top{border-color:var(--accent);box-shadow:var(--shadow-lift)}
+.p-head{display:flex;gap:12px;padding:14px 16px 12px;align-items:flex-start}
+.rank{
+  flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;
+  background:var(--raised);color:var(--ink2);margin-top:2px;
+}
+.play.top .rank{background:var(--accent);color:#fff}
+.p-title{min-width:0;flex:1}
+.p-title h3{font-size:17.5px;font-weight:700;margin:0;line-height:1.25;letter-spacing:-.01em;text-wrap:balance}
+.p-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;
+  border-radius:5px;padding:2px 6px;background:var(--raised);color:var(--ink2);white-space:nowrap;
+}
+.chip.hot{background:var(--accent-soft);color:var(--accent-ink)}
+.chip.grn{background:var(--verd-soft);color:var(--verd)}
+.chip.sul{background:var(--sulphur-soft);color:var(--sulphur)}
+.conf{flex:none;text-align:right;padding-top:2px}
+.conf .n{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.conf .l{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:3px}
+.why{padding:0 16px 14px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.why b{color:var(--ink);font-weight:600}
+
+.sec{border-top:1px solid var(--line-soft);padding:12px 16px 14px}
+.sec-lab{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:9px}
+
+/* fly rows */
+.flyrow{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line-soft);align-items:flex-start}
+.flyrow:last-child{border-bottom:0;padding-bottom:0}
+.flyrow:first-of-type{padding-top:0}
+.swatch{flex:none;width:16px;height:16px;border-radius:5px;margin-top:2px;border:1px solid var(--ring);box-shadow:inset 0 -3px 6px rgba(0,0,0,.12)}
+.flymain{flex:1;min-width:0}
+.flyname{font-size:14px;font-weight:600;line-height:1.3}
+.flyspec{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink2);margin-top:2px;line-height:1.4}
+.flynote{font-size:11.5px;color:var(--ink3);margin-top:2px;line-height:1.4}
+.qty{
+  flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--ink2);
+  background:var(--raised);border-radius:5px;padding:2px 6px;margin-top:1px;
+}
+
+/* spec table */
+.specs{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.specs dt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding-top:3px;white-space:nowrap}
+.specs dd{margin:0;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.5;color:var(--ink)}
+.steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.steps li{display:flex;gap:9px;font-size:13.5px;line-height:1.5;color:var(--ink2)}
+.steps li::before{
+  content:"";flex:none;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:8px;opacity:.75;
+}
+.steps b{color:var(--ink);font-weight:600}
+
+/* ---------- shop list ---------- */
+.shop-intro{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+  margin-top:16px;box-shadow:var(--shadow);
+}
+.shop-intro h2{font-family:Fraunces,Georgia,serif;font-size:20px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+.shop-intro p{margin:0;font-size:13px;color:var(--ink2);line-height:1.5}
+.shopcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;box-shadow:var(--shadow);overflow:hidden}
+.shopcard h3{
+  margin:0;padding:11px 16px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);
+  background:var(--raised);border-bottom:1px solid var(--line);font-weight:600;
+}
+.slist{margin:0;padding:4px 16px 12px;list-style:none}
+.sitem{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--line-soft);align-items:flex-start}
+.sitem:last-child{border-bottom:0}
+.box{
+  flex:none;width:17px;height:17px;border:1.5px solid var(--line);border-radius:4px;margin-top:2px;background:var(--ground);
+}
+.sitem.on .box{background:var(--verd);border-color:var(--verd);position:relative}
+.sitem.on .box::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.sitem.on .sname{text-decoration:line-through;color:var(--ink3)}
+.sbody{flex:1;min-width:0}
+.sname{font-size:15px;font-weight:600;line-height:1.3}
+.sspec{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink2);margin-top:2px;line-height:1.45}
+.sfor{font-size:11px;color:var(--ink3);margin-top:2px}
+
+/* ---------- hatch timeline ---------- */
+.hbar{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;padding:13px 16px;box-shadow:var(--shadow)}
+.hrow{display:flex;align-items:center;gap:11px;padding:7px 0;border-bottom:1px solid var(--line-soft)}
+.hrow:last-child{border-bottom:0}
+.hname{flex:1;min-width:0;font-size:13.5px;font-weight:600;line-height:1.25}
+.hlat{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink3);font-style:italic;font-weight:400}
+.hspec{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink2);white-space:nowrap;flex:none}
+.hmeter{flex:none;width:64px;height:6px;border-radius:3px;background:var(--raised);overflow:hidden}
+.hmeter i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.hmeter.dim i{background:var(--line)}
+
+/* ---------- water tab ---------- */
+.wcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.wcard h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.wcard p{margin:0 0 10px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.wcard p:last-child{margin-bottom:0}
+.wlist{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.wbtn{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;
+  border:1px solid transparent;border-radius:9px;padding:9px 10px;
+}
+.wbtn:hover{background:var(--raised)}
+.wbtn[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.wbtn .wn{flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.25}
+.wbtn .wt{font-size:11.5px;color:var(--ink3);font-weight:400;display:block;margin-top:1px}
+.wbtn .wd{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink3);flex:none}
+
+/* condition chips (optional refinements) */
+.refine{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;box-shadow:var(--shadow)}
+.refine > p{margin:0 0 11px;font-size:12.5px;color:var(--ink3);line-height:1.45}
+.rgroup{margin-bottom:11px}
+.rgroup:last-child{margin-bottom:0}
+.rlab{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.rchips{display:flex;flex-wrap:wrap;gap:5px}
+.rchip{
+  border:1px solid var(--line);background:var(--ground);border-radius:20px;padding:5px 11px;
+  font-size:12px;font-weight:500;color:var(--ink2);
+}
+.rchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+.rchip.auto[aria-pressed="true"]{background:var(--verd);border-color:var(--verd);color:#fff}
+
+.foot{margin-top:22px;font-size:11.5px;color:var(--ink3);line-height:1.6;text-align:center;padding:0 8px}
+.foot a{color:var(--ink2)}
+.hint{
+  display:flex;gap:9px;align-items:flex-start;background:var(--sulphur-soft);border:1px solid var(--sulphur);
+  border-radius:11px;padding:10px 12px;margin-top:12px;font-size:12.5px;color:var(--ink);line-height:1.45;
+}
+.hint b{font-weight:600}
+.hint.stop{background:var(--accent-soft);border-color:var(--accent)}
+.gate{
+  background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);
+  padding:15px 16px;margin-top:16px;box-shadow:var(--shadow-lift);
+}
+.gate h2{font-family:Fraunces,Georgia,serif;font-size:21px;margin:0 0 6px;font-weight:600;color:var(--accent-ink);letter-spacing:-.01em}
+.gate p{margin:0 0 11px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.gate p:last-child{margin-bottom:0}
+.refuge{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.refuge:last-child{border-bottom:0}
+.refuge .rn{flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.25}
+.refuge .rn span{display:block;font-size:11.5px;color:var(--ink3);font-weight:400;margin-top:1px}
+.refuge .rt{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;color:var(--verd);flex:none;font-variant-numeric:tabular-nums}
+@media (max-width:400px){
+  .gauges{grid-template-columns:repeat(2,1fr)}
+  .g:nth-child(2){border-right:0}
+  .g:nth-child(3),.g:nth-child(4){border-top:1px solid var(--line-soft)}
+  .brand h1{font-size:27px}
+  .brand .tag{display:none}
+}
+</style>
+
+<header class="mast">
+  <canvas id="seam" aria-hidden="true"></canvas>
+  <div class="mast-in">
+    <div class="brand">
+      <h1>Riffle</h1>
+      <span class="tag">Read the water</span>
+    </div>
+    <div class="mast-right">
+      <button class="icon-btn" id="locBtn" title="Use my location" aria-label="Use my location">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle light or dark theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="reading" id="reading"></section>
+
+  <nav class="tabs" role="tablist" aria-label="Riffle sections">
+    <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
+    <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop list</button>
+    <button class="tab" role="tab" id="tab-hatch" aria-controls="panel-hatch" aria-selected="false">Hatch</button>
+    <button class="tab" role="tab" id="tab-water" aria-controls="panel-water" aria-selected="false">Water</button>
+  </nav>
+
+  <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays"></div>
+  <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
+  <div class="panel" id="panel-hatch" role="tabpanel" aria-labelledby="tab-hatch" hidden></div>
+  <div class="panel" id="panel-water" role="tabpanel" aria-labelledby="tab-water" hidden></div>
+
+  <p class="foot">
+    Water temperature and flow are <b>modeled</b> from date, water type and season unless a live gauge reading is shown.
+    Always check the gauge and your own thermometer. Stop fishing trout above 68&nbsp;°F.
+  </p>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. DATA — waters, hatches, patterns, rigs
+   ============================================================ */
+
+const DOY = (m, d) => { const t=[0,31,59,90,120,151,181,212,243,273,304,334]; return t[m-1]+d; };
+
+/* --- waters -------------------------------------------------
+   temps  : typical daily-MEAN water temp °F, Jan..Dec (modeled)
+   swing  : diurnal amplitude °F (peak ~15:00, min ~06:00)
+   flowIx : typical flow as a multiple of the ideal mid-band, Jan..Dec
+   shift  : hatch-phase offset in days vs. the Catskill baseline
+   size   : 1 small stream · 2 medium · 3 big water
+------------------------------------------------------------ */
+const TAIL_FLOW = [1.00,1.02,1.20,1.22,1.12,1.00,.92,.86,.86,.95,1.00,1.00];
+const FREE_FLOW = [1.25,1.35,1.85,1.95,1.45,1.00,.62,.50,.60,.90,1.20,1.28];
+const LIME_FLOW = [1.10,1.15,1.30,1.30,1.10,.95,.80,.75,.80,.90,1.00,1.05];
+const GL_FLOW   = [1.15,1.15,1.75,1.65,1.15,.70,.42,.36,.55,.95,1.30,1.30];
+
+const WATERS = [
+ {id:"wbd", name:"West Branch Delaware", place:"Hale Eddy, NY", lat:42.011, lon:-75.388, type:"tailwater", sp:"trout", size:3,
+  gauge:"01426500", flow:{low:300, ideal:[400,900], high:1300, blown:2000}, unit:"cfs",
+  wade:{full:450, good:800, limited:1200, max:1500}, float:"drift",
+  temps:[37,38,42,46,50,53,55,55,53,49,44,39], swing:4, flowIx:TAIL_FLOW, shift:6, char:"flat",
+  note:"Coldest big water in the Northeast and the most leader-shy. Fish reject high-riding hackled dries in the flats — Comparaduns, cripples and film emergers are the working patterns."},
+ {id:"ebd", name:"East Branch Delaware", place:"Harvard, NY", lat:42.023, lon:-75.132, type:"tailwater", sp:"trout", size:3,
+  gauge:"01417500", flow:{low:200, ideal:[300,800], high:1100, blown:1800}, unit:"cfs",
+  wade:{full:500, good:800, limited:1000, max:1400}, float:"drift",
+  temps:[38,39,43,47,52,56,58,58,55,50,45,40], swing:5, flowIx:TAIL_FLOW, shift:4, char:"flat",
+  note:"Cold and reliable above Harvard; warms hard below it. Brown Drake shows on the lower river in mid-June."},
+ {id:"main", name:"Main Stem Delaware", place:"Lordville, NY", lat:41.860, lon:-75.220, type:"tailwater", sp:"trout", size:3,
+  gauge:"01427207", flow:{low:700, ideal:[1000,2500], high:4000, blown:7000}, unit:"cfs",
+  wade:{full:1200, good:2000, limited:3000, max:4000}, float:"drift",
+  temps:[36,37,42,48,55,62,68,68,63,54,46,39], swing:6, flowIx:TAIL_FLOW, shift:2, char:"big",
+  note:"Big, thermally marginal water. Spring and fall river. In summer the fish stack at cold tributary mouths."},
+ {id:"bkill", name:"Beaverkill", place:"Cooks Falls, NY", lat:41.945, lon:-74.972, type:"freestone", sp:"trout", size:2,
+  gauge:"01420500", flow:{low:90, ideal:[150,500], high:800, blown:1500}, unit:"cfs",
+  wade:{full:300, good:500, limited:800, max:1200}, float:"none",
+  temps:[34,36,42,50,58,66,71,71,65,55,45,37], swing:8, flowIx:FREE_FLOW, shift:0, char:"mixed",
+  note:"The classic Catskill freestone. Warms into the seventies by mid-July — a spring and fall river with early-morning summer windows."},
+ {id:"willo", name:"Willowemoc Creek", place:"Livingston Manor, NY", lat:41.900, lon:-74.828, type:"freestone", sp:"trout", size:1,
+  gauge:"01419500", flow:{low:40, ideal:[60,250], high:400, blown:800}, unit:"cfs",
+  wade:{full:150, good:280, limited:450, max:700}, float:"none",
+  temps:[34,36,42,50,58,66,71,71,65,55,45,37], swing:8, flowIx:FREE_FLOW, shift:0, char:"pocket",
+  note:"Smaller and more intimate than the Beaverkill. Upper reaches hold cooler water later into the summer."},
+ {id:"esopus", name:"Esopus Creek", place:"Coldbrook, NY", lat:42.001, lon:-74.253, type:"freestone", sp:"trout", size:2,
+  gauge:"01362500", flow:{low:100, ideal:[150,600], high:900, blown:1600}, unit:"cfs",
+  wade:{full:350, good:600, limited:900, max:1400}, float:"none",
+  temps:[35,36,42,49,56,62,66,66,62,54,45,38], swing:7, flowIx:FREE_FLOW, shift:2, char:"pocket",
+  note:"The Shandaken Portal keeps the water below Allaben cold all summer, and milky when it is running. Isonychia water."},
+ {id:"nvsk", name:"Neversink River", place:"Neversink Gorge, NY", lat:41.720, lon:-74.630, type:"tailwater", sp:"trout", size:1,
+  gauge:"01436690", flow:{low:50, ideal:[80,300], high:450, blown:800}, unit:"cfs",
+  wade:{full:180, good:320, limited:500, max:750}, float:"none",
+  temps:[36,37,42,48,54,58,61,61,58,52,44,38], swing:6, flowIx:TAIL_FLOW, shift:3, char:"pocket",
+  note:"Cold below the dam, then gorge pocket water that holds temperature well into summer. Wild browns and brookies."},
+ {id:"farm", name:"Farmington River", place:"Riverton / Church Pool, CT", lat:41.949, lon:-72.993, type:"tailwater", sp:"trout", size:2,
+  gauge:"01186000", flow:{low:150, ideal:[200,600], high:900, blown:1600}, unit:"cfs",
+  wade:{full:400, good:600, limited:900, max:1300}, float:"limited",
+  temps:[36,37,41,45,48,51,53,53,51,48,43,38], swing:4, flowIx:TAIL_FLOW, shift:8, char:"mixed",
+  note:"The premier year-round Northeast tailwater. Cold releases push the upper river's hatches a week or two behind everything downstream. Add the Still River gauge for true flow in the C&R zone."},
+ {id:"housy", name:"Housatonic River", place:"Cornwall Bridge, CT", lat:41.820, lon:-73.370, type:"freestone", sp:"trout", size:3,
+  gauge:"01199000", flow:{low:250, ideal:[400,1500], high:2500, blown:4500}, unit:"cfs",
+  wade:{full:900, good:1500, limited:2500, max:3800}, float:"drift",
+  temps:[35,36,42,50,60,68,75,76,68,57,46,38], swing:8, flowIx:FREE_FLOW, shift:-3, char:"big",
+  note:"Large freestone that routinely tops 75 °F in July and August — a smallmouth river then. Prime April to mid-June, then September to November."},
+ {id:"ausable", name:"West Branch Ausable", place:"Wilmington, NY", lat:44.393, lon:-73.823, type:"freestone", sp:"trout", size:2,
+  gauge:"04274200", flow:{low:80, ideal:[150,500], high:800, blown:1400}, unit:"cfs",
+  wade:{full:300, good:500, limited:800, max:1200}, float:"none",
+  temps:[33,34,39,46,54,61,65,65,60,51,42,36], swing:8, flowIx:FREE_FLOW, shift:10, char:"pocket",
+  note:"Adirondack pocket water. Runs a week or more behind the Catskills and stays cool through most summers."},
+ {id:"batten", name:"Battenkill", place:"Arlington, VT", lat:43.075, lon:-73.158, type:"freestone", sp:"trout", size:2,
+  gauge:"01332000", flow:{low:20, ideal:[40,200], high:350, blown:700}, unit:"cfs",
+  wade:{full:120, good:250, limited:400, max:600}, float:"limited",
+  temps:[34,35,40,47,55,60,64,64,60,52,43,37], swing:6, flowIx:FREE_FLOW, shift:6, char:"flat",
+  note:"Low, clear and technical by midsummer — often under 20 cfs. Spooky wild browns; treat it like a spring creek."},
+ {id:"spring", name:"Spring Creek", place:"Fisherman's Paradise, PA", lat:40.855, lon:-77.818, type:"limestone", sp:"trout", size:1,
+  gauge:"01546500", flow:{low:35, ideal:[55,140], high:220, blown:400}, unit:"cfs",
+  wade:{full:100, good:150, limited:230, max:350}, float:"none",
+  temps:[42,43,46,50,55,59,62,62,60,56,50,45], swing:5, flowIx:LIME_FLOW, shift:-8, char:"flat",
+  note:"All-tackle catch and release with an enormous wild brown population. Cress bugs and scuds are the year-round staple beneath every hatch."},
+ {id:"penns", name:"Penns Creek", place:"Coburn, PA", lat:40.848, lon:-77.463, type:"limestone", sp:"trout", size:2,
+  gauge:"01555000", flow:{low:120, ideal:[200,700], high:1100, blown:1800}, unit:"cfs",
+  wade:{full:450, good:700, limited:1100, max:1600}, float:"none",
+  temps:[38,39,44,50,58,64,70,70,64,55,46,40], swing:7, flowIx:LIME_FLOW, shift:-8, char:"mixed",
+  note:"The Green Drake water. Limestone headwaters keep the upper river cool; below Cherry Run it warms into the low seventies by late July."},
+ {id:"littlej", name:"Little Juniata", place:"Spruce Creek, PA", lat:40.618, lon:-78.135, type:"limestone", sp:"trout", size:2,
+  gauge:"01558000", flow:{low:80, ideal:[120,400], high:700, blown:1200}, unit:"cfs",
+  wade:{full:280, good:420, limited:700, max:1000}, float:"none",
+  temps:[39,40,45,51,58,64,69,69,64,56,47,41], swing:6, flowIx:LIME_FLOW, shift:-9, char:"mixed",
+  note:"Limestone buffering and a strong wild brown population in a 30-to-60-foot river. Sulphurs in May, terrestrials all summer."},
+ {id:"breeches", name:"Yellow Breeches", place:"Boiling Springs, PA", lat:40.144, lon:-77.124, type:"limestone", sp:"trout", size:2,
+  gauge:"01571500", flow:{low:45, ideal:[70,250], high:400, blown:700}, unit:"cfs",
+  wade:{full:180, good:280, limited:420, max:650}, float:"limited",
+  temps:[41,42,46,52,58,64,69,69,64,57,49,43], swing:6, flowIx:LIME_FLOW, shift:-12, char:"mixed",
+  note:"Boiling Springs feeds it at a constant 52 °F, so something is fishable every month. The White Fly blizzard in early September is the signature event."},
+ {id:"letort", name:"Letort Spring Run", place:"Carlisle, PA", lat:40.190, lon:-77.180, type:"limestone", sp:"trout", size:1,
+  gauge:"01569800", flow:{low:12, ideal:[18,40], high:60, blown:110}, unit:"cfs",
+  wade:{full:35, good:50, limited:70, max:100}, float:"none",
+  temps:[47,47,49,52,55,57,58,58,57,55,51,48], swing:3, flowIx:LIME_FLOW, shift:-12, char:"flat",
+  note:"Watercress, elodea and a hard taskmaster's reputation. Sight fishing only — terrestrials over cress bugs, and a downstream slack-line cast."},
+ {id:"fishingck", name:"Big Fishing Creek", place:"The Narrows, Lamar, PA", lat:41.010, lon:-77.530, type:"limestone", sp:"trout", size:1,
+  gauge:"01548030", flow:{low:30, ideal:[45,150], high:250, blown:450}, unit:"cfs",
+  wade:{full:110, good:170, limited:260, max:400}, float:"none",
+  temps:[40,41,45,50,56,60,64,64,60,54,47,42], swing:5, flowIx:LIME_FLOW, shift:-7, char:"pocket",
+  note:"Limestone-cooled Heritage Trout water in the Narrows. Notable Green Drake, heavy Sulphurs, and technical, canopied casting."},
+ {id:"lacka", name:"Lackawanna River", place:"Archbald, PA", lat:41.500, lon:-75.540, type:"limestone", sp:"trout", size:2,
+  gauge:"01534500", flow:{low:35, ideal:[50,250], high:400, blown:700}, unit:"cfs",
+  wade:{full:180, good:280, limited:420, max:650}, float:"none",
+  temps:[38,39,44,50,57,62,67,67,62,54,46,40], swing:6, flowIx:LIME_FLOW, shift:-4, char:"mixed",
+  note:"An urban freestone that behaves like a tailwater — mine-pool and spring inputs buffer it. Dense wild browns and year-round midges."},
+ {id:"sbraritan", name:"South Branch Raritan", place:"Ken Lockwood Gorge, NJ", lat:40.680, lon:-74.870, type:"freestone", sp:"trout", size:1,
+  gauge:"01396500", flow:{low:45, ideal:[80,220], high:400, blown:700}, unit:"cfs",
+  wade:{full:200, good:300, limited:400, max:550}, float:"none",
+  temps:[36,37,43,50,58,65,70,70,64,54,45,39], swing:7, flowIx:FREE_FLOW, shift:-7, char:"pocket",
+  note:"Boulder pocket water under a hemlock canopy, catch and release with artificials only. Optimal near 150–200 cfs; above 400 the wading is dangerous."},
+ {id:"musky", name:"Musconetcong River", place:"Point Mountain, NJ", lat:40.750, lon:-74.960, type:"limestone", sp:"trout", size:2,
+  gauge:"01457000", flow:{low:40, ideal:[60,250], high:400, blown:700}, unit:"cfs",
+  wade:{full:180, good:280, limited:400, max:600}, float:"none",
+  temps:[38,39,44,50,57,63,68,68,63,54,46,40], swing:6, flowIx:LIME_FLOW, shift:-7, char:"mixed",
+  note:"Limestone springs begin cooling the river at Changewater. Cinnamon caddis is the most prolific hatch; the Point Mountain stretch fishes year-round."},
+
+ /* --- Great Lakes tributaries --- */
+ {id:"salmonr", name:"Salmon River", place:"Altmar / Pineville, NY", lat:43.514, lon:-76.009, type:"gl-trib", sp:"steelhead", size:3,
+  gauge:"04250200", flow:{low:250, ideal:[335,750], high:1100, blown:1600}, unit:"cfs",
+  wade:{full:500, good:750, limited:1000, max:1600}, float:"drift",
+  temps:[34,34,38,45,52,58,62,63,58,50,43,37], swing:3, flowIx:[.525,.525,.525,.525,.341,.341,.341,.341,.617,.617,.617,.617], stepped:true, shift:0, char:"big",
+  note:"Modeled on the published release schedule — 185 cfs summer, 285 winter and spring, 335 fall minimum. Half a gate near 375 cfs is the classic best flow. Fly-fishing-only above the CR52 bridge, Sept 15 – May 15, and one fly only — no droppers."},
+ {id:"oakorch", name:"Oak Orchard Creek", place:"The Bridges, NY", lat:43.353, lon:-78.193, type:"gl-trib", sp:"steelhead", size:2,
+  gauge:"0422018610", flow:{low:150, ideal:[200,600], high:900, blown:1400}, unit:"cfs",
+  wade:{full:400, good:600, limited:900, max:1300}, float:"limited",
+  temps:[34,34,39,46,54,62,68,69,62,52,44,37], swing:4, flowIx:[1,1,1.2,1.2,1,.9,.8,.8,.9,1,1.1,1.05], shift:0, char:"mixed",
+  note:"Dam-buffered at Waterport, so it holds shape and fishes when the rain-fed tributaries are blown out."},
+ {id:"catt", name:"Cattaraugus Creek", place:"Gowanda, NY", lat:42.463, lon:-78.935, type:"gl-trib", sp:"steelhead", size:3,
+  gauge:"04213500", flow:{low:180, ideal:[250,700], high:1200, blown:1500}, unit:"cfs",
+  wade:{full:450, good:700, limited:1200, max:1500}, float:"limited",
+  temps:[33,33,38,46,55,64,71,72,63,52,42,36], swing:5, flowIx:GL_FLOW, shift:0, char:"big",
+  note:"Big and clay-laden — turbidity, not stage, is the limiter, and it takes two to five days to clear. Large enough for genuine swing water in the lower reaches."},
+ {id:"elk", name:"Elk Creek", place:"Folly's End / Legion Hole, PA", lat:41.998, lon:-80.336, type:"gl-trib", sp:"steelhead", size:1,
+  gauge:"04213075", flow:{low:2.5, ideal:[6,12], high:16, blown:22}, unit:"cfs (Brandy Run proxy)",
+  wade:{full:10, good:15, limited:19, max:22}, float:"none",
+  temps:[34,34,39,47,56,65,72,73,64,52,42,36], swing:5, flowIx:GL_FLOW, shift:0, char:"pocket",
+  note:"Read Elk on the Brandy Run gauge — Elk's own station has no realtime feed. Six to twelve on Brandy Run is steelhead green, roughly 16 inches of visibility. Fastest of the PA tribs to colour, back in shape in 24 to 36 hours."},
+ {id:"walnut", name:"Walnut Creek", place:"Manchester Hole, PA", lat:42.081, lon:-80.226, type:"gl-trib", sp:"steelhead", size:1,
+  gauge:"04213152", flow:{low:25, ideal:[40,120], high:250, blown:360}, unit:"cfs",
+  wade:{full:90, good:160, limited:250, max:350}, float:"none",
+  temps:[34,34,39,47,56,65,72,73,64,52,42,36], swing:5, flowIx:GL_FLOW, shift:0, char:"pocket",
+  note:"Small, heavily fished, and quick to drop. Fish stack at the marina mouth on the first fall push, then spread to the Millcreek reach."},
+ {id:"conneaut", name:"Conneaut Creek", place:"State Line, PA/OH", lat:41.927, lon:-80.604, type:"gl-trib", sp:"steelhead", size:2,
+  gauge:"04213000", flow:{low:45, ideal:[60,250], high:400, blown:700}, unit:"cfs",
+  wade:{full:180, good:280, limited:420, max:650}, float:"none",
+  temps:[34,34,39,47,56,65,72,73,64,52,42,36], swing:5, flowIx:GL_FLOW, shift:0, char:"mixed",
+  note:"A sand and dirt bottom that holds colour differently from the shale tribs — often fishable when Elk is still off."},
+ {id:"eighteen", name:"Eighteenmile Creek", place:"Burt Dam, NY", lat:43.314, lon:-78.715, type:"gl-trib", sp:"steelhead", size:1,
+  gauge:"04219768", flow:{low:30, ideal:[40,200], high:320, blown:500}, unit:"cfs",
+  wade:{full:140, good:220, limited:330, max:480}, float:"none",
+  temps:[34,34,39,46,55,63,70,71,63,52,43,37], swing:5, flowIx:GL_FLOW, shift:0, char:"mixed",
+  note:"Small, flashy and quick — drops back into shape in 24 to 48 hours. Fish concentrate below Burt Dam."},
+];
+
+/* --- hatches -------------------------------------------------
+   win   : [startDOY, peakDOY, endDOY]  (Catskill baseline)
+   hrs   : emergence clock window, or 'dusk' | 'dawn' | 'allday'
+   temp  : [min,max] water temp °F that triggers it
+   waters: 'all' or a list of water ids
+------------------------------------------------------------ */
+const HATCHES = [
+ {id:"midge", name:"Midge", latin:"Chironomidae", win:[DOY(1,1),DOY(2,10),DOY(12,31)], size:[20,26], body:"black, olive, cream", hex:"#2A2A2A",
+  hrs:[11,15], temp:[33,52], waters:"all", kind:"midge", winter:true,
+  dry:[["Griffith's Gnat",[20,24]],["Matt's Midge",[22,24]]], nymph:[["Zebra Midge, black/silver",[18,22]],["WD-40, gray",[18,22]]], spinner:null},
+ {id:"lbstone", name:"Little Black Stonefly", latin:"Capnia / Allocapnia", win:[DOY(2,1),DOY(2,28),DOY(3,31)], size:[16,20], body:"jet black", hex:"#161616",
+  hrs:[11,15], temp:[38,46], waters:"all", kind:"stone",
+  dry:[["Black Elk Hair Caddis",[16,18]],["Foam Black Stone",[16]]], nymph:[["Little Black Stone Nymph",[16,18]],["Black Tungsten Perdigon",[16,18]]], spinner:null},
+ {id:"bwo-sp", name:"Blue Winged Olive, spring", latin:"Baetis vagans", win:[DOY(3,25),DOY(4,18),DOY(5,15)], size:[16,20], body:"olive to olive-brown", hex:"#5F6B3A",
+  hrs:[11,16], temp:[45,56], waters:"all", kind:"mayfly", overcastLove:true,
+  dry:[["BWO Comparadun",[16,20]],["CDC Sparkle Dun, olive",[18,20]],["Parachute Adams",[18,20]]],
+  nymph:[["Pheasant Tail, beadhead",[16,20]],["RS2, gray",[18,20]],["Olive Perdigon",[16,18]]],
+  spinner:[["Rusty Spinner",[18,20]]]},
+ {id:"bluequill", name:"Blue Quill", latin:"Paraleptophlebia adoptiva", win:[DOY(4,1),DOY(4,22),DOY(5,15)], size:[16,18], body:"rusty mahogany", hex:"#6B4630",
+  hrs:[12,16], temp:[48,55], waters:"all", kind:"mayfly",
+  dry:[["Blue Quill Comparadun",[16,18]],["Parachute Blue Quill",[16,18]]],
+  nymph:[["Pheasant Tail",[16,18]],["Dark Hare's Ear",[16,18]]],
+  spinner:[["Mahogany Spinner",[16,18]]]},
+ {id:"quillgordon", name:"Quill Gordon", latin:"Epeorus pleuralis", win:[DOY(4,1),DOY(4,20),DOY(5,12)], size:[12,14], body:"dark blue-gray, quill segmented", hex:"#59606B",
+  hrs:[13,16], temp:[48,54], waters:"all", kind:"mayfly",
+  dry:[["Quill Gordon Comparadun",[12,14]],["Quill Gordon, Catskill",[12,14]]],
+  nymph:[["Quill Gordon Wet",[12,14]],["Dark Hare's Ear",[12,14]]],
+  spinner:[["Red Quill Spinner",[12,14]]]},
+ {id:"hendrickson", name:"Hendrickson & Red Quill", latin:"Ephemerella subvaria", win:[DOY(4,15),DOY(5,3),DOY(5,25)], size:[12,14], body:"clay pink (female), red-brown (male)", hex:"#B08268",
+  hrs:[14,17], temp:[50,56], waters:"all", kind:"mayfly", marquee:true,
+  dry:[["Hendrickson Comparadun",[12,14]],["Red Quill (Flick)",[14]],["Hendrickson Cripple",[12,14]]],
+  nymph:[["Hendrickson Soft-Hackle",[12,14]],["Pheasant Tail",[12,14]],["Frenchie",[14]]],
+  spinner:[["Red Quill Spinner",[12,14]],["Rusty Spinner",[12,14]]]},
+ {id:"grannom", name:"Grannom Caddis", latin:"Brachycentrus numerosus", win:[DOY(4,10),DOY(5,1),DOY(5,25)], size:[12,16], body:"dark olive-black, green egg sac", hex:"#3B4326",
+  hrs:[9,18], temp:[52,60], waters:"all", kind:"caddis", marquee:true,
+  dry:[["Elk Hair Caddis, olive/black",[14,16]],["X-Caddis, dark olive",[14,16]],["Henryville Special",[14,16]]],
+  nymph:[["Grannom Pupa",[14,16]],["Deep Sparkle Pupa, olive",[14,16]],["Green Caddis Larva",[12,14]]],
+  spinner:[["Diving Caddis, black",[14,16]]]},
+ {id:"applecaddis", name:"Apple Caddis", latin:"Brachycentrus appalachia", win:[DOY(4,20),DOY(5,7),DOY(5,20)], size:[14,16], body:"bright apple green", hex:"#7EA33C",
+  hrs:[11,15], temp:[52,60], waters:["wbd","ebd","bkill","willo","esopus","farm"], kind:"caddis",
+  dry:[["Elk Hair Caddis, apple green body",[14,16]]],
+  nymph:[["Apple Green Caddis Pupa",[14,16]],["Green Rock Worm",[14]]], spinner:null},
+ {id:"marchbrown", name:"March Brown", latin:"Maccaffertium vicarium", win:[DOY(5,1),DOY(5,20),DOY(6,5)], size:[10,14], body:"tan-brown, dark barring", hex:"#A07A4A",
+  hrs:[11,18], temp:[55,64], waters:"all", kind:"mayfly",
+  dry:[["March Brown Comparadun",[10,12]],["Parachute March Brown",[12]]],
+  nymph:[["March Brown Nymph",[10,12]],["Partridge & Orange soft-hackle",[10,12]],["Hare's Ear",[10,12]]],
+  spinner:[["Great Red Spinner",[10,12]]]},
+ {id:"sulphur-inv", name:"Sulphur (invaria)", latin:"Ephemerella invaria", win:[DOY(4,28),DOY(5,20),DOY(6,12)], size:[14,16], body:"orange-amber, pink cast", hex:"#E0A94A",
+  hrs:[17,21], temp:[55,64], waters:"all", kind:"mayfly", marquee:true,
+  dry:[["Sulphur Comparadun",[14,16]],["Sulphur Cripple",[14,16]],["Snowshoe Sulphur Emerger",[14,16]]],
+  nymph:[["Pheasant Tail",[14,16]],["Sulphur Soft-Hackle",[14,16]],["Hot-Spot Sulphur Perdigon",[14,16]]],
+  spinner:[["Sulphur Spinner, rusty",[14,16]]]},
+ {id:"sulphur-dor", name:"Sulphur (dorothea)", latin:"Ephemerella dorothea", win:[DOY(5,25),DOY(6,15),DOY(7,15)], size:[16,18], body:"pale lemon yellow", hex:"#EFD173",
+  hrs:[19,21.5], temp:[58,66], waters:"all", kind:"mayfly",
+  dry:[["Pale Evening Dun / Dorothea Comparadun",[16,18]],["Snowshoe Emerger, cream",[16,18]]],
+  nymph:[["Pheasant Tail",[16,18]],["Yellow Hot-Spot Perdigon",[16,18]]],
+  spinner:[["Sulphur Spinner",[16,18]]]},
+ {id:"grayfox", name:"Gray Fox", latin:"Maccaffertium fuscum", win:[DOY(5,25),DOY(6,5),DOY(6,20)], size:[12,14], body:"pale cream-ginger", hex:"#D6BC85",
+  hrs:[16,20], temp:[58,66], waters:"all", kind:"mayfly",
+  dry:[["Gray Fox Variant (Flick)",[12]],["Gray Fox Comparadun",[12,14]]],
+  nymph:[["Hare's Ear",[12,14]]], spinner:[["Ginger Quill Spinner",[12,14]]]},
+ {id:"greendrake", name:"Green Drake & Coffin Fly", latin:"Ephemera guttulata", win:[DOY(5,22),DOY(6,4),DOY(6,15)], size:[8,10], body:"creamy yellow, olive dorsal", hex:"#C9C16A",
+  hrs:"dusk", temp:[58,66], waters:["penns","fishingck","wbd","ebd","main","nvsk","littlej","ausable"], kind:"mayfly", marquee:true,
+  dry:[["Green Drake Comparadun, 2XL",[8,10]],["Green Drake Paradrake",[8,10]]],
+  nymph:[["Green Drake Wiggle Nymph, 3XL",[8,10]],["Large Hare's Ear",[8,10]]],
+  spinner:[["Coffin Fly, white body",[8,10]]]},
+ {id:"browndrake", name:"Brown Drake", latin:"Ephemera simulans", win:[DOY(6,5),DOY(6,11),DOY(6,20)], size:[10,12], body:"golden brown, amber", hex:"#B98A46",
+  hrs:"dusk", temp:[58,64], waters:["ebd","main","penns","batten"], kind:"mayfly", marquee:true,
+  dry:[["Brown Drake Paradrake",[10]],["Brown Drake Comparadun",[10,12]]],
+  nymph:[["Brown Drake Wiggle Nymph, 3XL",[8,10]]],
+  spinner:[["Brown Drake Spinner",[10,12]]]},
+ {id:"cornuta", name:"Large Olive (Cornuta)", latin:"Drunella cornuta", win:[DOY(6,5),DOY(6,14),DOY(6,25)], size:[12,16], body:"bright olive-green", hex:"#6E8A34",
+  hrs:[9,13], temp:[58,65], waters:"all", kind:"mayfly",
+  dry:[["Cornuta Comparadun",[12,14]],["Olive Parachute",[14]]],
+  nymph:[["Drunella Nymph",[12,14]],["Olive Hare's Ear",[14]]],
+  spinner:[["Olive Spinner",[14]]]},
+ {id:"lightcahill", name:"Light Cahill", latin:"Stenacron interpunctatum", win:[DOY(6,5),DOY(6,28),DOY(9,10)], size:[12,16], body:"cream to pale ginger", hex:"#EBD9A4",
+  hrs:[19,21.5], temp:[60,68], waters:"all", kind:"mayfly",
+  dry:[["Light Cahill Comparadun",[12,16]],["Parachute Light Cahill",[14]]],
+  nymph:[["Light Cahill Nymph",[12,16]],["Partridge & Cream soft-hackle",[14,16]]],
+  spinner:[["Light Cahill Spinner",[12,16]]]},
+ {id:"isonychia", name:"Isonychia / Slate Drake", latin:"Isonychia bicolor", win:[DOY(6,1),DOY(9,20),DOY(10,31)], size:[10,14], body:"dark mahogany, pale stripe", hex:"#5A3A34",
+  hrs:[16,21], temp:[55,70], waters:"all", kind:"mayfly", marquee:true, bimodal:[DOY(6,15),DOY(9,25)],
+  dry:[["Isonychia Comparadun",[10,12]],["Dun Variant (Flick)",[10,12]]],
+  nymph:[["Isonychia Nymph",[10,12]],["Zug Bug",[10,12]],["Prince Nymph",[10,12]]],
+  spinner:[["White-Gloved Howdy",[10,12]],["Mahogany Spinner",[10,12]]]},
+ {id:"tancaddis", name:"Tan / Cinnamon Caddis", latin:"Hydropsyche", win:[DOY(5,10),DOY(7,1),DOY(9,30)], size:[14,18], body:"tan to cinnamon", hex:"#C69B62",
+  hrs:[18,21], temp:[58,72], waters:"all", kind:"caddis",
+  dry:[["Elk Hair Caddis, tan",[14,18]],["X-Caddis, tan",[16,18]],["Spent Partridge Caddis",[16,18]]],
+  nymph:[["LaFontaine Sparkle Pupa, amber",[14,18]],["Hare's Ear",[14,16]],["Walt's Worm",[14,16]]],
+  spinner:[["Diving Caddis, tan",[16,18]]]},
+ {id:"goldenstone", name:"Golden Stonefly", latin:"Acroneuria lycorias", win:[DOY(5,20),DOY(6,25),DOY(8,15)], size:[6,10], body:"golden amber", hex:"#C08A2E",
+  hrs:"dusk", temp:[55,70], waters:"all", kind:"stone",
+  dry:[["Stimulator, golden",[8,10]],["Chubby Chernobyl, gold",[8,10]]],
+  nymph:[["Pat's Rubber Legs, gold/brown",[6,10]],["Tungsten Stonefly Jig",[8,10]],["20-Incher",[8,10]]], spinner:null},
+ {id:"trico", name:"Trico", latin:"Tricorythodes", win:[DOY(6,28),DOY(8,5),DOY(10,10)], size:[20,24], body:"black (male), olive-black (female)", hex:"#242424",
+  hrs:[7,10.5], temp:[62,74], waters:"all", kind:"mayfly", marquee:true,
+  dry:[["Trico Spinner, poly wing",[22,24]],["Trico Comparadun",[22,24]]],
+  nymph:[["Black Zebra Midge",[20,22]],["WD-40, black",[22]]],
+  spinner:[["Trico Spinner, poly or CDC wing",[22,24]]]},
+ {id:"whitefly", name:"White Fly", latin:"Ephoron leukon", win:[DOY(8,20),DOY(9,2),DOY(9,15)], size:[12,16], body:"chalk white", hex:"#EFEFE6",
+  hrs:"dusk", temp:[66,76], waters:["breeches","main","musky","littlej"], kind:"mayfly", marquee:true,
+  dry:[["White Wulff",[12,14]],["White Comparadun",[12,14]]],
+  nymph:[["White Fly Nymph",[12,14]],["Cream Hare's Ear",[12,14]]],
+  spinner:[["White Fly Spinner",[12,14]]]},
+ {id:"bwo-fall", name:"Blue Winged Olive, fall Baetis", latin:"Baetis tricaudatus", win:[DOY(9,1),DOY(10,15),DOY(12,10)], size:[18,24], body:"olive to olive-brown", hex:"#57633A",
+  hrs:[11,16], temp:[42,56], waters:"all", kind:"mayfly", marquee:true, overcastLove:true,
+  dry:[["BWO Comparadun",[18,22]],["Mole Fly",[18,20]],["CDC Sparkle Dun, olive",[20,22]]],
+  nymph:[["Pheasant Tail",[18,22]],["WD-40",[18,22]],["Olive Perdigon",[18,20]]],
+  spinner:[["Rusty Spinner",[18,22]]]},
+ {id:"mahogany", name:"Mahogany Dun", latin:"Paraleptophlebia debilis", win:[DOY(8,25),DOY(9,20),DOY(10,15)], size:[16,18], body:"dark mahogany", hex:"#6A4534",
+  hrs:[11,15], temp:[50,62], waters:"all", kind:"mayfly",
+  dry:[["Mahogany Comparadun",[16,18]]], nymph:[["Pheasant Tail",[16,18]]], spinner:[["Mahogany Spinner",[16,18]]]},
+ {id:"octcaddis", name:"October Caddis", latin:"Pycnopsyche", win:[DOY(9,1),DOY(10,8),DOY(10,31)], size:[8,12], body:"burnt orange to pumpkin", hex:"#C2622A",
+  hrs:[16,20], temp:[48,58], waters:"all", kind:"caddis",
+  dry:[["October Caddis Stimulator",[8,10]],["Orange Elk Hair Caddis",[10,12]]],
+  nymph:[["October Caddis Pupa, amber",[8,12]],["Peeking Caddis",[10,12]]], spinner:null},
+ {id:"terrestrial", name:"Terrestrials", latin:"ants, beetles, hoppers, inchworms", win:[DOY(5,15),DOY(8,15),DOY(10,10)], size:[12,20], body:"black, cinnamon, tan", hex:"#3A2E24",
+  hrs:[10,17], temp:[55,72], waters:"all", kind:"terrestrial", marquee:true, windLove:true,
+  dry:[["Foam Beetle",[12,16]],["Parachute Ant, black",[16,18]],["Chubby Chernobyl, tan",[10,12]],["Green Weenie / Inchworm",[12,14]]],
+  nymph:[["Sunken Ant",[16,18]],["Green Weenie",[12,14]]], spinner:null},
+ {id:"scud", name:"Cress Bugs & Scuds", latin:"Gammarus / Asellus", win:[DOY(1,1),DOY(6,1),DOY(12,31)], size:[12,18], body:"gray, olive, tan", hex:"#8C8A6E",
+  hrs:"allday", temp:[35,68], waters:["spring","letort","breeches","fishingck","littlej","musky","lacka"], kind:"crustacean",
+  dry:null, nymph:[["Cress Bug, gray-olive",[14,16]],["Scud, olive",[14,16]],["Sowbug",[14,18]]], spinner:null},
+];
+
+/* --- Great Lakes run timing --- */
+const RUNS = [
+ {id:"king", name:"Chinook (king) salmon", win:[DOY(8,20),DOY(9,28),DOY(11,15)], waters:["salmonr","oakorch"], temp:[45,68]},
+ {id:"coho", name:"Coho salmon", win:[DOY(9,1),DOY(10,5),DOY(11,20)], waters:["salmonr","oakorch"], temp:[45,66]},
+ {id:"lakebrown", name:"Lake-run brown trout", win:[DOY(9,15),DOY(10,15),DOY(11,20)], waters:["salmonr","oakorch","eighteen","catt"], temp:[40,62]},
+ {id:"steel-fall", name:"Fall-run steelhead", win:[DOY(10,10),DOY(11,20),DOY(12,31)], waters:"gl", temp:[38,58]},
+ {id:"steel-winter", name:"Winter steelhead", win:[DOY(1,1),DOY(1,25),DOY(2,28)], waters:"gl", temp:[32,40]},
+ {id:"steel-spring", name:"Spring steelhead & drop-backs", win:[DOY(3,1),DOY(3,28),DOY(5,15)], waters:"gl", temp:[36,55]},
+ {id:"skamania", name:"Skamania summer steelhead", win:[DOY(5,15),DOY(7,15),DOY(9,10)], waters:["salmonr"], temp:[50,68]},
+];
+
+/* --- terminal tackle catalogue (shop list building blocks) --- */
+const T = {
+  fluoro:(x)=>({cat:"tippet", name:`Fluorocarbon tippet, ${x}`, spec:"25–30 yd spool", key:`fl-${x}`}),
+  nylon:(x)=>({cat:"tippet", name:`Nylon tippet, ${x}`, spec:"30 yd spool", key:`ny-${x}`}),
+  leader:(len,x,mat)=>({cat:"leader", name:`${len} tapered leader, ${x}`, spec:mat, key:`ld-${len}-${x}`}),
+  shot:(sizes)=>({cat:"weight", name:"Non-toxic split shot", spec:`sizes ${sizes} — tin, not lead`, key:"shot"}),
+  bobber:(sz)=>({cat:"weight", name:"Strike indicator", spec:`${sz} round foam or New Zealand wool`, key:"ind"}),
+  sighter:()=>({cat:"weight", name:"Sighter mono", spec:'.012–.013" hi-vis, orange over chartreuse', key:"sighter"}),
+  rings:()=>({cat:"weight", name:"Tippet rings", spec:"2 mm", key:"rings"}),
+  floatant:()=>({cat:"weight", name:"Floatant + desiccant", spec:"gel for the body, shake powder to revive", key:"float"}),
+  swivel:()=>({cat:"weight", name:"Micro barrel swivels", spec:"size 12 or larger", key:"swivel"}),
+  tip:(t)=>({cat:"weight", name:`Sink tip, ${t}`, spec:"10 ft, looped", key:`tip-${t}`}),
+};
+
+/* ============================================================
+   2. CONTEXT ENGINE
+   ============================================================ */
+
+const state = {
+  waterId:"wbd", when:new Date(), geo:null, live:null,
+  ov:{flow:null, clarity:null, sky:null},   // optional one-tap overrides
+  tab:"plays", checked:new Set(),
+};
+
+function water(){ return WATERS.find(w=>w.id===state.waterId) || WATERS[0]; }
+function doy(d){ return Math.floor((d - new Date(d.getFullYear(),0,0)) / 86400000); }
+function hoursOf(d){ return d.getHours() + d.getMinutes()/60; }
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* NOAA solar position — sunrise / sunset for a date and place */
+function solar(date, lat, lon){
+  const rad=Math.PI/180;
+  const start=new Date(date.getFullYear(),0,1);
+  const n=Math.floor((date-start)/86400000);
+  const gamma=2*Math.PI/365*(n + (date.getHours()-12)/24);
+  const eqtime=229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)
+      -0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));
+  const decl=0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)
+      -0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)
+      -0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);
+  const cosH=(Math.cos(90.833*rad)/(Math.cos(lat*rad)*Math.cos(decl)))-Math.tan(lat*rad)*Math.tan(decl);
+  const tzOffsetMin=-date.getTimezoneOffset();
+  if(cosH>1||cosH<-1){ return {sunrise:6,sunset:18,noon:12,polar:true}; }
+  const ha=Math.acos(clamp(cosH,-1,1))/rad;
+  const noonUTCmin=720-4*lon-eqtime;
+  const toLocal=(m)=>(((m+tzOffsetMin)/60)%24+24)%24;
+  let sr=toLocal(noonUTCmin-4*ha), ss=toLocal(noonUTCmin+4*ha), nn=toLocal(noonUTCmin);
+  if(ss<sr) ss+=24;                       // sunset past local midnight
+  if(nn<sr) nn+=24;
+  return { sunrise:sr, sunset:ss, noon:nn, polar:false };
+}
+
+/* Modeled water temperature: monthly mean + diurnal sine peaking at 15:00 */
+function modelTemp(w, date){
+  const m=date.getMonth(), h=hoursOf(date);
+  const next=w.temps[(m+1)%12], cur=w.temps[m];
+  const frac=(date.getDate()-1)/30;
+  const base=lerp(cur,next,clamp(frac,0,1));
+  const diurnal=(w.swing/2)*Math.cos(2*Math.PI*(h-15)/24);
+  return Math.round((base+diurnal)*10)/10;
+}
+
+/* Modeled flow index (× the ideal mid-band) */
+function modelFlow(w, date){
+  const m=date.getMonth(), cur=w.flowIx[m];
+  if(w.stepped) return cur;                       // regulated release — a step, not a curve
+  const next=w.flowIx[(m+1)%12];
+  const frac=(date.getDate()-1)/30;
+  return lerp(cur,next,clamp(frac,0,1));
+}
+
+const FLOW_STATES=[
+  {k:"verylow",  label:"Very low",   ratio:.45, blurb:"deepest pools, riffle heads, undercuts"},
+  {k:"low",      label:"Low",        ratio:.72, blurb:"deeper runs and shade; stealth matters"},
+  {k:"normal",   label:"Normal",     ratio:1.0, blurb:"classic lies — heads, seams, tailouts"},
+  {k:"pushy",    label:"High-normal",ratio:1.45,blurb:"inside seams, soft edges, shoreline buckets"},
+  {k:"high",     label:"High",       ratio:2.2, blurb:"tight to the banks and behind structure"},
+  {k:"blown",    label:"Blown",      ratio:3.4, blurb:"edges only — or move to a smaller drainage"},
+];
+function flowStateFromIndex(ix){
+  if(ix<0.58) return FLOW_STATES[0];
+  if(ix<0.86) return FLOW_STATES[1];
+  if(ix<1.22) return FLOW_STATES[2];
+  if(ix<1.75) return FLOW_STATES[3];
+  if(ix<2.7)  return FLOW_STATES[4];
+  return FLOW_STATES[5];
+}
+function flowStateFromCfs(w,cfs){
+  const mid=(w.flow.ideal[0]+w.flow.ideal[1])/2;
+  return flowStateFromIndex(cfs/mid);
+}
+
+const CLARITY={
+  gin:{k:"gin",label:"Gin clear",vis:"36 in +",n:4},
+  clear:{k:"clear",label:"Clear",vis:"24–36 in",n:3},
+  green:{k:"green",label:"Steelhead green",vis:"~16 in",n:2},
+  stained:{k:"stained",label:"Stained",vis:"12–24 in",n:1},
+  muddy:{k:"muddy",label:"Muddy",vis:"under 12 in",n:0},
+};
+function modelClarity(fs, w){
+  if(fs.k==="blown") return CLARITY.muddy;
+  if(fs.k==="high") return CLARITY.stained;
+  if(fs.k==="pushy") return CLARITY.green;
+  if(fs.k==="verylow") return CLARITY.gin;
+  return w.type==="freestone"?CLARITY.clear:CLARITY.clear;
+}
+
+function lightWindow(h0, sun){
+  const {sunrise:sr, sunset:ss}=sun;
+  let h=h0;
+  if(ss>24 && h < sr-0.75) h+=24;         // clock wrapped past midnight
+  if(h < sr-0.75 || h > ss+0.9) return {k:"night", label:"Night", n:0};
+  if(h < sr+0.25) return {k:"dawn", label:"First light", n:1};
+  if(h < sr+2) return {k:"early", label:"Early morning", n:2};
+  if(h < 11) return {k:"morning", label:"Morning", n:3};
+  if(h < 15) return {k:"midday", label:"Midday", n:4};
+  if(h < ss-1.75) return {k:"afternoon", label:"Afternoon", n:5};
+  if(h < ss-0.4) return {k:"evening", label:"Evening", n:6};
+  return {k:"dusk", label:"Last light", n:7};
+}
+
+/* --- wade or float ---------------------------------------- */
+const FLOAT_TXT={
+  drift:"This is genuine drift-boat water.",
+  limited:"Floatable in stretches, but it is mainly a wading river.",
+  none:"No float fishery here — it is too small to run a boat."
+};
+function access(ctx){
+  const w=ctx.w, q=ctx.cfs, wd=w.wade, canFloat=w.float!=="none";
+  let call, tone, line, crossings, gear, boat;
+  const bump=(msg)=>msg;
+
+  if(q < wd.full*0.42){
+    call="Wade"; tone="good";
+    line=`At ${q} ${w.unit.split(" ")[0]} this is low water. Everything is open to you and nothing is pushy.`;
+    crossings="Cross wherever you like. The problem today is being seen, not being swept.";
+    gear="Wading staff optional. Move slowly, keep low, and stay off the skyline.";
+    boat = canFloat ? "Leave the boat. At this level you would spend the day dragging it over gravel."
+                    : FLOAT_TXT[w.float];
+  } else if(q <= wd.full){
+    call="Wade"; tone="good";
+    line=`At ${q} ${w.unit.split(" ")[0]} the whole river is wadable.`;
+    crossings="Crossings are open almost anywhere. Read the tailouts and cross at the wide, shallow fans.";
+    gear="Studded boots. A staff if the bottom here is bowling-ball cobble.";
+    boat = canFloat ? "The boat is not necessary. Take it only if you want to cover miles rather than fish water."
+                    : FLOAT_TXT[w.float];
+  } else if(q <= wd.good){
+    call="Wade"; tone="good";
+    line=`At ${q} ${w.unit.split(" ")[0]} most of the river is still wadable — call it two thirds of it.`;
+    crossings="Pick your crossings deliberately and cross at the tailouts, not the runs. Do not commit to a crossing you cannot reverse.";
+    gear="Studded boots and a wading staff. Belt cinched.";
+    boat = canFloat ? "This is also a good float level — the boat buys you water you cannot reach on foot, but you do not need it."
+                    : FLOAT_TXT[w.float];
+  } else if(q <= wd.limited){
+    call = canFloat ? "Bring the boat" : "Wade the edges";
+    tone="warn";
+    line=`At ${q} ${w.unit.split(" ")[0]} the river is pushy. Wading is confined to the banks and the inside of bends.`;
+    crossings="Assume you cannot cross. Plan the day as one bank, and walk back the way you came.";
+    gear="Studded boots, staff, tight belt. Fish within your own reach and do not lean on the current.";
+    boat = canFloat ? "Trailer it. This is the level where the boat stops being a luxury and starts being the only way to fish the good water."
+                    : "No boat option here — fish the soft edges, or move to a bigger river that fishes at high flow.";
+  } else if(q <= wd.max){
+    call = canFloat ? "Boat only" : "Marginal — edges only";
+    tone="bad";
+    line=`At ${q} ${w.unit.split(" ")[0]} this is at the top of what is safe on foot.`;
+    crossings="No crossings. Stay in water you can stand up in without bracing.";
+    gear="Staff, belt, and an honest look at the bank before you step in. Fish alone at this level and you are the rescue plan.";
+    boat = canFloat ? "Take the boat and a rower who knows the run. Wade-fish only from the anchor, in the shallows you row to."
+                    : "Fish the flooded margins and the slack behind structure, or go somewhere smaller.";
+  } else {
+    call = canFloat ? "Blown — boat or bail" : "Blown";
+    tone="bad";
+    line=`At ${q} ${w.unit.split(" ")[0]} this water is over its blowout number.`;
+    crossings="Do not wade.";
+    gear="—";
+    boat = canFloat ? "Only with an experienced oarsman, and only if the level is falling. Otherwise pick a smaller, faster-clearing drainage."
+                    : "Find a smaller drainage or a dam-buffered river that holds shape.";
+  }
+
+  // where the call flips
+  const rungs=[["Full river wadable",wd.full],["Most of it wadable",wd.good],
+               [canFloat?"Boat is the better tool":"Edges only",wd.limited],
+               [canFloat?"Boat only":"Top of safe wading",wd.max]];
+  let flip=null;
+  for(const [lab,v] of rungs){ if(q<=v){ flip={lab,v,dir:"up",gap:v-q}; break; } }
+  if(!flip) flip={lab:"Over the blowout number",v:wd.max,dir:"over",gap:q-wd.max};
+
+  return {call, tone, line, crossings, gear, boat, wd, canFloat,
+          pos: clamp(q/(wd.max*1.18),0,1), flip, q};
+}
+
+function buildContext(){
+  const w=water(), d=state.when;
+  const sun=solar(d,w.lat,w.lon);
+  const h=hoursOf(d);
+  const day=doy(d);
+  const live=state.live && state.live.gauge===w.gauge ? state.live : null;
+
+  const temp = live && live.tempF!=null ? live.tempF : modelTemp(w,d);
+  const tempSource = live && live.tempF!=null ? "live" : "model";
+
+  let flowIx, cfs=null, flowSource="model";
+  if(live && live.cfs!=null){ cfs=live.cfs; flowIx=cfs/((w.flow.ideal[0]+w.flow.ideal[1])/2); flowSource="live"; }
+  else { flowIx=modelFlow(w,d); cfs=Math.round(((w.flow.ideal[0]+w.flow.ideal[1])/2)*flowIx); }
+
+  let fs = flowStateFromIndex(flowIx);
+  if(state.ov.flow){ fs=FLOW_STATES.find(f=>f.k===state.ov.flow); flowSource="you"; cfs=Math.round(((w.flow.ideal[0]+w.flow.ideal[1])/2)*fs.ratio); }
+
+  let clarity = state.ov.clarity ? CLARITY[state.ov.clarity] : modelClarity(fs,w);
+  const sky = state.ov.sky || "partly";
+  const lw = lightWindow(h,sun);
+
+  const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live,
+          isGL: w.sp==="steelhead"};
+  base.acc=access(base);
+  return base;
+}
+
+/* --- which hatches are on ---------------------------------- */
+function shiftOf(hx, ctx){ return hx.waters==="all" ? ctx.w.shift : 0; }
+function hatchIntensity(hx, ctx){
+  const sh=shiftOf(hx,ctx);
+  const s=hx.win[0]+sh, p=hx.win[1]+sh, e=hx.win[2]+sh;
+  let day=ctx.day;
+  if(day<s||day>e) return 0;
+  let base = day<=p ? (day-s)/Math.max(1,(p-s)) : 1-(day-p)/Math.max(1,(e-p));
+  base = clamp(base,0,1);
+  base = 0.25 + 0.75*base;                    // shoulders still count
+  if(hx.bimodal){                              // Isonychia: two peaks in one envelope
+    const near=Math.min(...hx.bimodal.map(pk=>Math.abs(day-(pk+sh))));
+    base = clamp(1 - near/32, .15, 1);
+  }
+  // water temperature gate
+  const [tl,th]=hx.temp;
+  if(ctx.temp<tl-6||ctx.temp>th+8) base*=0.25;
+  else if(ctx.temp<tl||ctx.temp>th) base*=0.65;
+  return base;
+}
+function inClock(hx, ctx){
+  const sr=ctx.sun.sunrise, ss=ctx.sun.sunset;
+  let h=ctx.h; if(ss>24 && h<sr-0.75) h+=24;
+  if(hx.hrs==="allday") return 1;
+  if(hx.hrs==="dusk")  return h>=ss-1.5 && h<=ss+0.9 ? 1 : (h>ss-3.5?0.35:0.1);
+  if(hx.hrs==="dawn")  return h<=sr+2 ? 1 : 0.15;
+  const [a,b]=hx.hrs;
+  if(h>=a && h<=b) return 1;
+  const gap=Math.min(Math.abs(h-a),Math.abs(h-b));
+  return gap<1.5 ? 0.55 : 0.15;
+}
+function rankOf(o){
+  const local = o.hx.waters!=="all" ? (o.hx.marquee?1.5:1.1) : 1;  // a water's signature hatch outranks background bugs
+  const marq  = o.hx.marquee ? 1.15 : 1;
+  return o.i * o.clock * local * marq;
+}
+function activeHatches(ctx){
+  return HATCHES
+    .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(ctx.w.id))
+    .map(hx=>({hx, i:hatchIntensity(hx,ctx), clock:inClock(hx,ctx)}))
+    .filter(o=>o.i>0.02)
+    .map(o=>(o.rank=rankOf(o), o))
+    .sort((a,b)=> b.rank - a.rank);
+}
+function activeRuns(ctx){
+  if(!ctx.isGL) return [];
+  return RUNS.filter(r => r.waters==="gl" || r.waters.includes(ctx.w.id))
+    .map(r=>{
+      const [s,p,e]=r.win;
+      let d=ctx.day, i=0;
+      if(d>=s&&d<=e) i = d<=p ? (d-s)/Math.max(1,p-s) : 1-(d-p)/Math.max(1,e-p);
+      if(s>e){ i = (d>=s||d<=e)?0.8:0; }
+      return {r, i:clamp(0.3+0.7*clamp(i,0,1), 0, 1) * (d>=s&&d<=e?1:0)};
+    })
+    .filter(o=>o.i>0.05).sort((a,b)=>b.i-a.i);
+}
+
+/* ============================================================
+   3. PLAY LIBRARY + SCORING
+   ============================================================ */
+
+const sizeStr=(r)=> Array.isArray(r) ? (r[0]===r[1]?`#${r[0]}`:`#${r[0]}–${r[1]}`) : `#${r}`;
+function pickX(size){ // tippet X for a hook size
+  if(size>=22) return "7X"; if(size>=20) return "6X"; if(size>=16) return "5X";
+  if(size>=12) return "4X"; if(size>=8) return "3X"; return "2X";
+}
+function beadFor(size){
+  if(size>=20) return "2.0 mm"; if(size>=16) return "2.5 mm";
+  if(size>=13) return "3.0 mm"; if(size>=10) return "3.5 mm"; return "4.0 mm";
+}
+
+function flies(list, colorHex, qty, note){
+  return list.map(([name,rng])=>({name, size:sizeStr(rng), hex:colorHex, qty:qty||"2–3", note:note||""}));
+}
+
+/* Each builder returns null, or a play with a raw score. */
+const PLAYS = [
+
+/* ---------- TROUT ---------- */
+{key:"hatch-dry", build(ctx, ah){
+  const top=ah.filter(o=>o.hx.dry && o.hx.kind!=="crustacean" && o.hx.kind!=="terrestrial")[0];
+  if(!top||ctx.isGL) return null;
+  const {hx,i,clock}=top;
+  if(ctx.temp>67) return null;
+  let s = 34*i*clock;
+  if(ctx.lw.k==="night") s*=0.15;
+  if(hx.marquee) s+=6;
+  if(ctx.sky==="overcast"&&hx.overcastLove) s+=7;
+  if(ctx.sky==="bright") s-=4;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=14;
+  if(ctx.clarity.n<=1) s-=10;
+  const sz=hx.size[1];
+  const x=pickX(sz);
+  const flat = ctx.w.char==="flat" || ctx.w.type==="tailwater" || ctx.w.type==="limestone";
+  return {
+    score:s,
+    title:`Match the ${hx.name} on the ${hx.kind==="mayfly"?"dun":"adult"}`,
+    technique:"Dry fly — dead drift",
+    chips:[[hx.name,"hot"], [sizeStr(hx.size),""], [flat?"Downstream reach cast":"Upstream drift",""]],
+    why:`<b>${hx.name}</b> (<i>${hx.latin}</i>) is ${i>0.75?"at or near peak":"on the water"} for this date, and the clock is ${clock===1?"inside":"near"} its emergence window. Body colour is <b>${hx.body}</b> — carry that shade, not a generic grey.`,
+    where: flat
+      ? "Flat water at the pool head and the tailout. Find a working fish, get below it, and cast up and across so the fly reaches it before the leader does."
+      : "Riffle corners, seams and the soft water behind boulders. Cover water on a short leash rather than hunting one fish.",
+    steps:[
+      flat ? "<b>Get below the fish.</b> On this water the fish sees the leader first from above — a downstream reach cast with slack buys the extra foot of drag-free drift that gets the eat."
+           : "<b>Work upstream.</b> Short casts, high rod, lift the line off the intervening current before it drags.",
+      `<b>Grease the leader to about 18 inches from the fly</b> and leave the last section degreased so the tippet sinks and stops throwing a shadow.`,
+      `<b>Trail an emerger.</b> Tie ${flat?"20–24":"14–18"} inches of ${pickX(sz+2)} off the hook bend of the ${hx.kind==="mayfly"?"dun":"adult"} and hang the emerger in the film. When the refusals start, that is the fly they want.`,
+      i>0.8 ? "<b>Expect the take to come on the shoulder of the hatch.</b> The heaviest fish usually feed before the emergence peaks and after it thins." :
+              "<b>This is the shoulder of the hatch.</b> Fewer bugs, but the fish that are up are committed — work them slowly rather than covering water."
+    ],
+    flyGroups:[
+      {lab:hx.kind==="mayfly"?"Duns":"Adults", items:flies(hx.dry,hx.hex,"3–4")},
+      {lab:"Emerger / cripple", items:flies((hx.nymph||[]).slice(0,2),hx.hex,"2–3","fish in or just under the film")},
+      hx.spinner?{lab:"Spinner, for the fall after", items:flies(hx.spinner,"#7A4A3A","2")}:null,
+    ].filter(Boolean),
+    rig:{
+      "Rod / line": ctx.w.size>=3?"9 ft 5 wt, weight-forward floating":"8 ft 6 in – 9 ft 4 wt, weight-forward floating",
+      "Leader": flat?`12–15 ft knotless tapered, ${x}`:`9 ft knotless tapered, ${x}`,
+      "Tippet": flat?`3–6 ft of ${x} nylon (go ${pickX(sz+2)} in the flats)`:`24 in of ${x} nylon`,
+      "Weight": "None. Floatant on the body, desiccant powder to revive the fly.",
+      "Connection":"Improved clinch to the fly; Davy or double-surgeon for the dropper tag."
+    },
+    tackle:[T.leader(flat?"12 ft":"9 ft",x,"nylon"), T.nylon(x), T.nylon(pickX(sz+2)), T.floatant()],
+    windowTxt: hx.hrs==="dusk"?"Last 90 minutes of light into full dark"
+              :hx.hrs==="dawn"?"First two hours of light"
+              :hx.hrs==="allday"?"All day":`${fmtHr(hx.hrs[0])} – ${fmtHr(hx.hrs[1])}`
+  };
+}},
+
+{key:"spinner", build(ctx, ah){
+  if(ctx.isGL) return null;
+  const cand=ah.filter(o=>o.hx.spinner && o.hx.kind==="mayfly" && o.i>0.35)[0];
+  if(!cand) return null;
+  const {hx,i}=cand;
+  const hh = (ctx.sun.sunset>24 && ctx.h<ctx.sun.sunrise-0.75) ? ctx.h+24 : ctx.h;
+  const dusk = hh>=ctx.sun.sunset-1.6 && hh<=ctx.sun.sunset+1;
+  const morn = hh<=ctx.sun.sunrise+3.5;
+  const tricoish = hx.id==="trico";
+  if(!dusk && !(morn&&(tricoish||hx.id==="hendrickson"))) return null;
+  let s = 30*i + (dusk?9:6);
+  if(ctx.temp>68) s-=15;
+  if(ctx.sky==="bright"&&!tricoish) s-=3;
+  const sz=hx.size[1];
+  return {
+    score:s,
+    title: tricoish?"Trico spinner fall on the flats":`${hx.name} spinner fall`,
+    technique:"Spinner fall — dead drift in the film",
+    chips:[["Spinner fall","hot"],[sizeStr(hx.size),""],[dusk?"Dusk":"Morning",""]],
+    why:`Spent <b>${hx.name}</b> spinners are the highest-calorie, lowest-effort meal of the day, and on this water the fall often out-fishes the emergence. Spinners lie flat and awash — if you can see your fly clearly, it is probably riding too high.`,
+    where:"Slow flat water and the current tongues that collect drifting spinners — pool tailouts, back eddies, the foam line. Look for quiet, unhurried, repeating rises with almost no splash.",
+    steps:[
+      "<b>Find the foam line and stay in it.</b> Spent spinners collect where the surface film concentrates; the fish set up under it and barely move.",
+      "<b>Fish by feel and by rhythm.</b> In failing light you will not see a size 20 spinner — time the rise, and set on a rise inside your drift's window.",
+      "<b>Do not false-cast over the pod.</b> One or two strokes, drop it three feet above the fish, feed slack.",
+      tricoish?"<b>Be there by first light.</b> The Trico fall builds around 8 and is usually finished by 10:30 — you are fishing a two-hour window, not a day."
+              :"<b>Stay past legal dark if the rises keep going.</b> The best fish of the evening frequently shows in the last ten minutes."
+    ],
+    flyGroups:[
+      {lab:"Spinners", items:flies(hx.spinner,"#7A4A3A","3–4","carry both a poly-wing and a hi-vis-post version")},
+      {lab:"Backup — cripple in the film", items:flies(hx.dry.slice(0,1),hx.hex,"2")},
+    ],
+    rig:{
+      "Rod / line":"9 ft 4–5 wt, weight-forward floating",
+      "Leader":`12 ft knotless tapered, ${pickX(sz)}`,
+      "Tippet":`3–4 ft of ${pickX(sz+2)} nylon — long and limp so the spinner lands with slack`,
+      "Weight":"None. Degrease the tippet with a mud or a pinch of streambed silt.",
+      "Connection":"Non-slip loop or a clinch; keep the knot small on 6X and under."
+    },
+    tackle:[T.leader("12 ft",pickX(sz),"nylon"), T.nylon(pickX(sz+2)), T.floatant()],
+    windowTxt: tricoish?"08:00 – 10:30":"Sunset −90 min into dark"
+  };
+}},
+
+{key:"euro", build(ctx, ah){
+  if(ctx.isGL) return null;
+  const nymphs = ah.filter(o=>o.hx.nymph);
+  let s = 22;
+  if(ctx.temp<48) s+=12;
+  if(ctx.temp>66) s-=10;
+  if(ctx.fs.k==="low"||ctx.fs.k==="normal") s+=7;
+  if(ctx.fs.k==="pushy") s+=4;
+  if(ctx.fs.k==="blown") s-=12;
+  if(ctx.sky==="bright") s+=5;
+  if(ctx.w.char==="pocket") s+=8;
+  if(ctx.w.char==="flat") s-=5;
+  if(ctx.lw.k==="midday"||ctx.lw.k==="morning"||ctx.lw.k==="afternoon") s+=4;
+  if(ctx.lw.k==="night") s-=20;
+  const anchor = ctx.temp<45 ? 14 : ctx.fs.k==="pushy"?12:14;
+  const drop = nymphs[0] ? nymphs[0].hx : null;
+  const pt = drop && drop.nymph ? drop.nymph[0] : ["Pheasant Tail, beadhead",[14,16]];
+  return {
+    score:s,
+    title:"Tight-line the riffle heads and pocket seams",
+    technique:"Euro / tight-line nymphing — no indicator",
+    chips:[["Contact nymphing","grn"],[`${beadFor(anchor)} tungsten`,""],[ctx.fs.label,""]],
+    why:`Water at <b>${ctx.temp.toFixed(0)} °F</b> with ${ctx.fs.label.toLowerCase()} flow puts most of the feeding on the bottom third of the column. Tight-lining keeps the flies there and puts the take in your hand instead of asking you to read a bobber.`,
+    where:`${ctx.fs.blurb.charAt(0).toUpperCase()+ctx.fs.blurb.slice(1)}. Work the top of each riffle where it drops into the run — the crease between fast and slow is the whole game.`,
+    steps:[
+      "<b>Lead the flies, don't drag them.</b> Rod tip slightly ahead of the sighter, moving at the speed of the bottom current, not the surface.",
+      "<b>Calibrate by contact.</b> You want to tick bottom once or twice per drift. More than that, drop a bead size; less, go up one.",
+      "<b>Fish it grid-wise.</b> Three drifts on the near seam, step, three on the middle, step, three on the far. Do not wade past unfished water.",
+      "<b>Set on anything.</b> A pause, a tick, the sighter straightening — set downstream and low, not up."
+    ],
+    flyGroups:[
+      {lab:"Point fly — the anchor", items:[{name:"Tungsten jig Perdigon, olive or copper", size:sizeStr([anchor-2,anchor]), hex:"#7B5A2E", qty:"3–4", note:`${beadFor(anchor)} slotted tungsten bead`},
+                                            {name:"Walt's Worm / Sexy Walt's", size:sizeStr([12,16]), hex:"#8A7C5E", qty:"2–3", note:"the most useful searching nymph in the Northeast"}]},
+      {lab:"Dropper — the match", items:flies(pt?[pt]:[],drop?drop.hex:"#5F6B3A","3","hang it 18–24 in above the anchor")
+        .concat([{name:"Frenchie, pink or chartreuse hot spot", size:sizeStr([14,16]), hex:"#B36A7A", qty:"2–3", note:""}])},
+      ...(ctx.w.type==="limestone"?[{lab:"Limestone staple", items:[{name:"Cress Bug / Scud, gray-olive", size:"#14–16", hex:"#8C8A6E", qty:"3", note:"present every day of the year on this water"}]}]:[]),
+    ],
+    rig:{
+      "Rod / line":"10 ft – 10 ft 6 in, 3 wt euro rod; level or euro line",
+      "Leader":'12–15 ft of 20 lb Maxima Chameleon, then 3 ft of 12 lb Amnesia',
+      "Sighter":'18 in of .012–.013" hi-vis mono — orange over chartreuse reads best against most backgrounds',
+      "Tippet":`Tippet ring, then 4–6 ft of ${ctx.temp<45?"5X":"4X"}–${ctx.temp<45?"6X":"5X"} fluorocarbon`,
+      "Weight":`On the flies, not the leader — ${beadFor(anchor)} tungsten on the point, one size smaller on the dropper`,
+      "Spacing":"Dropper tag 4–6 in, flies 18–24 in apart, tags clipped to 1 in"
+    },
+    tackle:[T.fluoro(ctx.temp<45?"5X":"4X"), T.fluoro(ctx.temp<45?"6X":"5X"), T.sighter(), T.rings()],
+    windowTxt:"All day; best when the sun is on the water"
+  };
+}},
+
+{key:"indicator", build(ctx, ah){
+  if(ctx.isGL) return null;
+  let s = 18;
+  if(ctx.w.size>=3) s+=8;
+  if(ctx.fs.k==="pushy") s+=9;
+  if(ctx.fs.k==="high") s+=7;
+  if(ctx.fs.k==="verylow") s-=9;
+  if(ctx.temp<44) s+=6;
+  if(ctx.temp>66) s-=8;
+  if(ctx.w.type==="tailwater") s+=5;
+  if(ctx.lw.k==="night") s-=20;
+  const drop = ah.filter(o=>o.hx.nymph)[0];
+  const depth = ctx.fs.k==="high"?"5–6 ft":ctx.fs.k==="pushy"?"4–5 ft":"3–4 ft";
+  return {
+    score:s,
+    title:"Indicator nymph the deep seams and buckets",
+    technique:"Indicator nymphing — two-fly rig",
+    chips:[["Indicator rig",""],[`${depth} of water`,""],[ctx.fs.label,""]],
+    why:`With ${ctx.fs.label.toLowerCase()} flow on water this size, the fish are ${ctx.fs.blurb}. An indicator lets you hold a long, deep, drag-free drift through water you cannot reach on a tight line.`,
+    where:`Slots and buckets ${depth} deep with a walking-pace surface. Start at the head of the run and work down; the fish sit at the front of the bucket, not the middle.`,
+    steps:[
+      `<b>Set the indicator to about 1.5× the depth.</b> Five feet of water wants roughly seven and a half feet from indicator to shot.`,
+      "<b>Split the shot.</b> One piece just above the leader-to-tippet knot, the second about six inches above the first fly. Two smaller pieces beat one large one — the rig hinges less and drifts truer.",
+      "<b>Mend to keep the indicator downstream of the belly</b> — if the indicator is dragging, the flies are already off the bottom.",
+      "<b>Set on hesitation.</b> The indicator does not need to go under; a stall or a subtle upstream twitch is a fish."
+    ],
+    flyGroups:[
+      {lab:"Point — attractor or anchor", items:[
+        {name:"Pat's Rubber Legs, brown/gold", size:"#8–10", hex:"#7A5A2C", qty:"2–3", note:"stonefly profile that carries the rig down"},
+        {name:"Tungsten Hare's Ear jig", size:"#12–14", hex:"#8A7042", qty:"3", note:beadFor(13)+" bead"}]},
+      {lab:"Dropper — the match", items: drop?flies(drop.hx.nymph.slice(0,2),drop.hx.hex,"3","16–20 in below the point fly")
+        :[{name:"Pheasant Tail, beadhead", size:"#14–18", hex:"#6B5236", qty:"3", note:""}]},
+      {lab:"High water insurance", items:[{name:"Squirmy Wormy / San Juan Worm, wine or red", size:"#10–12", hex:"#9B3A47", qty:"2", note:"first choice when the water has any colour to it"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft – 10 ft 5 wt, weight-forward floating",
+      "Leader":"9–12 ft tapered to 3X, indicator set 6–12 in below the fly line to start",
+      "Tippet":"16 in of 3X, then 16 in of 4X fluorocarbon to the second fly",
+      "Weight":`Two ${ctx.fs.k==="high"?"BB and one 3/0":"BB"} non-toxic shot — one above the tippet knot, one 6 in above the first fly`,
+      "Indicator":'½ in round foam is enough for most trout; New Zealand wool in low clear water'
+    },
+    tackle:[T.leader("9 ft","3X","nylon"), T.fluoro("3X"), T.fluoro("4X"), T.shot("#4, BB, 3/0"), T.bobber("½ in")],
+    windowTxt:"All day"
+  };
+}},
+
+{key:"drydropper", build(ctx, ah){
+  if(ctx.isGL) return null;
+  let s = 16;
+  if(ctx.w.char==="pocket") s+=12;
+  if(ctx.w.size<=2) s+=5;
+  if(ctx.fs.k==="normal"||ctx.fs.k==="low") s+=8;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=16;
+  if(ctx.temp<46) s-=10;
+  if(ctx.temp>66) s-=8;
+  if(ctx.lw.k==="night") s-=20;
+  if(ctx.day>=DOY(6,20)&&ctx.day<=DOY(9,25)) s+=7;
+  const dropHatch = ah.filter(o=>o.hx.nymph&&o.hx.kind!=="crustacean")[0];
+  const bigDry = (ctx.day>=DOY(6,20)&&ctx.day<=DOY(9,25)) ?
+      {name:"Chubby Chernobyl, tan or gold", size:"#10–12", hex:"#C79A55", qty:"2–3", note:"floats a heavy dropper and gets eaten on its own"} :
+      {name:"Stimulator, golden", size:"#10–12", hex:"#C08A2E", qty:"2–3", note:"high-floating, visible in broken water"};
+  return {
+    score:s,
+    title:"Dry-dropper through the pockets",
+    technique:"Dry-dropper — buoyant dry over a beadhead",
+    chips:[["Two flies, one drift",""],["Dropper 1.5–2× depth",""],[ctx.w.char==="pocket"?"Pocket water":"Runs and seams",""]],
+    why:`This covers both columns on one cast, which is what ${ctx.w.char==="pocket"?"boulder pocket water":"broken water"} rewards. The dry is a strike indicator you can also catch a fish on — and at ${ctx.temp.toFixed(0)} °F a good share of them will still come up for it.`,
+    where:"Every soft seam behind and in front of a boulder, the foam pocket on the inside of a bend, and the two feet of slack water against the bank. Fish it fast — three or four drifts per pocket, then move.",
+    steps:[
+      "<b>Measure the dropper to the water, not to habit.</b> Roughly one and a half to two times the depth of the pocket you are fishing; retie shorter when you move into the shallows.",
+      "<b>Tie the dropper off the bend of the dry</b> with a clinch — it tracks straighter than off the eye and does not foul as often.",
+      "<b>Cast short and up.</b> Twenty feet is plenty. Long casts in pocket water put three currents between you and the fly.",
+      "<b>Set on the dry doing anything unnatural</b> — sinking, stopping, skating sideways."
+    ],
+    flyGroups:[
+      {lab:"Dry — the float", items:[bigDry, {name:"Parachute Adams", size:"#12–16", hex:"#6E6E6E", qty:"3", note:"when a foam fly is too much"}]},
+      {lab:"Dropper — the fish catcher", items: dropHatch?flies(dropHatch.hx.nymph.slice(0,2),dropHatch.hx.hex,"3",`${beadFor(dropHatch.hx.size[1])} bead`)
+        :[{name:"Frenchie", size:"#14–16", hex:"#B36A7A", qty:"3", note:""}]},
+    ],
+    rig:{
+      "Rod / line":"8 ft 6 in – 9 ft 4–5 wt, weight-forward floating",
+      "Leader":"7½–9 ft tapered to 4X",
+      "Tippet":"Dry on 4X nylon; 14–30 in of 5X fluorocarbon from the hook bend to the nymph",
+      "Weight":"Bead only — no shot. If the dry sinks, the bead is too heavy for that fly.",
+      "Connection":"Clinch to the dry, clinch around the bend for the dropper"
+    },
+    tackle:[T.leader("9 ft","4X","nylon"), T.nylon("4X"), T.fluoro("5X"), T.floatant()],
+    windowTxt:"Mid-morning to late afternoon"
+  };
+}},
+
+{key:"streamer", build(ctx, ah){
+  if(ctx.isGL) return null;
+  let s = 12;
+  if(ctx.sky==="overcast") s+=12;
+  if(ctx.sky==="bright") s-=6;
+  if(ctx.lw.k==="dawn"||ctx.lw.k==="dusk"||ctx.lw.k==="night") s+=11;
+  if(ctx.fs.k==="pushy") s+=10;
+  if(ctx.fs.k==="high") s+=12;
+  if(ctx.fs.k==="blown") s+=4;
+  if(ctx.fs.k==="verylow") s-=10;
+  if(ctx.temp>=46&&ctx.temp<=62) s+=8;
+  if(ctx.temp<42) s-=6;
+  if(ctx.temp>67) s-=14;
+  if(ctx.day>=DOY(9,20)&&ctx.day<=DOY(11,20)) s+=10;  // pre-spawn browns
+  const dirty = ctx.clarity.n<=1;
+  const deep = ctx.fs.k==="high"||ctx.fs.k==="blown"||ctx.temp<44;
+  return {
+    score:s,
+    title: deep?"Swing a big streamer deep on a sink tip":"Strip streamers along the banks",
+    technique: deep?"Streamer — sink tip, slow swing":"Streamer — floating line, active retrieve",
+    chips:[[dirty?"Bright & bulky":"Dark & natural", dirty?"sul":""],[deep?"Sink tip":"Floating line",""],[ctx.sky==="overcast"?"Overcast — all day":"Low light",""]],
+    why:`${ctx.sky==="overcast"?"Heavy cloud pulls fish out of cover and off the bottom, and it is the best streamer light there is. ":""}${ctx.fs.k==="pushy"||ctx.fs.k==="high"?"Pushy water concentrates them on the inside seams and bank buckets where a streamer swings past at eye level. ":""}Visibility around <b>${ctx.clarity.vis}</b> means ${dirty?"contrast and bulk beat realism — white, chartreuse or black with gold flash":"a dark, sparse silhouette reads better than anything flashy"}.`,
+    where: deep?"The deepest slot in each pool and the bank buckets on the outside of every bend. Cast across, throw one big upstream mend, and let it fish on the dangle."
+              :"Tight to the bank — within a foot of it. Undercut banks, log jams, the shade line under overhanging cover. The fly should land on the grass and fall in.",
+    steps:[
+      deep ? "<b>Give it the mend and then leave it alone.</b> The slower the fly crosses, the more time a cold fish has to commit."
+           : "<b>Cast at a 45 downstream and strip in short jabs</b> with the rod tip in the water — two fast, one pause. The eat almost always comes on the pause.",
+      "<b>Change the angle before you change the fly.</b> The same streamer swung across, stripped down and dangled through one seam is three different presentations.",
+      dirty ? "<b>Fish it slower and closer than feels right.</b> In this much colour they find the fly by push and contrast, not by sight — keep it in front of them longer."
+            : "<b>Use a non-slip loop knot.</b> On a heavy tippet a clinch chokes the head and kills the side-to-side; the loop is what makes the fly swim.",
+      "<b>Follows without eats mean go smaller and faster</b>, not bigger and slower."
+    ],
+    flyGroups:[
+      {lab: dirty?"Bright — for colour in the water":"Dark — for clear water", items: dirty?[
+        {name:"Woolly Bugger, white or chartreuse, gold flash", size:"#4–8", hex:"#E4E4DC", qty:"2", note:"white reflects most of what light gets down there"},
+        {name:"Sculpin Sculpin / Slumpbuster, olive", size:"#4–6", hex:"#6F7444", qty:"2", note:""}]:[
+        {name:"Woolly Bugger, black or olive", size:"#4–10", hex:"#22221E", qty:"3", note:"the one streamer to own"},
+        {name:"Sculpin pattern, olive-brown", size:"#4–6", hex:"#6B5638", qty:"2", note:"match the bottom, not the water"}]},
+      {lab:"Articulated — for the big fish", items:[
+        {name:"Articulated leech or Circus Peanut", size:"3–4 in", hex:"#3B2F46", qty:"1–2", note:ctx.day>=DOY(9,20)?"pre-spawn browns eat these in October":"one is enough"}]},
+    ],
+    rig:{
+      "Rod / line": deep?"9 ft 6–7 wt, floating line with a 10 ft sink tip (or an integrated 150–200 gr head)":"9 ft 6 wt, weight-forward floating",
+      "Leader": deep?"4–5 ft total: 2 ft of 20–30 lb fluoro, then 2 ft of 10–16 lb fluoro":"7–9 ft: 4 ft of 25 lb, 3 ft of 16 lb, 2 ft of 10–16 lb fluoro",
+      "Tippet":"0X–2X fluorocarbon (10–16 lb)",
+      "Weight":deep?"The line does the sinking — keep the fly modest so it tracks with the tip":"Coneheaded or dumbbell-eyed fly; no shot",
+      "Connection":"Non-slip loop knot. If you must use a clinch on heavy tippet, use the improved clinch — the standard one slips."
+    },
+    tackle:[T.fluoro("0X"), T.fluoro("2X"), ...(deep?[T.tip("10 ft, 5–7 ips")]:[])],
+    windowTxt: ctx.sky==="overcast"?"All day under cloud":"First and last light"
+  };
+}},
+
+{key:"terrestrial", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.day<DOY(6,15)||ctx.day>DOY(10,5)) return null;
+  let s = 14;
+  if(ctx.h>=10&&ctx.h<=17) s+=10;
+  if(ctx.day>=DOY(7,20)&&ctx.day<=DOY(9,20)) s+=10;
+  if(ctx.w.type==="limestone") s+=8;
+  if(ctx.w.size<=2) s+=5;
+  if(ctx.fs.k==="verylow"||ctx.fs.k==="low") s+=7;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=14;
+  if(ctx.temp>68) s-=12;
+  if(ctx.sky==="bright") s+=4;
+  return {
+    score:s,
+    title:"Terrestrials against the grass banks",
+    technique:"Terrestrial — dead drift, tight to cover",
+    chips:[["Ant · beetle · hopper","sul"],["Midday",""],["Bank water",""]],
+    why:`Midsummer through early autumn, the drift is more land insect than mayfly, and a fish holding under a grass bank has learned that the splat is food. On ${ctx.w.type==="limestone"?"limestone meadow water like this":"this water"} a beetle fished blind under the bank outproduces almost anything else between hatches.`,
+    where:"The eighteen inches of water hard against an undercut grass bank, under overhanging alder and hemlock, and the seam directly downwind of a meadow on a breezy afternoon.",
+    steps:[
+      "<b>Let it land hard.</b> A terrestrial that arrives with a small splat gets looked at; one that lands like a mayfly gets ignored.",
+      "<b>Fish the wind.</b> Whichever bank the wind is blowing onto is the one collecting insects — start there and use the ripple to hide your leader.",
+      "<b>Give it two extra seconds.</b> Fish take terrestrials late and confidently. Setting on the swirl instead of the eat is the classic miss.",
+      "<b>Hang a sunken ant.</b> When the surface fly gets refused, a drowned ant on 18 inches below it catches the fish that just looked."
+    ],
+    flyGroups:[
+      {lab:"Beetles & ants", items:[
+        {name:"Foam Beetle, black with a hi-vis post", size:"#12–16", hex:"#221E1A", qty:"3–4", note:"the searching pattern"},
+        {name:"Parachute Ant, black", size:"#16–18", hex:"#26211C", qty:"3", note:""},
+        {name:"Flying Ant, cinnamon", size:"#14–18", hex:"#8A4E2A", qty:"2–3", note:"humid afternoons after a front — a real event on the Delaware in September"}]},
+      {lab:"Hoppers & the green worm", items:[
+        {name:"Chubby Chernobyl or Letort Hopper, tan", size:"#10–14", hex:"#C79A55", qty:"2", note:"windy afternoons on meadow water"},
+        {name:"Green Weenie / Foam Inchworm", size:"#12–14", hex:"#7EA33C", qty:"2–3", note:"under overhanging hemlock and maple"}]},
+      {lab:"The sunk version", items:[{name:"Sunken Ant, black", size:"#16–18", hex:"#26211C", qty:"2", note:"the underrated half of terrestrial fishing"}]},
+    ],
+    rig:{
+      "Rod / line":"8 ft 6 in – 9 ft 4 wt, weight-forward floating",
+      "Leader":ctx.w.type==="limestone"?"12 ft tapered to 5X":"9 ft tapered to 4X",
+      "Tippet":ctx.w.type==="limestone"?"3 ft of 5X–6X nylon":"24 in of 4X–5X nylon",
+      "Weight":"None. Gel floatant on the foam, powder on the hackle.",
+      "Connection":"Improved clinch; loop knot on a hopper so it wobbles"
+    },
+    tackle:[T.leader(ctx.w.type==="limestone"?"12 ft":"9 ft",ctx.w.type==="limestone"?"5X":"4X","nylon"), T.nylon("5X"), T.floatant()],
+    windowTxt:"10:00 – 17:00, best on a breezy afternoon"
+  };
+}},
+
+{key:"wetswing", build(ctx, ah){
+  if(ctx.isGL) return null;
+  const caddis = ah.filter(o=>o.hx.kind==="caddis"&&o.i>0.3)[0];
+  const mayfly = ah.filter(o=>o.hx.kind==="mayfly"&&o.i>0.5)[0];
+  if(!caddis&&!mayfly) return null;
+  let s = 13;
+  if(caddis) s+=9;
+  if(ctx.lw.k==="evening"||ctx.lw.k==="dusk") s+=10;
+  if(ctx.w.char!=="flat") s+=4;
+  if(ctx.temp>=50&&ctx.temp<=66) s+=6;
+  if(ctx.fs.k==="blown") s-=12;
+  const src = caddis||mayfly;
+  return {
+    score:s,
+    title: caddis?"Swing soft hackles through the evening caddis":"Swing wets on the emergence",
+    technique:"Wet fly / soft hackle — down-and-across swing",
+    chips:[["Swung wets","grn"],[src.hx.name,""],["Two or three flies",""]],
+    why:`${caddis?"Ovipositing caddis dive and swim, and a swung soft hackle imitates that better than any dead drift can. ":"Emerging duns rise through the column, and a swung wet crosses that path. "}It also lets you fish a rise you cannot see — the take is a pull, not a guess.`,
+    where:"The bottom third of a riffle where it fans into the run, and the length of any even-paced seam. Start at the top, swing, take two steps, repeat.",
+    steps:[
+      "<b>Cast down and across at about 45 degrees</b> and lead the swing with the rod tip so the flies come around under tension.",
+      "<b>Mend once, upstream, immediately.</b> That slows the swing into the speed a natural swims.",
+      "<b>Let it hang.</b> Count to five on the dangle before you pick up — a startling share of the eats happen straight below you.",
+      "<b>Do not set.</b> Let the fish turn and take the line; lifting into a swung take pulls the fly out of its mouth."
+    ],
+    flyGroups:[
+      {lab:"Soft hackles", items:[
+        {name:"Partridge & Orange", size:"#12–16", hex:"#C97A2E", qty:"3", note:"the whole season in one fly"},
+        {name:"Partridge & Yellow / Sulphur soft hackle", size:"#14–16", hex:"#E0A94A", qty:"3", note:""},
+        {name:"Starling & Herl", size:"#16–18", hex:"#3D4B3A", qty:"2", note:"for the small stuff"}]},
+      {lab:"The point fly", items: flies((src.hx.nymph||[]).slice(0,1),src.hx.hex,"2","a touch of weight to get the team down")},
+    ],
+    rig:{
+      "Rod / line":"9 ft 5 wt, weight-forward floating (a soft tip helps)",
+      "Leader":"9 ft tapered to 4X",
+      "Tippet":"4X to the point; droppers on 5X tags 16–20 in apart",
+      "Weight":"None, or one #6 shot above the top dropper if the swing rides high",
+      "Connection":"Blood knots for the tags — leave the tag pointing down the leader"
+    },
+    tackle:[T.leader("9 ft","4X","nylon"), T.nylon("4X"), T.nylon("5X")],
+    windowTxt:"Late afternoon into dusk"
+  };
+}},
+
+{key:"midge", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.temp>50) return null;
+  let s = 15;
+  if(ctx.temp<44) s+=12;
+  if(ctx.h>=11&&ctx.h<=15) s+=9;
+  if(ctx.w.type==="tailwater"||ctx.w.type==="limestone") s+=9;
+  if(ctx.clarity.n>=3) s+=5;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=12;
+  return {
+    score:s,
+    title:"Midges in the winter slots",
+    technique:"Micro nymph — dead drift, minimal weight",
+    chips:[["#20–24","sul"],["Midday window",""],["Slow water",""]],
+    why:`At <b>${ctx.temp.toFixed(0)} °F</b> a trout will not move far, and midges are the only thing hatching in numbers. Fish the warmest three hours of the day and put the fly on their nose — the eat zone is inches wide.`,
+    where:"The slow, even glide at the bottom of a pool and the soft water behind a mid-river boulder. Look for pods holding low and shoulder to shoulder — winter fish stack.",
+    steps:[
+      "<b>Fish the thermal peak, not the clock.</b> Water is warmest between about 11 and 3; that is the day.",
+      "<b>Downsize the weight before the fly.</b> If you are not getting takes, the fly is usually right and the drift is too fast.",
+      "<b>Watch for the flash.</b> In clear winter water you will often see the turn before you feel anything.",
+      "<b>If fish are rising, they are on pupae in the film</b> — a size 22 emerger fished in the surface will beat anything on the bottom."
+    ],
+    flyGroups:[
+      {lab:"Midge larvae & pupae", items:[
+        {name:"Zebra Midge, black/silver and red/copper", size:"#18–22", hex:"#26262A", qty:"4", note:"carry both — colour matters more than size here"},
+        {name:"WD-40, gray or olive", size:"#18–22", hex:"#6A7060", qty:"3", note:""},
+        {name:"Rojo Midge", size:"#20–22", hex:"#8E2A2A", qty:"2", note:""}]},
+      {lab:"If they are rising", items:[
+        {name:"Griffith's Gnat", size:"#20–22", hex:"#3A4A34", qty:"2", note:""},
+        {name:"Sprout Midge / Matt's Midge", size:"#22", hex:"#4A4A4A", qty:"2", note:"in the film, not on it"}]},
+      ...(ctx.w.type==="limestone"?[{lab:"Underneath it all", items:[{name:"Cress Bug, gray", size:"#14–16", hex:"#8C8A6E", qty:"3", note:""}]}]:[]),
+    ],
+    rig:{
+      "Rod / line":"9 ft 4 wt, weight-forward floating",
+      "Leader":"12 ft tapered to 5X",
+      "Tippet":"3–4 ft of 6X fluorocarbon; 7X if the water is glass",
+      "Weight":"One #8 shot, or a 2.0 mm tungsten bead on the point fly. Very little.",
+      "Indicator":"New Zealand wool or a greased leader — a hard bobber lands too loud on winter water"
+    },
+    tackle:[T.leader("12 ft","5X","nylon"), T.fluoro("6X"), T.fluoro("7X"), T.shot("#8, #6"), T.bobber("wool")],
+    windowTxt:"11:00 – 15:00"
+  };
+}},
+
+/* ---------- GREAT LAKES ---------- */
+{key:"gl-indicator", build(ctx, ah, runs){
+  if(!ctx.isGL) return null;
+  const top=runs[0];
+  let s = 30;
+  if(ctx.fs.k==="normal"||ctx.fs.k==="pushy") s+=10;
+  if(ctx.fs.k==="blown") s-=18;
+  if(ctx.temp<36) s+=6;
+  if(top&&top.r.id.startsWith("steel")) s+=6;
+  const cold = ctx.temp<38, dirty=ctx.clarity.n<=1;
+  const eggSize = cold?"#12–16":dirty?"#6–10":"#10–12";
+  const eggColors = dirty?"Chartreuse over Flame, Flame over Cerise, clown":
+                    ctx.clarity.n>=3?"Champagne, Oregon Cheese, Apricot Supreme, pale pink":
+                    "Oregon Cheese over Steelhead Orange, Salmon Egg, pink";
+  const single = ctx.w.id==="salmonr";
+  return {
+    score:s,
+    title:"Indicator-drift eggs and stones through the runs",
+    technique:"Indicator nymphing — dead drift",
+    chips:[[top?top.r.name:"Steelhead","hot"],[ctx.clarity.label,""],[cold?"Cold-water sizes":"Standard sizes",""]],
+    why:`Egg patterns account for roughly three quarters of fly-caught Great Lakes steelhead, and at <b>${ctx.temp.toFixed(0)} °F</b> with ${ctx.clarity.vis} of visibility the fish want it dead-drifted on the bottom rather than swung. ${cold?"Below 38 °F the bite zone shrinks to inches — size down and put it on their nose.":"Fish are willing to move a little for it at this temperature."}`,
+    where: cold?"Shale ledges, deep slow pools, back eddies and the upper tail-out — the three-foot zone where winter fish stack."
+               :"Pool heads, the fast run below them, and moderate tail-outs. Fresh fish sit at the front; the ones that have been there a week sit at the back.",
+    steps:[
+      `<b>Set the indicator to about 1.5× the depth</b> — five feet of water wants roughly seven and a half feet of drop.`,
+      "<b>Calibrate the shot to tick bottom once or twice per drift.</b> Put it on a tag with a double-overhand stopper so it strips off on a snag instead of breaking you off.",
+      cold?"<b>Make many passes over one lie.</b> A cold fish may not move three inches — change the lane by a foot each drift rather than moving on."
+          :"<b>Short casts first, long casts last.</b> Fish the water at your feet before you wade into it.",
+      single?"<b>One fly only.</b> The fly-fishing-only water above the CR52 bridge does not allow droppers — check the current regulations before you rig."
+            :"<b>Run two flies</b> — an egg on top and a stonefly or worm below picks up the fish that have seen eggs all week."
+    ],
+    flyGroups:[
+      {lab:"Eggs", items:[
+        {name:"Nuke Egg", size:eggSize, hex:dirty?"#C6D62A":"#E9A45C", qty:"4–6", note:eggColors},
+        {name:"Glo-Bug / Crystal Meth", size:eggSize, hex:dirty?"#E24B7A":"#F0C39A", qty:"4", note:"carry two shades lighter and two brighter than you think you need"},
+        {name:"Sucker Spawn, pale yellow or cream", size:"#8–14", hex:"#EDE3A8", qty:"3", note:"the spring pattern — sucker and walleye eggs"}]},
+      {lab:"Nymphs", items:[
+        {name:"Black Stonefly", size:cold?"#12–16":"#8–12", hex:"#1C1C1C", qty:"3–4", note:"the number-two producer behind eggs"},
+        {name:"Copper John, copper / red / chartreuse", size:dirty?"#10–12":"#14–16", hex:"#A5642A", qty:"3", note:dirty?"chartreuse in this water":"copper and black in clear water"},
+        {name:"Pheasant Tail or Hare's Ear, beadhead", size:"#12–16", hex:"#6B5236", qty:"3", note:""}]},
+      {lab:"High water insurance", items:[
+        {name:"Squirmy Wormy / San Juan Worm", size:"#8–12", hex:"#B03A55", qty:"2–3", note:"red, pink or wine — first choice after a bump"}]},
+    ],
+    rig:{
+      "Rod / line":"10 ft 7 wt medium-flex, weight-forward floating; 9–10 wt if kings are in",
+      "Leader":"3 ft of 15–20 lb mono to a micro swivel, then 6 ft of fluorocarbon",
+      "Tippet":ctx.clarity.n>=3?"3X–4X (about 8 lb) in clear water":dirty?"0X–2X (12–20 lb) in this colour":"3X (8–10 lb)",
+      "Weight":"Water Gremlin #2–#7 or B / BB / 3/0 shot, 12–18 in above the fly, heavier pieces higher",
+      "Indicator":"¼ – ¾ in round foam; a smaller one in low clear water"
+    },
+    tackle:[T.fluoro(ctx.clarity.n>=3?"4X":"2X"), T.fluoro("3X"), T.shot("#4, BB, 3/0"), T.bobber("½–¾ in"), T.swivel()],
+    windowTxt: cold?"11:00 – 15:00 — the warmest water of the day":"Dawn and dusk, and all day under cloud"
+  };
+}},
+
+{key:"gl-swing", build(ctx, ah, runs){
+  if(!ctx.isGL) return null;
+  let s = 20;
+  if(ctx.temp>=42&&ctx.temp<=55) s+=12;
+  if(ctx.temp<38) s-=6;
+  if(ctx.fs.k==="pushy"||ctx.fs.k==="high") s+=8;
+  if(ctx.w.size>=3) s+=7;
+  if(ctx.w.size<=1) s-=10;
+  if(ctx.clarity.n<=0) s-=15;
+  if(ctx.lw.k==="afternoon") s+=5;
+  const cold = ctx.temp<42;
+  return {
+    score:s,
+    title: cold?"Swing big and deep on T-14":"Swing a two-hander through the tailouts",
+    technique:"Swung fly — switch or spey rod",
+    chips:[[cold?"3–5 in fly":"~2 in fly",""],[cold?"T-14":"Light tip / intermediate",""],["Step and swing",""]],
+    why:`At <b>${ctx.temp.toFixed(0)} °F</b> with ${ctx.clarity.vis} of visibility, a fly crossing at eye level draws the aggressive fish. ${cold?"Cold water wants it deep and slow with a big profile — but cap the fly around two inches of bright material if it drops below 36 °F; a moderate bright fly often hooks fish that ignored something bigger.":"This is the temperature band where fish will genuinely chase, so keep the fly moving and cover water."}`,
+    where:"Even-paced, walking-speed water two to five feet deep — the classic swing tailout, the inside of a long run, and the softer half of a big pool.",
+    steps:[
+      "<b>Cast, mend once, step twice.</b> The whole method is covering water at a metronome pace; the fish that eats a swung fly decides in the first second.",
+      "<b>Let the fly hang.</b> Ten seconds on the dangle at the end of every swing.",
+      "<b>Do not set.</b> Let the loop of line come tight and the fish turn — lifting takes the fly away.",
+      "<b>Change the tip before the fly.</b> Depth and speed of the swing matter far more than pattern."
+    ],
+    flyGroups:[
+      {lab: cold?"Cold water — big and dark":"Moderate water — sparse and lively", items: cold?[
+        {name:"Intruder, black/blue or black/purple", size:"3–5 in", hex:"#2B2340", qty:"2", note:"tie or buy on a shank with a trailing hook"},
+        {name:"Articulated leech, black or purple", size:"3–4 in", hex:"#2A2230", qty:"2", note:""},
+        {name:"Hoh Bo Spey, full size", size:"3 in", hex:"#3A3324", qty:"1–2", note:""}]:[
+        {name:"Hoh Bo Spey, olive and black", size:"~2 in", hex:"#3F4A2C", qty:"2", note:"the clear-water default"},
+        {name:"Lady Caroline or a sparse classic spey", size:"#2–6", hex:"#6B5A3E", qty:"2", note:""},
+        {name:"Green Butt Skunk", size:"#2–8", hex:"#1E3B22", qty:"2", note:"two signals in one fly for 2–3 ft of visibility"}]},
+      {lab:"When it colours up", items:[
+        {name:"Egg-Sucking Leech, black with an orange or pink head", size:"#2–8", hex:"#B4471E", qty:"2", note:"gold flash beats silver in green water"}]},
+    ],
+    rig:{
+      "Rod / line":"11 ft 7 wt switch, or 12 ft 6 in – 13 ft 7–8 wt spey (13 ft or shorter on the Salmon River)",
+      "Head":"Skagit, 15–25 ft compact — about 350–400 gr on an 11 ft 7 wt",
+      "Tip": cold?"T-14, 10–12 ft — deep and slow":"T-8 or a 5 ft float / 5 ft sink MOW tip",
+      "Leader":"Short: 18 in of 20 lb Maxima Chameleon, 12 in of 15 lb Ultragreen, 30 in of 12 lb fluorocarbon",
+      "Tippet":ctx.clarity.n>=3?"10–12 lb fluorocarbon":"12–15 lb fluorocarbon"
+    },
+    tackle:[T.fluoro("0X"), T.tip(cold?"T-14, 10 ft":"T-8 or 5/5 MOW")],
+    windowTxt:"Late morning through afternoon, as the water warms"
+  };
+}},
+
+{key:"gl-tightline", build(ctx, ah, runs){
+  if(!ctx.isGL) return null;
+  let s = 18;
+  if(ctx.fs.k==="low"||ctx.fs.k==="verylow") s+=14;
+  if(ctx.clarity.n>=3) s+=8;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=14;
+  if(ctx.temp<38) s+=5;
+  return {
+    score:s,
+    title:"Tight-line the pockets and ledges",
+    technique:"Tight-line / high-stick — no indicator",
+    chips:[["Low & clear","grn"],["Small flies",""],["Close range",""]],
+    why:`Low, clear water and pressured fish. An indicator lands hard and telegraphs the rig; tight-lining at close range gets a natural drift into a small holding lie and shows the fish nothing but the fly.`,
+    where:"Shale ledges, pocket water, the head of every run, and the seams alongside the main current where fish tuck out of the push.",
+    steps:[
+      "<b>Get close.</b> Twenty to thirty feet of drift, straight downstream of you or slightly across. This is a short-range game.",
+      "<b>Lead with the sighter</b> just off the water, and keep the leader as vertical as you can over the fly.",
+      "<b>Shot on a tag with a stopper knot</b> so a snag costs you the shot, not the rig.",
+      "<b>Fish the same lie from more than one angle</b> before you decide it is empty."
+    ],
+    flyGroups:[
+      {lab:"Small eggs", items:[
+        {name:"Nuke Egg or Blood Dot, pale", size:"#12–16", hex:"#F0C39A", qty:"4", note:"Champagne, Oregon Cheese, pale pink"},
+        {name:"Otter Soft Bead, natural peach", size:"6–8 mm", hex:"#E8B48C", qty:"4", note:"pegged above the hook"}]},
+      {lab:"Naturals", items:[
+        {name:"Black Stonefly", size:"#14–18", hex:"#1C1C1C", qty:"3", note:""},
+        {name:"Pheasant Tail, beadhead", size:"#14–16", hex:"#6B5236", qty:"3", note:""},
+        {name:"Zebra Midge, black/silver", size:"#16–20", hex:"#26262A", qty:"3", note:"deep winter, low and clear"}]},
+    ],
+    rig:{
+      "Rod / line":"10 ft – 10 ft 6 in, 6 wt contact rod; triangle taper or euro line",
+      "Leader":'2 ft of 20 lb Maxima Chameleon, 2 ft of .014" hi-vis sighter, 1 ft of .013" white sighter',
+      "Tippet":"Tippet ring, 6–8 ft of 1X fluorocarbon, then 1–2 ft of 2X–5X to the fly",
+      "Weight":"#5, #7 or 3/0 shot on a 3 in tag off a micro swivel — tuned to tick bottom once or twice",
+      "Note":"A shorter point tippet reduces foul-hooking. Keep it short in low water."
+    },
+    tackle:[T.fluoro("1X"), T.fluoro("3X"), T.sighter(), T.rings(), T.shot("#5, #7, 3/0"), T.swivel()],
+    windowTxt:"All day; best when the sun is on the water in winter"
+  };
+}},
+
+{key:"gl-streamer", build(ctx, ah, runs){
+  if(!ctx.isGL) return null;
+  let s = 14;
+  if(ctx.temp>=45) s+=10;
+  if(ctx.sky==="overcast") s+=7;
+  if(ctx.fs.k==="pushy") s+=6;
+  if(ctx.clarity.n<=1) s+=5;
+  const kings = runs.some(o=>o.r.id==="king"&&o.i>0.4);
+  if(kings) s+=6;
+  return {
+    score:s,
+    title: kings?"Strip big flies at staged kings":"Strip streamers through the holding water",
+    technique:"Streamer — single hand, active retrieve",
+    chips:[[kings?"Chinook":"Steelhead & browns","hot"],[ctx.clarity.label,""],["Single hand",""]],
+    why:`${kings?"Staged kings will not feed but they will kill a fly that crowds them — a bright pattern swung and stripped through the pod triggers the grab. ":""}Where the water is too small or too broken to swing a two-hander, a stripped streamer covers the same fish with a rod you already own.`,
+    where:"Deep slots, the seam beside a staging pod, the shade under the far bank, and the pool tail where fish drop back at last light.",
+    steps:[
+      "<b>Quarter down and strip in short pulls</b> with the rod tip in the water, then let it hang.",
+      "<b>Vary the retrieve every few casts</b> until something answers, then repeat exactly that.",
+      "<b>Strip-set, hard, twice.</b> These fish are heavy and the hook has to go somewhere solid.",
+      "<b>Check your point after every fish and every rock.</b> Gravel dulls a hook in one drift."
+    ],
+    flyGroups:[
+      {lab:"Streamers", items:[
+        {name:"Woolly Bugger, black, olive or white", size:"#4–8", hex:"#22221E", qty:"3", note:"the universal Great Lakes fly"},
+        {name:"Egg-Sucking Leech, black with orange head", size:"#2–8", hex:"#B4471E", qty:"2", note:""},
+        {name:"Clouser Minnow, chartreuse/white", size:"#2–6", hex:"#9BD24A", qty:"2", note:"emerald shiner profile"},
+        {name:"Goby or sculpin pattern, olive-brown", size:"#2–6", hex:"#6B5638", qty:"2", note:"round goby is real forage here"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft 8 wt, weight-forward floating or intermediate; 9–10 wt for kings",
+      "Leader":"6–9 ft: 3 ft of 25 lb, 2 ft of 20 lb, 2–3 ft of 12–15 lb fluorocarbon",
+      "Tippet":kings?"15 lb fluorocarbon":"10–12 lb fluorocarbon",
+      "Weight":"Weighted or coneheaded fly; add an intermediate tip if it will not get down",
+      "Connection":"Non-slip loop knot"
+    },
+    tackle:[T.fluoro("0X"), T.fluoro("1X")],
+    windowTxt:"First and last light; all day under heavy cloud"
+  };
+}},
+];
+
+function fmtHr(h){
+  h=((h%24)+24)%24;
+  const hh=Math.floor(h), mm=Math.round((h-hh)*60);
+  return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+}
+
+function recommend(ctx){
+  const ah=activeHatches(ctx), runs=activeRuns(ctx);
+  let out=[];
+  for(const p of PLAYS){
+    let r=null;
+    try{ r=p.build(ctx,ah,runs); }catch(e){ r=null; }
+    if(r && isFinite(r.score)) out.push(Object.assign({key:p.key},r));
+  }
+  out.sort((a,b)=>b.score-a.score);
+  // keep the top three, preferring distinct techniques
+  const picked=[], seen=new Set();
+  for(const p of out){
+    const fam=p.technique.split("—")[0].trim();
+    if(seen.has(fam)&&picked.length<3&&out.length>4) continue;
+    seen.add(fam); picked.push(p);
+    if(picked.length===3) break;
+  }
+  while(picked.length<3&&out.length>picked.length){
+    const nxt=out.find(p=>!picked.includes(p)); if(!nxt) break; picked.push(nxt);
+  }
+  const max=picked.length?picked[0].score:1;
+  picked.forEach((p,i)=>{ p.rank=i+1; p.conf=Math.round(clamp(48+ (p.score/Math.max(max,1))*47, 30, 96)); });
+  return {picked, ah, runs};
+}
+
+/* ============================================================
+   4. LIVE GAUGE (works when the page can reach the network)
+   ============================================================ */
+async function tryLive(gauge){
+  try{
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),4500);
+    const url=`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${gauge}&parameterCd=00060,00010&siteStatus=all`;
+    const res=await fetch(url,{signal:c.signal}); clearTimeout(t);
+    if(!res.ok) return null;
+    const j=await res.json();
+    let cfs=null, tempC=null;
+    for(const ts of (j.value?.timeSeries||[])){
+      const code=ts.variable?.variableCode?.[0]?.value;
+      const v=parseFloat(ts.values?.[0]?.value?.[0]?.value);
+      if(!isFinite(v)||v<=-999) continue;
+      if(code==="00060") cfs=v;
+      if(code==="00010") tempC=v;
+    }
+    if(cfs==null&&tempC==null) return null;
+    return {gauge, cfs, tempF: tempC==null?null:Math.round((tempC*9/5+32)*10)/10, at:new Date()};
+  }catch(e){ return null; }
+}
+
+/* ============================================================
+   5. RENDER
+   ============================================================ */
+const $=(s,r)=>(r||document).querySelector(s);
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function tempClass(t, isGL){
+  if(isGL) return t>65?"bad":t<36?"warn":"good";
+  if(t>=68) return "bad"; if(t>=65) return "warn";
+  if(t>=54&&t<=64) return "good"; if(t<42) return "warn"; return "";
+}
+function tempNote(t, isGL){
+  if(isGL){
+    if(t>65) return "Too warm — stop"; if(t<34) return "Ice water, tiny window";
+    if(t<38) return "Lethargic, bite zone inches wide"; if(t<45) return "Moderately active";
+    if(t<=58) return "Will chase — swing them"; return "Marginal";
+  }
+  if(t>=70) return "Lethal — do not fish"; if(t>=68) return "Stop — delayed mortality";
+  if(t>=65) return "Stressed, dawn only"; if(t>=62) return "Active, release fast";
+  if(t>=54) return "Prime — fish hard"; if(t>=50) return "Waking up";
+  if(t>=44) return "Subsurface, won't chase"; if(t>=40) return "Slow, deep, midday";
+  return "Lethargic — midday only";
+}
+
+function accFlipTxt(ctx){
+  const a=ctx.acc, u=ctx.w.unit.split(" ")[0];
+  const modelled = ctx.flowSource!=="live";
+  const src = modelled ? "Flow is modeled, so check the gauge before you hitch the trailer. " : "Live gauge reading. ";
+  if(a.flip.dir==="over") return `${src}Blowout number for ${esc(ctx.w.name)} is <b>${a.wd.max} ${u}</b>; today sits ${a.flip.gap} over it.`;
+  return `${src}Wading thresholds here: <b>${a.wd.full}</b> full river · <b>${a.wd.good}</b> most of it · <b>${a.wd.limited}</b> ${a.canFloat?"boat wins":"edges only"} · <b>${a.wd.max}</b> ${u} is the ceiling. Today is <b>${a.flip.gap} ${u}</b> below the next step up.`;
+}
+
+function renderReading(ctx){
+  const w=ctx.w;
+  const liveFlow = ctx.flowSource==="live", liveTemp = ctx.tempSource==="live";
+  const anyLive = liveFlow||liveTemp;
+  const tmin=ctx.isGL?30:32, tmax=ctx.isGL?70:76;
+  const pos=clamp((ctx.temp-tmin)/(tmax-tmin),0,1)*100;
+  const sun=ctx.sun;
+  const dateStr=ctx.d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+  const timeStr=ctx.d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  $("#reading").innerHTML=`
+    <div class="rd-head">
+      <div class="rd-water">
+        <h2>${esc(w.name)}</h2>
+        <div class="rd-sub">
+          <span>${esc(w.place)}</span><span class="dot"></span>
+          <span>${dateStr}, ${timeStr}</span><span class="dot"></span>
+          <span>${ctx.lw.label}</span>
+          <span class="srcpill ${anyLive?"live":""}">${anyLive?"Live gauge":"Modeled"}</span>
+        </div>
+      </div>
+    </div>
+    <div class="gauges">
+      <div class="g ${tempClass(ctx.temp,ctx.isGL)}">
+        <div class="lab">Water</div>
+        <div class="val">${ctx.temp.toFixed(0)}°</div>
+        <div class="note">${tempNote(ctx.temp,ctx.isGL)}</div>
+      </div>
+      <div class="g ${ctx.fs.k==="blown"?"bad":ctx.fs.k==="normal"?"good":ctx.fs.k==="high"?"warn":""}">
+        <div class="lab">Flow</div>
+        <div class="val">${ctx.cfs>=1000?(ctx.cfs/1000).toFixed(1)+"k":ctx.cfs}</div>
+        <div class="note">${ctx.fs.label} · ${esc(w.unit.split(" ")[0])}</div>
+      </div>
+      <div class="g">
+        <div class="lab">Clarity</div>
+        <div class="val" style="font-size:15px">${ctx.clarity.vis}</div>
+        <div class="note">${ctx.clarity.label}</div>
+      </div>
+      <div class="g">
+        <div class="lab">Light</div>
+        <div class="val" style="font-size:15px">${fmtHr(sun.sunrise)}–${fmtHr(sun.sunset)}</div>
+        <div class="note">Sunrise to sunset</div>
+      </div>
+    </div>
+    <div class="access">
+      <div class="acc-top">
+        <span class="acc-call ${ctx.acc.tone}">${esc(ctx.acc.call)}</span>
+        <span class="acc-eyebrow">Wade or float</span>
+      </div>
+      <div class="acc-line">${esc(ctx.acc.line)}</div>
+      <div class="ladder">
+        <span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span>
+        <span class="mk" style="left:calc(${(ctx.acc.pos*100).toFixed(1)}% - 1.5px)"></span>
+      </div>
+      <div class="ladder-key">
+        <span>full river</span><span>most of it</span><span>${ctx.acc.canFloat?"boat":"edges"}</span><span>${ctx.acc.canFloat?"boat only":"unsafe"}</span>
+      </div>
+      <dl class="acc-rows">
+        <dt>Crossings</dt><dd>${esc(ctx.acc.crossings)}</dd>
+        <dt>Gear</dt><dd>${esc(ctx.acc.gear)}</dd>
+        <dt>Boat</dt><dd>${esc(ctx.acc.boat)}</dd>
+      </dl>
+      <div class="acc-flip">${accFlipTxt(ctx)}</div>
+    </div>
+    <div class="thermal">
+      <div class="tl"><span>${tmin}°</span><span>Trout comfort ${ctx.isGL?"— steelhead scale":""}</span><span>${tmax}°</span></div>
+      <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
+      <div class="cap">${esc(w.note)}</div>
+    </div>`;
+}
+
+function flyItem(f){
+  return `<div class="flyrow">
+    <span class="swatch" style="background:${esc(f.hex)}"></span>
+    <div class="flymain">
+      <div class="flyname">${esc(f.name)}</div>
+      <div class="flyspec">${esc(f.size)}</div>
+      ${f.note?`<div class="flynote">${esc(f.note)}</div>`:""}
+    </div>
+    <span class="qty">${esc(f.qty)}</span>
+  </div>`;
+}
+
+function refuges(ctx){
+  return WATERS
+    .filter(w=>w.sp==="trout" && w.id!==ctx.w.id && (w.type==="tailwater"||w.type==="limestone"))
+    .map(w=>({w, t:modelTemp(w,ctx.d), d:haversine(ctx.w.lat,ctx.w.lon,w.lat,w.lon)}))
+    .filter(o=>o.t<=63)
+    .sort((a,b)=>a.d-b.d).slice(0,3);
+}
+function gateCard(ctx){
+  if(ctx.isGL){
+    if(ctx.temp<=65) return "";
+    return `<div class="gate"><h2>Too warm for steelhead</h2>
+      <p>The water is modeled at <b>${ctx.temp.toFixed(0)} °F</b>. Above about 65 °F these fish cannot hold, and a hooked fish is unlikely to recover. Come back on the next cold rain.</p></div>`;
+  }
+  if(ctx.temp<65) return "";
+  const stop = ctx.temp>=68;
+  const refs=refuges(ctx);
+  return `<div class="gate">
+    <h2>${stop?"Stop — the water is too warm":"Marginal water temperature"}</h2>
+    <p>${ctx.w.name} is modeled at <b>${ctx.temp.toFixed(0)} °F</b> right now.
+    ${stop?"Above 68 °F released trout die hours later even when they swim away strong. Delayed mortality runs roughly 69 percent higher at 73 °F than below 66 °F. The right call is to fish somewhere colder."
+          :"Fish only at first light, keep them wet, and release fast. If it climbs past 68, stop."}</p>
+    ${refs.length?`<p style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Colder water nearby, modeled now</p>
+      ${refs.map(o=>`<div class="refuge">
+        <span class="rn">${esc(o.w.name)}<span>${esc(o.w.place)} · ${o.d} mi · ${esc(o.w.type)}</span></span>
+        <span class="rt">${o.t.toFixed(0)}°</span></div>`).join("")}`:""}
+    <p style="margin-top:11px">The plays below are still here for a dawn window or a cold tributary mouth — read them with that in mind.</p>
+  </div>`;
+}
+
+function renderPlays(res, ctx){
+  const el=$("#panel-plays");
+  el.innerHTML=`
+  ${gateCard(ctx)}
+  <div class="plays">
+    ${res.picked.map(p=>`
+    <article class="play ${p.rank===1?"top":""}">
+      <div class="p-head">
+        <span class="rank">${p.rank}</span>
+        <div class="p-title">
+          <h3>${esc(p.title)}</h3>
+          <div class="p-meta">
+            <span class="chip">${esc(p.technique)}</span>
+            ${p.chips.slice(0,2).map(c=>`<span class="chip ${c[1]||""}">${esc(c[0])}</span>`).join("")}
+            <span class="chip">${esc(p.windowTxt)}</span>
+          </div>
+        </div>
+        <div class="conf"><div class="n">${p.conf}</div><div class="l">Read</div></div>
+      </div>
+      <p class="why">${p.why}</p>
+      <div class="sec">
+        <div class="sec-lab">Where to stand</div>
+        <p class="why" style="padding:0">${esc(p.where)}</p>
+      </div>
+      <div class="sec">
+        <div class="sec-lab">How to fish it</div>
+        <ul class="steps">${p.steps.map(s=>`<li><span>${s}</span></li>`).join("")}</ul>
+      </div>
+      ${p.flyGroups.map(g=>`
+      <div class="sec">
+        <div class="sec-lab">${esc(g.lab)}</div>
+        ${g.items.map(flyItem).join("")}
+      </div>`).join("")}
+      <div class="sec">
+        <div class="sec-lab">Rig</div>
+        <dl class="specs">
+          ${Object.entries(p.rig).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
+        </dl>
+      </div>
+    </article>`).join("")}
+  </div>
+  ${renderRefine()}`;
+  wireRefine();
+}
+
+function renderRefine(){
+  const g=(lab,key,opts)=>`
+    <div class="rgroup">
+      <div class="rlab">${lab}</div>
+      <div class="rchips">
+        <button class="rchip auto" data-k="${key}" data-v="" aria-pressed="${state.ov[key]===null}">Auto</button>
+        ${opts.map(o=>`<button class="rchip" data-k="${key}" data-v="${o[0]}" aria-pressed="${state.ov[key]===o[0]}">${o[1]}</button>`).join("")}
+      </div>
+    </div>`;
+  return `<div class="refine">
+    <p>Everything above is already decided for you. Tap only if the water disagrees with the model — the boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
+    ${g("Flow","flow",[["low","Low"],["normal","Normal"],["pushy","Pushy"],["high","High"],["blown","Blown"]])}
+    ${g("Clarity","clarity",[["gin","Gin clear"],["clear","Clear"],["green","Green"],["stained","Stained"],["muddy","Muddy"]])}
+    ${g("Sky","sky",[["bright","Bluebird"],["partly","Partly cloudy"],["overcast","Overcast"]])}
+  </div>`;
+}
+function wireRefine(){
+  document.querySelectorAll(".rchip").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const k=b.dataset.k, v=b.dataset.v||null;
+      state.ov[k]= (state.ov[k]===v)?null:v;
+      draw();
+    });
+  });
+}
+
+/* --- shop list --------------------------------------------- */
+function renderShop(res, ctx){
+  const flyMap=new Map(), tackMap=new Map();
+  res.picked.forEach(p=>{
+    p.flyGroups.forEach(g=>g.items.forEach(f=>{
+      const k=f.name.toLowerCase().split(",")[0].trim();
+      if(!flyMap.has(k)) flyMap.set(k,{...f, forr:new Set()});
+      const cur=flyMap.get(k);
+      cur.forr.add(p.rank);
+      if(f.name.length>cur.name.length) cur.name=f.name;      // keep the more specific description
+      if(f.note&&!cur.note) cur.note=f.note;
+    }));
+    (p.tackle||[]).forEach(t=>{
+      if(!tackMap.has(t.key)) tackMap.set(t.key,{...t, forr:new Set()});
+      tackMap.get(t.key).forr.add(p.rank);
+    });
+  });
+  const flies=[...flyMap.values()];
+  const tack=[...tackMap.values()];
+  const group=(cat)=>tack.filter(t=>t.cat===cat);
+
+  const item=(name,spec,forr,note,key)=>`
+    <li class="sitem ${state.checked.has(key)?"on":""}" data-key="${esc(key)}">
+      <span class="box"></span>
+      <div class="sbody">
+        <div class="sname">${esc(name)}</div>
+        <div class="sspec">${esc(spec)}</div>
+        ${note?`<div class="sfor">${esc(note)}</div>`:""}
+        ${forr?`<div class="sfor">For play ${[...forr].sort().join(" and ")}</div>`:""}
+      </div>
+    </li>`;
+
+  $("#panel-shop").innerHTML=`
+    <div class="shop-intro">
+      <h2>Take a photo of this</h2>
+      <p>Everything the three plays need, in one list. Sizes and colours are specific on purpose — hand this to the shop and you are out the door in five minutes.
+      ${esc(ctx.w.name)}, ${ctx.d.toLocaleDateString(undefined,{month:"long",day:"numeric"})}, water ${ctx.temp.toFixed(0)} °F, ${ctx.fs.label.toLowerCase()} flow, ${ctx.clarity.label.toLowerCase()}.</p>
+    </div>
+
+    <div class="shopcard">
+      <h3>Flies — ${flies.length} patterns</h3>
+      <ul class="slist">
+        ${flies.map(f=>item(f.name, `${f.size} · ${f.qty} each`, f.forr, f.note, "f-"+f.name)).join("")}
+      </ul>
+    </div>
+
+    ${group("leader").length?`<div class="shopcard"><h3>Leaders</h3><ul class="slist">
+      ${group("leader").map(t=>item(t.name,t.spec,t.forr,"", t.key)).join("")}
+    </ul></div>`:""}
+
+    ${group("tippet").length?`<div class="shopcard"><h3>Tippet</h3><ul class="slist">
+      ${group("tippet").map(t=>item(t.name,t.spec,t.forr,"", t.key)).join("")}
+    </ul></div>`:""}
+
+    ${group("weight").length?`<div class="shopcard"><h3>Weight, terminal & sundries</h3><ul class="slist">
+      ${group("weight").map(t=>item(t.name,t.spec,t.forr,"", t.key)).join("")}
+    </ul></div>`:""}
+
+    <div class="hint">
+      <span>⚑</span>
+      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip on the Plays tab.</span>
+    </div>`;
+
+  document.querySelectorAll(".sitem").forEach(li=>{
+    li.addEventListener("click",()=>{
+      const k=li.dataset.key;
+      if(state.checked.has(k)) state.checked.delete(k); else state.checked.add(k);
+      li.classList.toggle("on");
+    });
+  });
+}
+
+/* --- hatch tab ---------------------------------------------- */
+function renderHatch(res, ctx){
+  const now=res.ah.filter(o=>o.i>0.28);
+  const soon=HATCHES.filter(hx=>{
+    if(ctx.w.sp!=="trout") return false;
+    if(hx.waters!=="all"&&!hx.waters.includes(ctx.w.id)) return false;
+    const s=hx.win[0]+ctx.w.shift;
+    return s>ctx.day && s<=ctx.day+28;
+  }).sort((a,b)=>a.win[0]-b.win[0]);
+
+  const row=(hx,i,dim)=>`
+    <div class="hrow">
+      <span class="swatch" style="background:${esc(hx.hex)};margin-top:0"></span>
+      <span class="hname">${esc(hx.name)} <span class="hlat">${esc(hx.latin)}</span></span>
+      <span class="hspec">${sizeStr(hx.size)}</span>
+      <span class="hmeter ${dim?"dim":""}"><i style="width:${Math.round(clamp(i,0,1)*100)}%"></i></span>
+    </div>`;
+
+  const runsBlock = ctx.isGL && res.runs.length ? `
+    <div class="hbar">
+      <div class="sec-lab" style="margin-bottom:8px">In the river now</div>
+      ${res.runs.map(o=>`
+        <div class="hrow">
+          <span class="hname">${esc(o.r.name)}</span>
+          <span class="hmeter"><i style="width:${Math.round(o.i*100)}%"></i></span>
+        </div>`).join("")}
+    </div>` : "";
+
+  $("#panel-hatch").innerHTML=`
+    <div class="shop-intro">
+      <h2>What is on the water</h2>
+      <p>Windows are shifted ${ctx.w.shift===0?"to the Catskill baseline":`${Math.abs(ctx.w.shift)} days ${ctx.w.shift>0?"later":"earlier"} than the Catskill baseline`} for ${esc(ctx.w.name)}, and damped when the modeled water temperature sits outside each insect's trigger range.</p>
+    </div>
+    ${runsBlock}
+    ${now.length?`<div class="hbar">
+      <div class="sec-lab" style="margin-bottom:8px">On now</div>
+      ${now.map(o=>row(o.hx,o.i,false)).join("")}
+    </div>`:`<div class="hbar"><p style="margin:0;font-size:13.5px;color:var(--ink2)">Nothing significant is emerging on this date. Fish subsurface — the plays above are built for exactly that.</p></div>`}
+    ${soon.length?`<div class="hbar">
+      <div class="sec-lab" style="margin-bottom:8px">Starting within four weeks</div>
+      ${soon.map(hx=>`<div class="hrow">
+        <span class="swatch" style="background:${esc(hx.hex)};margin-top:0"></span>
+        <span class="hname">${esc(hx.name)} <span class="hlat">${esc(hx.latin)}</span></span>
+        <span class="hspec">${dayLabel(hx.win[0]+ctx.w.shift)}</span>
+      </div>`).join("")}
+    </div>`:""}`;
+}
+function dayLabel(dn){
+  const d=new Date(new Date().getFullYear(),0,1); d.setDate(dn);
+  return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+
+/* --- water tab ---------------------------------------------- */
+function haversine(a,b,c,d){
+  const R=3959, r=Math.PI/180;
+  const dLat=(c-a)*r, dLon=(d-b)*r;
+  const h=Math.sin(dLat/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLon/2)**2;
+  return Math.round(2*R*Math.asin(Math.sqrt(h)));
+}
+function renderWater(ctx){
+  const g=state.geo;
+  const list=WATERS.map(w=>({w, d:g?haversine(g.lat,g.lon,w.lat,w.lon):null}))
+    .sort((a,b)=> g ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
+  $("#panel-water").innerHTML=`
+    <div class="wcard">
+      <h3>How this water was chosen</h3>
+      <p>${g?`Your location put you <b>${haversine(g.lat,g.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
+            :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Tap the target icon in the header to use your position, or pick from the list.`}</p>
+      <p><b>Gauge ${esc(ctx.w.gauge)}</b> · ideal ${ctx.w.flow.ideal[0]}–${ctx.w.flow.ideal[1]} ${esc(ctx.w.unit)} · blown above ${ctx.w.flow.blown}.
+      ${ctx.flowSource==="live"?"Reading live.":"No live reading here — flow and temperature are modeled from the date and this water's seasonal character."}</p>
+      <p style="color:var(--ink3)">${esc(ctx.w.note)}</p>
+    </div>
+    <div class="wcard">
+      <h3>Access ladder — ${esc(ctx.w.name)}</h3>
+      <p>${esc(FLOAT_TXT[ctx.w.float])} Today's reading is <b>${ctx.cfs} ${esc(ctx.w.unit.split(" ")[0])}</b>${ctx.flowSource==="live"?" (live)":" (modeled)"}.</p>
+      <div class="wlist">
+        ${[["Up to "+ctx.w.wade.full,"Full river wadable"],
+           ["Up to "+ctx.w.wade.good,"Most of it wadable — choose crossings"],
+           ["Up to "+ctx.w.wade.limited, ctx.acc.canFloat?"Boat is the better tool":"Bank and inside-bend water only"],
+           ["Up to "+ctx.w.wade.max, ctx.acc.canFloat?"Boat only":"Top of safe wading"],
+           ["Above "+ctx.w.wade.max,"Blown — do not wade"]]
+          .map(([a,b])=>`<div class="refuge"><span class="rn">${esc(b)}</span><span class="wd">${esc(a)}</span></div>`).join("")}
+      </div>
+    </div>
+    <div class="wcard">
+      <h3>${g?"Nearest waters":"All waters"}</h3>
+      <div class="wlist">
+        ${list.map(({w,d})=>`
+          <button class="wbtn" data-w="${w.id}" aria-current="${w.id===ctx.w.id}">
+            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
+            ${d!=null?`<span class="wd">${d} mi</span>`:""}
+          </button>`).join("")}
+      </div>
+    </div>`;
+  document.querySelectorAll(".wbtn").forEach(b=>b.addEventListener("click",async()=>{
+    state.waterId=b.dataset.w; state.live=null; draw();
+    const w=water(); const live=await tryLive(w.gauge);
+    if(live){ state.live=live; draw(); }
+  }));
+}
+
+/* --- masthead current ribbon -------------------------------- */
+function seam(){
+  const c=document.getElementById("seam"); if(!c) return;
+  const ctx2=c.getContext("2d"); if(!ctx2) return;
+  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let t=0, raf=null;
+  function size(){
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    c.width=c.clientWidth*dpr; c.height=86*dpr; ctx2.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function paint(){
+    const W=c.clientWidth, H=86;
+    const cs=getComputedStyle(document.documentElement);
+    const ink=cs.getPropertyValue("--line").trim()||"#ccc";
+    const acc=cs.getPropertyValue("--accent").trim()||"#c74e19";
+    ctx2.clearRect(0,0,W,H);
+    for(let i=0;i<11;i++){
+      const y=10+i*7.2;
+      const amp=3+ (i%4)*2.1, speed=.5+ (i%5)*.13, ph=i*1.7;
+      ctx2.beginPath();
+      for(let x=0;x<=W;x+=6){
+        const yy=y+Math.sin(x/64 + t*speed + ph)*amp + Math.sin(x/23 - t*speed*.6)*1.3;
+        x===0?ctx2.moveTo(x,yy):ctx2.lineTo(x,yy);
+      }
+      ctx2.strokeStyle = i===6 ? acc : ink;
+      ctx2.globalAlpha = i===6 ? .5 : .34;
+      ctx2.lineWidth = i===6 ? 1.4 : 1;
+      ctx2.stroke();
+    }
+    ctx2.globalAlpha=1;
+  }
+  function loop(){ t+=0.011; paint(); raf=requestAnimationFrame(loop); }
+  size(); paint();
+  if(!reduce) loop();
+  window.addEventListener("resize",()=>{ size(); paint(); });
+}
+
+/* --- tabs / theme / location -------------------------------- */
+function wireTabs(){
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.addEventListener("click",()=>{
+      state.tab=t.id.replace("tab-","");
+      document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x===t));
+      document.querySelectorAll(".panel").forEach(p=>{ p.hidden = p.id!=="panel-"+state.tab; });
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+}
+function wireChrome(){
+  $("#themeBtn").addEventListener("click",()=>{
+    const r=document.documentElement;
+    const cur=r.getAttribute("data-theme");
+    const prefersDark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = cur ? (cur==="dark"?"light":"dark") : (prefersDark?"light":"dark");
+    r.setAttribute("data-theme",next);
+  });
+  $("#locBtn").addEventListener("click",()=>locate(true));
+}
+function locate(explicit){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    state.geo={lat:pos.coords.latitude, lon:pos.coords.longitude};
+    let best=null,bd=1e9;
+    for(const w of WATERS){
+      const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
+      if(d<bd){bd=d;best=w;}
+    }
+    if(best){ state.waterId=best.id; state.live=null; draw();
+      const live=await tryLive(best.gauge); if(live){ state.live=live; draw(); } }
+    else draw();
+  },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
+}
+
+let tick=null;
+function draw(){
+  state.when=new Date();
+  const ctx=buildContext();
+  const res=recommend(ctx);
+  renderReading(ctx);
+  renderPlays(res,ctx);
+  renderShop(res,ctx);
+  renderHatch(res,ctx);
+  renderWater(ctx);
+}
+
+(function init(){
+  seam(); wireTabs(); wireChrome();
+  draw();
+  locate(false);
+  tryLive(water().gauge).then(l=>{ if(l){ state.live=l; draw(); } });
+  tick=setInterval(draw, 10*60*1000);   // re-read the clock every ten minutes
+})();
+</script>
+
+</body></html>
