@@ -111,7 +111,7 @@ async function walk(browser, scenario){
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
 
-  await page.click("#tab-water");
+  await page.click("#tab-where");
   seen.mapRendered = await page.waitForSelector(".leaflet-container",{timeout:5000}).then(()=>true,()=>false);
   seen.mapCard = (await page.$eval("#mapCard", n=>n.textContent)).replace(/\s+/g," ").trim();
 
@@ -145,6 +145,12 @@ async function walk(browser, scenario){
   seen.afterBook = await page.$eval("#reading .rd-water h2", n=>n.textContent.trim());
   seen.spotCleared = await page.evaluate(()=>state.spot===null);
 
+  seen.tabOrder = await page.$$eval(".tab", ts=>ts.map(t=>t.textContent.trim()));
+  await page.click("#tab-onriver");
+  seen.onRiverChips = await page.$$eval("#panel-onriver .rchip", n=>n.length);
+  seen.onRiverGroups = await page.$$eval("#panel-onriver .rlab", ns=>ns.map(n=>n.textContent.trim().split(" — ")[0]));
+  seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
+
   seen.errors = errors; seen.violations = violations;
   await page.close();
   return seen;
@@ -166,6 +172,11 @@ const SCENARIOS = {
     ok(!s.uncalibrated, "bands from the water's own gauge are not flagged uncalibrated");
     ok(s.plays>0 && s.hatch>0 && s.shop>0, "plays, hatch and shop list all render for a spot",
        {plays:s.plays, hatch:s.hatch, shop:s.shop});
+    eq(s.tabOrder, ["Where","Plays","Shop list","Hatch","On river"],
+       "Where leads the tabs and On river closes them");
+    ok(s.onRiverChips>0, "the condition chips live on the On river tab", s.onRiverChips);
+    eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with it");
+    ok(!s.strayControls, "nothing is left under the dashboard");
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241
