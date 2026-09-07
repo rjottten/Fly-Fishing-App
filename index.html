@@ -156,12 +156,15 @@ button{font:inherit;color:inherit;cursor:pointer}
   position:sticky;top:0;z-index:20;display:flex;gap:4px;margin:16px -16px 0;padding:8px 16px;
   background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line-soft);
+  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
 }
+.tabs::-webkit-scrollbar{display:none}
 .tab{
-  flex:1;background:transparent;border:1px solid transparent;border-radius:9px;padding:7px 4px;
+  flex:1 0 auto;background:transparent;border:1px solid transparent;border-radius:9px;padding:7px 9px;
   font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--ink3);white-space:nowrap;
 }
-@media (max-width:430px){ .tab{font-size:11.5px;padding:7px 2px;letter-spacing:0} }
+@media (max-width:480px){ .tab{font-size:11.5px;padding:7px 6px;letter-spacing:0} }
+@media (max-width:400px){ .tab{font-size:11px;padding:7px 5px} }
 .tab[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:var(--shadow)}
 .panel[hidden]{display:none}
 
@@ -286,6 +289,115 @@ button{font:inherit;color:inherit;cursor:pointer}
 }
 .rchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .rchip.auto[aria-pressed="true"]{background:var(--verd);border-color:var(--verd);color:#fff}
+
+/* ---------- checked-on-the-river band, on Fish ---------- */
+.checked{padding:12px 16px 14px;border-top:1px solid var(--line-soft);background:var(--sunk)}
+.ck-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ck-lab{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.ck-n{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.ck-lead{font-size:12.5px;color:var(--ink2);line-height:1.5;margin-top:7px}
+.ck-lead b{color:var(--ink);font-weight:600}
+.ck-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.ck-pill{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.02em;
+  border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--ink3);white-space:nowrap;
+}
+.ck-pill b{font-weight:600;color:var(--ink2);margin-left:5px}
+.ck-pill b.x{color:var(--accent-ink)}
+.ck-pill.good{border-color:var(--verd);background:var(--verd-soft)} .ck-pill.good b{color:var(--verd)}
+.ck-pill.warn{border-color:var(--sulphur);background:var(--sulphur-soft)}
+.ck-pill.bad{border-color:var(--accent);background:var(--accent-soft)}
+.ck-line{font-size:11.5px;color:var(--ink3);line-height:1.5;margin-top:8px}
+.ck-line b{color:var(--ink2);font-weight:600}
+.srcpill.you{border-color:var(--copper);color:var(--copper)}
+
+/* ---------- the river log, on On river ---------- */
+.playlede{
+  margin:16px 0 0;font-size:12.5px;color:var(--ink3);line-height:1.55;
+  border-left:2px solid var(--line);padding-left:11px;
+}
+.playlede b{color:var(--ink2);font-weight:600}
+.logcard{
+  margin-top:12px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);padding:13px 16px 15px;box-shadow:var(--shadow);
+}
+.logcard > p{margin:0 0 12px;font-size:12.5px;color:var(--ink3);line-height:1.5}
+.logcard > p b{color:var(--ink2);font-weight:600}
+.lgroup{margin-bottom:12px}
+.lgroup:last-of-type{margin-bottom:0}
+.linput{
+  display:block;width:100%;font:inherit;font-size:14px;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+}
+.linput:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.ltext{resize:vertical;line-height:1.5;font-size:13.5px}
+.ltext.mono{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.lnums{display:flex;gap:8px;flex-wrap:wrap}
+.lnums label{
+  flex:1 1 84px;min-width:0;display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);
+}
+.lnums input{
+  font:inherit;font-size:14px;font-family:"IBM Plex Mono",monospace;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;
+}
+.lnums input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.lfield{display:flex;align-items:center;gap:11px;margin-top:12px;flex-wrap:wrap}
+.lfield label{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);flex:none}
+.lfield input{
+  flex:0 1 130px;font:inherit;font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+}
+.lfield input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.lnote{margin:10px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.5}
+.rchip.lchip.wide{text-align:left}
+.rchip.lchip.ok[aria-pressed="true"]{background:var(--verd);border-color:var(--verd);color:#fff}
+.rchip.lchip.no[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.lactions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:13px}
+.lmsg{font-size:12px;color:var(--verd);line-height:1.4;flex:1 1 140px;min-width:0}
+
+/* the confirm rows */
+.ckrows{display:flex;flex-direction:column}
+.ckrow{
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  padding:9px 0;border-bottom:1px solid var(--line-soft);
+}
+.ckrow:first-child{padding-top:0}
+.ckrow:last-child{border-bottom:0}
+.ckmain{flex:1 1 150px;min-width:0}
+.ckname{font-size:13.5px;font-weight:600;line-height:1.25}
+.ckval{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink3);margin-top:2px}
+.ckbtns{display:flex;gap:5px;flex:none}
+.ckbtns .rchip{padding:4px 12px;font-size:11.5px}
+
+/* what has worked here */
+.lworks{background:var(--raised);border-radius:11px;padding:11px 13px;margin-bottom:13px}
+.lwrow{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line-soft)}
+.lwrow:last-child{border-bottom:0}
+.lwn{flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.3}
+.lwm{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--ink2);flex:none;font-variant-numeric:tabular-nums}
+.lwm.good{color:var(--verd)} .lwm.warn{color:var(--sulphur)}
+.lwm span{font-size:10.5px;font-weight:400;color:var(--ink3);margin-left:3px}
+
+/* the entries */
+.lentries{display:flex;flex-direction:column;gap:10px}
+.lentry{border:1px solid var(--line-soft);border-radius:11px;padding:11px 12px;position:relative}
+.le-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.le-who{font-size:13.5px;font-weight:600;line-height:1.2}
+.le-when{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink3);flex:none}
+.le-cond{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink3);margin-top:4px}
+.le-how{font-size:13px;color:var(--ink);line-height:1.45;margin-top:6px}
+.le-note{font-size:12.5px;color:var(--ink2);line-height:1.5;margin-top:6px}
+.le-note b{
+  font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);
+  font-weight:600;margin-right:6px;
+}
+.le-check{font-size:11px;color:var(--ink3);margin-top:7px;line-height:1.4}
+.lx{
+  background:transparent;border:0;padding:2px 0;margin-top:8px;
+  font-size:11px;color:var(--ink3);text-decoration:underline;text-underline-offset:2px;
+}
+.lx:hover{color:var(--accent-ink)}
 
 .foot{margin-top:22px;font-size:11.5px;color:var(--ink3);line-height:1.6;text-align:center;padding:0 8px}
 .foot a{color:var(--ink2)}
@@ -1034,17 +1146,20 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </header>
 
 <div class="wrap">
-  <section class="reading" id="reading"></section>
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
+    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="true">Fish</button>
     <button class="tab" role="tab" id="tab-where" aria-controls="panel-where" aria-selected="false">Where</button>
-    <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
+    <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="false">Plays</button>
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop list</button>
     <button class="tab" role="tab" id="tab-hatch" aria-controls="panel-hatch" aria-selected="false">Hatch</button>
     <button class="tab" role="tab" id="tab-onriver" aria-controls="panel-onriver" aria-selected="false">On river</button>
   </nav>
 
+  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish">
+    <section class="reading" id="reading"></section>
+  </div>
   <div class="panel" id="panel-where" role="tabpanel" aria-labelledby="tab-where" hidden></div>
-  <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays"></div>
+  <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays" hidden></div>
   <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
   <div class="panel" id="panel-hatch" role="tabpanel" aria-labelledby="tab-hatch" hidden></div>
   <div class="panel" id="panel-onriver" role="tabpanel" aria-labelledby="tab-onriver" hidden></div>
@@ -1378,7 +1493,10 @@ const state = {
   spot:null,                                   // water-shaped profile synthesized for that point
   access:{status:"idle", list:[], radius:8000, chosen:null},
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
-  tab:"plays", checked:new Set(),
+  tab:"fish", checked:new Set(),
+  log:[],                                      // river log entries, this device
+  who:"",                                      // who is filing them
+  draft:{check:{}, crowd:null, rating:null, play:null},   // the report being written
 };
 
 /* --- barometer ----------------------------------------------
@@ -1578,8 +1696,13 @@ function buildContext(){
   const day=doy(d);
   const live=state.live && state.live.gauge===w.gauge ? state.live : null;
 
-  const temp = live && live.tempF!=null ? live.tempF : modelTemp(w,d);
-  const tempSource = live && live.tempF!=null ? "live" : "model";
+  /* Somebody's own thermometer, taken here in the last six hours,
+     outranks both the gauge and the curve. */
+  const measured = recentMeasured(w, d.getTime());
+  const temp = measured ? measured.tempF
+             : live && live.tempF!=null ? live.tempF : modelTemp(w,d);
+  const tempSource = measured ? "logged"
+             : live && live.tempF!=null ? "live" : "model";
 
   let flowIx, cfs=null, flowSource="model";
   if(live && live.cfs!=null){ cfs=live.cfs; flowIx=cfs/((w.flow.ideal[0]+w.flow.ideal[1])/2); flowSource="live"; }
@@ -1593,7 +1716,7 @@ function buildContext(){
   const lw = lightWindow(h,sun);
   const baro = resolveBaro(w);
 
-  const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live, baro,
+  const base={w, d, day, h, sun, temp, tempSource, measured, cfs, flowIx, fs, flowSource, clarity, sky, lw, live, baro,
           isGL: w.sp==="steelhead"};
   base.acc=access(base);
   return base;
@@ -1678,6 +1801,193 @@ function activeRuns(ctx){
       return {r, i:clamp(0.3+0.7*clamp(i,0,1), 0, 1) * (d>=s&&d<=e?1:0)};
     })
     .filter(o=>o.i>0.05).sort((a,b)=>b.i-a.i);
+}
+
+/* ============================================================
+   2b. THE RIVER LOG
+
+   Every reading Riffle shows is a model until somebody stands
+   in the water and says otherwise. The log is that correction:
+   what the angler measured, how the day actually fished, what
+   they learned, and who else was on the river. Entries are kept
+   per location and pooled by hand — the app has no server, so
+   sharing is an export you hand to the rest of the club.
+   ============================================================ */
+
+const LOG_KEY = "riffle.log.v1";
+const WHO_KEY = "riffle.who.v1";
+const LOG_CAP = 500;                  // entries kept on this device
+const LOG_SEASON_WIN = 28;            // days either side that still count as "now"
+const LOG_MAX_NUDGE  = 0.12;          // hard ceiling on what the log may move a play
+
+const CHECK_FIELDS = [
+  {k:"temp",    lab:"Water temp"},
+  {k:"flow",    lab:"Flow"},
+  {k:"clarity", lab:"Clarity"},
+  {k:"baro",    lab:"Barometer"},
+  {k:"call",    lab:"Wade call"},
+];
+const CROWD = [
+  {k:"none",  lab:"Had it to myself"},
+  {k:"few",   lab:"One or two others"},
+  {k:"some",  lab:"Steady traffic"},
+  {k:"crowd", lab:"Combat water"},
+];
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+
+/* A location is a place on the river, not a pin to four decimals:
+   round to ~110 m so two anglers at the same pool land in the
+   same log. Waters from the book key on their own id. */
+function logKey(w){
+  return w.spot ? "@"+w.lat.toFixed(3)+","+w.lon.toFixed(3) : "w:"+w.id;
+}
+function isEntry(e){
+  return e && typeof e==="object" && typeof e.id==="string"
+      && typeof e.at==="string" && e.loc && typeof e.loc.key==="string";
+}
+
+/* An entry can arrive from somebody else's browser by way of a
+   paste box, so nothing in it is trusted to be the right type or
+   a sane length. Everything is rendered through esc(); this is
+   the other half — numbers really are numbers, strings are
+   bounded, and an unknown field is dropped rather than kept. */
+const logStr=(v,max)=>typeof v==="string" ? v.slice(0,max) : "";
+const logNum=(v,lo,hi)=>{
+  const f=typeof v==="number" ? v : parseFloat(v);
+  return isFinite(f) ? clamp(f, lo, hi) : null;
+};
+const logMark=(v)=>v==="ok"||v==="off" ? v : null;
+function sanitizeEntry(e){
+  if(!isEntry(e)) return null;
+  const s=e.snap||{}, f=e.fished||{}, o=e.others||{}, c=e.check||{}, m=e.measured||{};
+  const check={};
+  CHECK_FIELDS.forEach(cf=>{ const v=logMark(c[cf.k]); if(v) check[cf.k]=v; });
+  return {
+    id:logStr(e.id,64), at:logStr(e.at,40), by:logStr(e.by,40),
+    loc:{key:logStr(e.loc.key,64), name:logStr(e.loc.name,80), place:logStr(e.loc.place,80),
+         lat:logNum(e.loc.lat,-90,90), lon:logNum(e.loc.lon,-180,180)},
+    snap:{temp:logNum(s.temp,-20,120), tempSrc:logStr(s.tempSrc,10), cfs:logNum(s.cfs,0,1e6),
+          flow:logStr(s.flow,12), clarity:logStr(s.clarity,12), baro:logStr(s.baro,12), sky:logStr(s.sky,12),
+          day:logNum(s.day,0,366), hour:logNum(s.hour,0,24)},
+    check, measured:{tempF:logNum(m.tempF,20,100)},
+    fished:{play:logStr(f.play,24), label:logStr(f.label,80), fly:logStr(f.fly,80),
+            hours:logNum(f.hours,0,24), moved:logNum(f.moved,0,200), landed:logNum(f.landed,0,200),
+            rating:logNum(f.rating,1,5)},
+    learned:logStr(e.learned,700),
+    others:{level:CROWD.some(x=>x.k===o.level) ? o.level : null, note:logStr(o.note,500)},
+  };
+}
+function loadLog(){
+  try{
+    const j=JSON.parse(lsGet(LOG_KEY)||"[]");
+    return Array.isArray(j) ? j.map(sanitizeEntry).filter(Boolean) : [];
+  }catch(e){ return []; }
+}
+function saveLog(){
+  const trimmed = state.log.slice(-LOG_CAP);
+  state.log = trimmed;
+  return lsSet(LOG_KEY, JSON.stringify(trimmed));
+}
+/* Entries for one location, newest first. */
+function logFor(w){
+  const k=logKey(w);
+  return state.log.filter(e=>e.loc.key===k).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+}
+function mergeEntries(rows){
+  const have=new Set(state.log.map(e=>e.id));
+  let added=0;
+  for(const raw of rows){
+    const e=sanitizeEntry(raw);
+    if(!e || !e.id || have.has(e.id)) continue;
+    have.add(e.id); state.log.push(e); added++;
+  }
+  if(added){ state.log.sort((a,b)=>String(a.at).localeCompare(String(b.at))); saveLog(); }
+  return added;
+}
+const daysAgo=(iso, now)=>(now - new Date(iso).getTime())/86400000;
+const hoursAgo=(iso, now)=>(now - new Date(iso).getTime())/3600000;
+function agoTxt(iso){
+  const h=hoursAgo(iso, Date.now());
+  if(!isFinite(h)) return "";
+  if(h<1) return "just now";
+  if(h<24) return `${Math.round(h)} h ago`;
+  const d=h/24;
+  if(d<14) return `${Math.round(d)} d ago`;
+  return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+}
+
+/* --- the thermometer beats the model ------------------------
+   A reading somebody took here in the last six hours is better
+   than a curve, and better than a gauge sitting miles downstream. */
+function recentMeasured(w, now){
+  const rows=logFor(w);
+  for(const e of rows){
+    const t=e.measured && e.measured.tempF;
+    if(typeof t!=="number" || !isFinite(t)) continue;
+    const h=hoursAgo(e.at, now);
+    if(h>=0 && h<=6) return {tempF:t, at:e.at, by:e.by||"", hours:h};
+  }
+  return null;
+}
+
+/* --- how much a past day speaks to this one ----------------- */
+function logRelevance(e, ctx){
+  const s=e.snap||{};
+  if(s.day==null) return 0;
+  const raw=Math.abs(s.day-ctx.day);
+  const dd=Math.min(raw, 365-raw);
+  if(dd>LOG_SEASON_WIN) return 0;
+  let wgt = 1 - dd/LOG_SEASON_WIN;                 // same week of the season counts most
+  const dt = Math.abs((s.temp!=null?s.temp:ctx.temp) - ctx.temp);
+  wgt *= dt<=4 ? 1 : dt<=8 ? 0.6 : dt<=14 ? 0.3 : 0.12;
+  if(s.flow && ctx.fs && s.flow!==ctx.fs.k) wgt *= 0.7;
+  return wgt;
+}
+
+/* --- what the log says about the plays here -----------------
+   Ratings are shrunk toward neutral until reports pile up, and
+   the whole thing is capped, so one bad afternoon never buries
+   a play the model likes. */
+function logSignal(ctx){
+  const rows=logFor(ctx.w);
+  const acc=new Map();
+  let used=0;
+  for(const e of rows){
+    const f=e.fished;
+    if(!f || !f.play || f.play==="other" || f.rating==null) continue;
+    const wgt=logRelevance(e, ctx);
+    if(wgt<=0.05) continue;
+    used++;
+    const cur=acc.get(f.play) || {w:0, s:0, n:0};
+    cur.w+=wgt; cur.s+=wgt*((f.rating-3)/2); cur.n++;
+    acc.set(f.play, cur);
+  }
+  const per=new Map();
+  acc.forEach((v,k)=>{
+    const confidence = v.w/(v.w+1.5);
+    const mean = v.s/Math.max(v.w, 1e-6);
+    const nudge = clamp(mean, -1, 1)*confidence*LOG_MAX_NUDGE;
+    per.set(k, {mult:1+nudge, nudge, n:v.n, mean});
+  });
+  return {per, used, total:rows.length};
+}
+
+/* --- how the last reports rated the Fish read --------------- */
+function logChecks(ctx, days){
+  const win = days || 30;
+  const now = Date.now();
+  const rows = logFor(ctx.w).filter(e=>{
+    const d=daysAgo(e.at, now);
+    return isFinite(d) && d>=0 && d<=win && e.check;
+  });
+  const tally = CHECK_FIELDS.map(f=>{
+    let ok=0, off=0;
+    rows.forEach(e=>{ const v=e.check[f.k]; if(v==="ok") ok++; else if(v==="off") off++; });
+    return {k:f.k, lab:f.lab, ok, off};
+  });
+  return {rows, tally, n:rows.length, days:win};
 }
 
 /* ============================================================
@@ -2335,6 +2645,14 @@ function recommend(ctx){
   // barometer: a differential nudge, never more than +/-8%
   const bw=(ctx.baro&&ctx.baro.w)||{};
   out.forEach(p=>{ p.score *= (bw[baroFam(p.technique)] || 1); });
+  // the river log: what has actually worked here, capped at +/-12%
+  const sig=logSignal(ctx);
+  out.forEach(p=>{
+    const l=sig.per.get(p.key);
+    if(!l) return;
+    p.score *= l.mult;
+    p.log = l;
+  });
   out.sort((a,b)=>b.score-a.score);
   // keep the top three, preferring distinct techniques
   const picked=[], seen=new Set();
@@ -2349,7 +2667,7 @@ function recommend(ctx){
   }
   const max=picked.length?picked[0].score:1;
   picked.forEach((p,i)=>{ p.rank=i+1; p.conf=Math.round(clamp(48+ (p.score/Math.max(max,1))*47, 30, 96)); });
-  return {picked, ah, runs};
+  return {picked, ah, runs, sig};
 }
 
 /* ============================================================
@@ -2743,10 +3061,42 @@ function accFlipTxt(ctx){
   return `${src}Wading thresholds here: <b>${a.wd.full}</b> full river · <b>${a.wd.good}</b> most of it · <b>${a.wd.limited}</b> ${a.canFloat?"boat wins":"edges only"} · <b>${a.wd.max}</b> ${u} is the ceiling. Today is <b>${a.flip.gap} ${u}</b> below the next step up.`;
 }
 
+/* Who has stood here and said whether these numbers were right. */
+function checkBand(ctx){
+  const c=logChecks(ctx, 30);
+  const m=ctx.measured;
+  const lead = m ? `<div class="ck-lead">Water reads <b>${m.tempF.toFixed(0)} °F</b> by thermometer,
+      ${esc(agoTxt(m.at))}${m.by?` — ${esc(m.by)}`:""}. The number above is that reading, not the model.</div>` : "";
+  if(!c.n){
+    return `<div class="checked">
+      <div class="ck-top"><span class="ck-lab">Checked on the river</span><span class="ck-n">no reports yet</span></div>
+      ${lead}
+      <div class="ck-line">Nobody has confirmed this read here. On the <b>On river</b> tab, say which of these
+        numbers matched what you actually found — the next angler standing here sees it.</div>
+    </div>`;
+  }
+  const pills=c.tally.map(t=>{
+    const tone = (t.ok+t.off)===0 ? "" : t.off>t.ok ? "bad" : t.off ? "warn" : "good";
+    return `<span class="ck-pill ${tone}">${esc(t.lab)}<b>${t.ok}&#10003;</b>${t.off?`<b class="x">${t.off}&#10007;</b>`:""}</span>`;
+  }).join("");
+  const worst=c.tally.slice().sort((a,b)=>(b.off-b.ok)-(a.off-a.ok))[0];
+  const line = worst && worst.off>worst.ok
+    ? `${esc(worst.lab)} is the number anglers here most often call wrong — read it as the softest part of this panel.`
+    : `Everything checked here has broadly matched what anglers found.`;
+  return `<div class="checked">
+    <div class="ck-top"><span class="ck-lab">Checked on the river</span>
+      <span class="ck-n">${c.n} report${c.n===1?"":"s"} · 30 days</span></div>
+    ${lead}
+    <div class="ck-pills">${pills}</div>
+    <div class="ck-line">${line}</div>
+  </div>`;
+}
+
 function renderReading(ctx){
   const w=ctx.w;
   const liveFlow = ctx.flowSource==="live", liveTemp = ctx.tempSource==="live";
   const anyLive = liveFlow||liveTemp;
+  const logged = ctx.tempSource==="logged";
   const tmin=ctx.isGL?30:32, tmax=ctx.isGL?70:76;
   const pos=clamp((ctx.temp-tmin)/(tmax-tmin),0,1)*100;
   const sun=ctx.sun;
@@ -2760,6 +3110,7 @@ function renderReading(ctx){
           <span>${esc(w.place)}</span><span class="dot"></span>
           <span>${dateStr}, ${timeStr}</span><span class="dot"></span>
           <span>${ctx.lw.label}</span>
+          ${logged?`<span class="srcpill you">Angler read</span>`:""}
           <span class="srcpill ${anyLive?"live":""}">${anyLive?"Live gauge":"Modeled"}</span>
         </div>
       </div>
@@ -2811,7 +3162,8 @@ function renderReading(ctx){
       <div class="tl"><span>${tmin}°</span><span>Trout comfort ${ctx.isGL?"— steelhead scale":""}</span><span>${tmax}°</span></div>
       <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
       <div class="cap">${esc(w.note)}</div>
-    </div>`;
+    </div>
+    ${checkBand(ctx)}`;
 }
 
 function baroTrace(hist){
@@ -2890,10 +3242,31 @@ function gateCard(ctx){
   </div>`;
 }
 
+function logChip(p){
+  if(!p.log) return "";
+  const up = p.log.nudge>=0.008, down = p.log.nudge<=-0.008;
+  if(!up && !down) return "";
+  const n=p.log.n;
+  return `<span class="chip ${up?"grn":"sul"}" title="From the river log for this spot">`
+       + `log ${up?"↑":"↓"} ${n} report${n===1?"":"s"}</span>`;
+}
+function logLede(res, ctx){
+  const sig=res.sig||{per:new Map(), used:0, total:0};
+  if(!sig.used){
+    if(!sig.total) return `<p class="playlede">Nothing has been logged at ${esc(ctx.w.name)} yet. Fish it, then file a report on the
+      <b>On river</b> tab — the ranking below starts learning this place from the first one.</p>`;
+    return `<p class="playlede">${sig.total} report${sig.total===1?"":"s"} on file here, none from this part of the season.
+      The ranking below is the model's alone.</p>`;
+  }
+  return `<p class="playlede">${sig.used} report${sig.used===1?"":"s"} from this spot at this time of year are moving the ranking below,
+    by no more than a tenth either way. Add yours on the <b>On river</b> tab.</p>`;
+}
+
 function renderPlays(res, ctx){
   const el=$("#panel-plays");
   el.innerHTML=`
   ${gateCard(ctx)}
+  ${logLede(res, ctx)}
   <div class="plays">
     ${res.picked.map(p=>`
     <article class="play ${p.rank===1?"top":""}">
@@ -2905,6 +3278,7 @@ function renderPlays(res, ctx){
             <span class="chip">${esc(p.technique)}</span>
             ${p.chips.slice(0,2).map(c=>`<span class="chip ${c[1]||""}">${esc(c[0])}</span>`).join("")}
             <span class="chip">${esc(p.windowTxt)}</span>
+            ${logChip(p)}
           </div>
         </div>
         <div class="conf"><div class="n">${p.conf}</div><div class="l">Read</div></div>
@@ -2933,9 +3307,126 @@ function renderPlays(res, ctx){
   </div>`;
 }
 
-function renderControls(ctx){
-  $("#panel-onriver").innerHTML=renderRefine(ctx);
+/* --- the On river tab ---------------------------------------
+   Two halves. The top one is what you are looking at right now
+   and feeds the plays immediately. The bottom one is the log:
+   whether the Fish tab told the truth, how the day actually
+   went, and what the water taught you — kept per location so it
+   accumulates into something worth reading before you drive out.
+
+   The shell is built once, because half of it is text the
+   angler is in the middle of typing and a ten-minute redraw
+   must not eat it. Only the parts that read from the context
+   are re-rendered.
+------------------------------------------------------------ */
+let onRiverBuilt=false;
+
+function renderControls(ctx, res){
+  onRiverShell();
+  $("#refineHost").innerHTML = renderRefine(ctx);
   wireRefine();
+  $("#checkHost").innerHTML  = renderCheck(ctx);
+  $("#playHost").innerHTML   = renderPlayPick(res);
+  $("#logHost").innerHTML    = renderLogList(ctx);
+  paintDraft();
+}
+
+function onRiverShell(){
+  if(onRiverBuilt) return;
+  $("#panel-onriver").innerHTML=`
+    <div id="refineHost"></div>
+
+    <div class="logcard">
+      <div class="refine-head">
+        <h2>Did the Fish tab get it right?</h2>
+        <span class="rh-src">Confirms Fish</span>
+      </div>
+      <p>Every number on Fish is a model with a gauge bolted to it. You are standing in the answer.
+         Mark each one <b>matched</b> or <b>off</b> — the next angler here sees the tally, and so do you.</p>
+      <div id="checkHost"></div>
+      <div class="lfield">
+        <label for="logTemp">Your thermometer</label>
+        <input id="logTemp" type="number" inputmode="decimal" step="0.1" min="28" max="90" placeholder="°F">
+      </div>
+      <p class="lnote">A thermometer reading filed here becomes the water temperature on Fish for the next six
+        hours — ahead of the gauge, which is usually miles downstream of you.</p>
+    </div>
+
+    <div class="logcard">
+      <div class="refine-head">
+        <h2>How you fished it</h2>
+        <span class="rh-src">Teaches the plays</span>
+      </div>
+      <p>What you ran, and whether it worked. Reports from this spot at this time of year re-rank the plays —
+         gently, and never by more than a tenth.</p>
+      <div class="lgroup">
+        <div class="rlab">Who is filing</div>
+        <input id="logWho" class="linput" type="text" autocomplete="name" maxlength="40" placeholder="Your name or handle">
+      </div>
+      <div class="lgroup">
+        <div class="rlab">What you fished</div>
+        <div id="playHost"></div>
+      </div>
+      <div class="lgroup">
+        <div class="rlab">The fly that did it</div>
+        <input id="logFly" class="linput" type="text" maxlength="80" placeholder="Pattern and size — Frenchie #14, olive Comparadun #18">
+      </div>
+      <div class="lgroup">
+        <div class="rlab">The numbers</div>
+        <div class="lnums">
+          <label>Hours<input id="logHours" type="number" inputmode="decimal" step="0.5" min="0" max="24" placeholder="3"></label>
+          <label>Moved<input id="logMoved" type="number" inputmode="numeric" step="1" min="0" max="200" placeholder="6"></label>
+          <label>Landed<input id="logLanded" type="number" inputmode="numeric" step="1" min="0" max="200" placeholder="4"></label>
+        </div>
+      </div>
+      <div class="lgroup">
+        <div class="rlab">How it went</div>
+        <div class="rchips" id="ratingRow">
+          ${[[1,"Blanked"],[2,"Slow"],[3,"Fair"],[4,"Good"],[5,"Best kind of day"]]
+            .map(r=>`<button class="rchip lchip" data-role="rating" data-v="${r[0]}" aria-pressed="false">${r[1]}</button>`).join("")}
+        </div>
+      </div>
+      <div class="lgroup">
+        <div class="rlab">What you learned</div>
+        <textarea id="logLearn" class="linput ltext" rows="3" maxlength="700"
+          placeholder="The thing you would tell yourself before the next trip. Which lie held fish, what they refused, when it switched on."></textarea>
+      </div>
+      <div class="lgroup">
+        <div class="rlab">Who else was out</div>
+        <div class="rchips" id="crowdRow">
+          ${CROWD.map(c=>`<button class="rchip lchip" data-role="crowd" data-v="${c.k}" aria-pressed="false">${c.lab}</button>`).join("")}
+        </div>
+        <textarea id="logOthers" class="linput ltext" rows="2" maxlength="500"
+          placeholder="What the others were doing, and whether it worked. Two on the far bank swinging wets, one fish between them."></textarea>
+      </div>
+      <div class="lactions">
+        <button class="findbtn" type="button" id="logSave">File this report</button>
+        <button class="findbtn ghost" type="button" id="logClear">Clear</button>
+        <span class="lmsg" id="logMsg" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div id="logHost"></div>
+
+    <div class="logcard">
+      <div class="refine-head">
+        <h2>Pool it with the others</h2>
+        <span class="rh-src">No server, by design</span>
+      </div>
+      <p>Riffle keeps the log in this browser and sends it nowhere. To build one log for a spot, copy yours,
+         send it to whoever you fish with, and paste theirs back in. Entries already on file are skipped.</p>
+      <div class="lactions">
+        <button class="findbtn ghost" type="button" id="logCopySpot">Copy this spot</button>
+        <button class="findbtn ghost" type="button" id="logCopyAll">Copy everything</button>
+      </div>
+      <textarea id="logPaste" class="linput ltext mono" rows="3" placeholder="Paste somebody else's log here"></textarea>
+      <div class="lactions">
+        <button class="findbtn" type="button" id="logMerge">Add to my log</button>
+        <span class="lmsg" id="poolMsg" aria-live="polite"></span>
+      </div>
+    </div>`;
+  wireLog();
+  onRiverBuilt=true;
 }
 
 function renderRefine(ctx){
@@ -2954,19 +3445,259 @@ function renderRefine(ctx){
       <span class="rh-src">Feeds the plays</span>
     </div>
     <p>Standing in it, you know things the model does not. Everything here is already decided for you — tap only where the river disagrees. The boot test gives you clarity: wade in and note the depth at which your boot disappears.</p>
-    ${g("Barometer \u2014 "+bsrc,"baro",[["falling","Falling"],["steady","Steady"],["rising","Rising"]])}
+    ${g("Barometer — "+bsrc,"baro",[["falling","Falling"],["steady","Steady"],["rising","Rising"]])}
     ${g("Flow","flow",[["low","Low"],["normal","Normal"],["pushy","Pushy"],["high","High"],["blown","Blown"]])}
     ${g("Clarity","clarity",[["gin","Gin clear"],["clear","Clear"],["green","Green"],["stained","Stained"],["muddy","Muddy"]])}
     ${g("Sky","sky",[["bright","Bluebird"],["partly","Partly cloudy"],["overcast","Overcast"]])}
   </div>`;
 }
 function wireRefine(){
-  document.querySelectorAll(".rchip").forEach(b=>{
+  document.querySelectorAll(".rchip:not(.lchip)").forEach(b=>{
     b.addEventListener("click",()=>{
       const k=b.dataset.k, v=b.dataset.v||null;
       state.ov[k]= (state.ov[k]===v)?null:v;
       draw();
     });
+  });
+}
+
+/* --- confirming the dashboard ------------------------------- */
+function checkShown(ctx, k){
+  const unit=ctx.w.unit.split(" ")[0];
+  if(k==="temp")    return `${ctx.temp.toFixed(0)} °F · ${ctx.tempSource==="live"?"gauge":ctx.tempSource==="logged"?"filed here":"modeled"}`;
+  if(k==="flow")    return `${ctx.cfs>=1000?(ctx.cfs/1000).toFixed(1)+"k":ctx.cfs} ${unit} · ${ctx.fs.label.toLowerCase()}`;
+  if(k==="clarity") return `${ctx.clarity.vis} · ${ctx.clarity.label.toLowerCase()}`;
+  if(k==="baro")    return `${ctx.baro.label.toLowerCase()} · ${ctx.baro.srcLabel.toLowerCase()}`;
+  if(k==="call")    return ctx.acc.call;
+  return "";
+}
+function renderCheck(ctx){
+  return `<div class="ckrows">${CHECK_FIELDS.map(f=>{
+    const cur=state.draft.check[f.k]||null;
+    return `<div class="ckrow">
+      <div class="ckmain">
+        <div class="ckname">${esc(f.lab)}</div>
+        <div class="ckval">${esc(checkShown(ctx,f.k))}</div>
+      </div>
+      <div class="ckbtns">
+        <button class="rchip lchip ok" data-role="check" data-k="${f.k}" data-v="ok"  aria-pressed="${cur==="ok"}">Matched</button>
+        <button class="rchip lchip no" data-role="check" data-k="${f.k}" data-v="off" aria-pressed="${cur==="off"}">Off</button>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+/* --- which play the angler actually ran --------------------- */
+function renderPlayPick(res){
+  const picked=(res&&res.picked)||[];
+  const opts=picked.map(p=>[p.key, `${p.rank}. ${p.title}`])
+    .concat([["other","Something else"]]);
+  return `<div class="rchips">${opts.map(o=>
+    `<button class="rchip lchip wide" data-role="play" data-v="${esc(o[0])}" data-label="${esc(o[1].replace(/^\d+\.\s*/,""))}"
+      aria-pressed="${state.draft.play===o[0]}">${esc(o[1])}</button>`).join("")}</div>`;
+}
+
+/* Chips outside the re-rendered hosts still have to follow the draft. */
+function paintDraft(){
+  document.querySelectorAll('#ratingRow .lchip').forEach(b=>
+    b.setAttribute("aria-pressed", String(state.draft.rating===+b.dataset.v)));
+  document.querySelectorAll('#crowdRow .lchip').forEach(b=>
+    b.setAttribute("aria-pressed", String(state.draft.crowd===b.dataset.v)));
+  const who=$("#logWho");
+  if(who && !who.value && state.who) who.value=state.who;
+}
+
+/* --- the log itself ----------------------------------------- */
+function playName(e){
+  const f=e.fished||{};
+  if(f.label) return f.label;
+  if(f.play && f.play!=="other") return f.play;
+  return "";
+}
+function whatWorks(rows){
+  const acc=new Map();
+  rows.forEach(e=>{
+    const f=e.fished;
+    if(!f || !f.play || f.play==="other" || f.rating==null) return;
+    const cur=acc.get(f.play)||{label:playName(e), n:0, sum:0};
+    cur.n++; cur.sum+=f.rating; if(!cur.label) cur.label=playName(e);
+    acc.set(f.play,cur);
+  });
+  return [...acc.values()].sort((a,b)=> (b.sum/b.n)-(a.sum/a.n) || b.n-a.n).slice(0,4);
+}
+const RATING_TXT={1:"blanked",2:"slow",3:"fair",4:"good",5:"a day to remember"};
+function crowdTxt(k){ const c=CROWD.find(x=>x.k===k); return c?c.lab:""; }
+
+function renderLogList(ctx){
+  const rows=logFor(ctx.w);
+  const head=`<div class="refine-head">
+      <h2>The log at ${esc(ctx.w.name)}</h2>
+      <span class="rh-src">${rows.length} report${rows.length===1?"":"s"}</span>
+    </div>`;
+  if(!rows.length){
+    return `<div class="logcard">${head}
+      <p>Empty. The first report you file here is the one that starts it — and everything after it reads
+         against yours: the temperatures, the flies, the days it switched on. One location, one record.</p>
+    </div>`;
+  }
+  const works=whatWorks(rows);
+  const worksBlock = works.length ? `<div class="lworks">
+      <div class="rlab">What has worked here</div>
+      ${works.map(w=>{
+        const avg=w.sum/w.n;
+        return `<div class="lwrow">
+        <span class="lwn">${esc(w.label)}</span>
+        <span class="lwm ${avg>=4?"good":avg<3?"warn":""}">${avg.toFixed(1)}<span>/5 · ${w.n} report${w.n===1?"":"s"}</span></span>
+      </div>`;}).join("")}
+    </div>` : "";
+
+  const entries=rows.slice(0,25).map(e=>{
+    const s=e.snap||{}, f=e.fished||{}, o=e.others||{};
+    const cond=[
+      s.temp!=null?`${Math.round(s.temp)}°`:null,
+      s.cfs!=null?`${s.cfs>=1000?(s.cfs/1000).toFixed(1)+"k":s.cfs} cfs`:null,
+      s.flow||null, s.clarity||null, s.baro?`${s.baro} glass`:null,
+    ].filter(Boolean).join(" · ");
+    const nums=[
+      f.hours!=null?`${f.hours} h`:null,
+      f.moved!=null?`${f.moved} moved`:null,
+      f.landed!=null?`${f.landed} landed`:null,
+    ].filter(Boolean).join(" · ");
+    const off=CHECK_FIELDS.filter(c=>e.check&&e.check[c.k]==="off").map(c=>c.lab.toLowerCase());
+    const okd=CHECK_FIELDS.filter(c=>e.check&&e.check[c.k]==="ok").length;
+    const how=[playName(e), f.fly, nums, f.rating!=null?RATING_TXT[f.rating]:null].filter(Boolean).join(" · ");
+    return `<article class="lentry">
+      <div class="le-top">
+        <span class="le-who">${esc(e.by||"Anonymous")}</span>
+        <span class="le-when">${esc(agoTxt(e.at))}</span>
+      </div>
+      ${cond?`<div class="le-cond">${esc(cond)}</div>`:""}
+      ${how?`<div class="le-how">${esc(how)}</div>`:""}
+      ${e.measured&&e.measured.tempF!=null?`<div class="le-note"><b>Thermometer</b> ${esc(String(e.measured.tempF))} °F</div>`:""}
+      ${e.learned?`<div class="le-note"><b>Learned</b> ${esc(e.learned)}</div>`:""}
+      ${(o.level||o.note)?`<div class="le-note"><b>Others</b> ${esc([crowdTxt(o.level),o.note].filter(Boolean).join(" — "))}</div>`:""}
+      ${(off.length||okd)?`<div class="le-check">${okd?`${okd} number${okd===1?"":"s"} matched`:""}${off.length?`${okd?" · ":""}called off: ${esc(off.join(", "))}`:""}</div>`:""}
+      <button class="lx" type="button" data-del="${esc(e.id)}">Remove</button>
+    </article>`;
+  }).join("");
+
+  return `<div class="logcard">${head}
+    ${worksBlock}
+    <div class="lentries">${entries}</div>
+    ${rows.length>25?`<p class="lnote">Showing the last 25 of ${rows.length}.</p>`:""}
+  </div>`;
+}
+
+/* --- filing, clearing, pooling ------------------------------ */
+function say(id, txt){
+  const n=$("#"+id); if(!n) return;
+  n.textContent=txt;
+  clearTimeout(n._t);
+  n._t=setTimeout(()=>{ n.textContent=""; }, 6000);
+}
+const fieldVal=(id)=>{ const n=$("#"+id); return n ? n.value.trim() : ""; };
+function fieldNum(id, lo, hi){
+  const v=fieldVal(id); if(!v) return null;
+  const f=parseFloat(v);
+  return isFinite(f) ? clamp(f, lo, hi) : null;
+}
+function clearForm(){
+  ["logTemp","logFly","logHours","logMoved","logLanded","logLearn","logOthers"]
+    .forEach(id=>{ const n=$("#"+id); if(n) n.value=""; });
+  state.draft={check:{}, crowd:null, rating:null, play:null, playLabel:""};
+}
+
+function fileReport(){
+  const ctx=buildContext(), w=ctx.w, d=state.draft;
+  const who=fieldVal("logWho");
+  const tempF=fieldNum("logTemp", 28, 90);
+  const fly=fieldVal("logFly"), learned=fieldVal("logLearn"), others=fieldVal("logOthers");
+  const checked=Object.keys(d.check).filter(k=>d.check[k]);
+  if(!checked.length && !d.play && d.rating==null && !d.crowd && tempF==null && !fly && !learned && !others){
+    say("logMsg","Nothing to file yet — check a number, or say how it fished.");
+    return;
+  }
+  if(who){ state.who=who; lsSet(WHO_KEY, who); }
+  const entry={
+    id:"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,8),
+    at:new Date().toISOString(),
+    by:who.slice(0,40),
+    loc:{key:logKey(w), name:w.name, place:w.place||"", lat:w.lat, lon:w.lon},
+    snap:{temp:Math.round(ctx.temp*10)/10, tempSrc:ctx.tempSource, cfs:ctx.cfs,
+          flow:ctx.fs.k, clarity:ctx.clarity.k, baro:ctx.baro.k, sky:ctx.sky,
+          day:ctx.day, hour:Math.round(ctx.h*10)/10},
+    check:Object.assign({}, d.check),
+    measured:{tempF},
+    fished:{play:d.play, label:d.playLabel||"", fly, hours:fieldNum("logHours",0,24),
+            moved:fieldNum("logMoved",0,200), landed:fieldNum("logLanded",0,200), rating:d.rating},
+    learned, others:{level:d.crowd, note:others},
+  };
+  state.log.push(sanitizeEntry(entry));
+  const stored=saveLog();
+  clearForm();
+  draw();
+  say("logMsg", stored
+    ? "Filed. It is in the log for this spot and shaping the plays now."
+    : "Filed for this session only — this browser refused to store it.");
+}
+
+function copyOut(rows, msgId, what){
+  const txt=JSON.stringify(rows, null, 1);
+  const box=$("#logPaste");
+  const fallback=()=>{ if(box){ box.value=txt; box.select(); } say(msgId, `${what} is in the box below — copy it from there.`); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(
+        ()=>say(msgId, `${what} copied — ${rows.length} entr${rows.length===1?"y":"ies"}.`),
+        fallback);
+      return;
+    }
+  }catch(e){ /* fall through */ }
+  fallback();
+}
+
+function wireLog(){
+  const panel=$("#panel-onriver");
+  panel.addEventListener("click", ev=>{
+    const chip=ev.target.closest(".lchip");
+    if(chip){
+      const role=chip.dataset.role, v=chip.dataset.v;
+      if(role==="check"){
+        const k=chip.dataset.k;
+        state.draft.check[k] = state.draft.check[k]===v ? null : v;
+      } else if(role==="rating"){
+        state.draft.rating = state.draft.rating===+v ? null : +v;
+      } else if(role==="crowd"){
+        state.draft.crowd = state.draft.crowd===v ? null : v;
+      } else if(role==="play"){
+        const same = state.draft.play===v;
+        state.draft.play = same ? null : v;
+        state.draft.playLabel = same ? "" : (chip.dataset.label||"");
+      }
+      draw();
+      return;
+    }
+    const del=ev.target.closest("[data-del]");
+    if(del){
+      const id=del.dataset.del;
+      state.log=state.log.filter(e=>e.id!==id);
+      saveLog(); draw();
+    }
+  });
+  $("#logSave").addEventListener("click", fileReport);
+  $("#logClear").addEventListener("click", ()=>{ clearForm(); draw(); say("logMsg","Cleared."); });
+  $("#logCopySpot").addEventListener("click", ()=> copyOut(logFor(water()), "poolMsg", "This spot's log"));
+  $("#logCopyAll").addEventListener("click", ()=> copyOut(state.log, "poolMsg", "Your whole log"));
+  $("#logMerge").addEventListener("click", ()=>{
+    const raw=fieldVal("logPaste");
+    if(!raw){ say("poolMsg","Paste a log in the box first."); return; }
+    let rows=null;
+    try{ rows=JSON.parse(raw); }catch(e){ rows=null; }
+    if(!Array.isArray(rows)){ say("poolMsg","That is not a Riffle log — it should start with [ and end with ]."); return; }
+    const added=mergeEntries(rows);
+    $("#logPaste").value="";
+    draw();
+    say("poolMsg", added ? `Added ${added} entr${added===1?"y":"ies"}.` : "Nothing new in there — every entry was already on file.");
   });
 }
 
@@ -3463,7 +4194,7 @@ function draw(){
   const ctx=buildContext();
   const res=recommend(ctx);
   renderReading(ctx);
-  renderControls(ctx);
+  renderControls(ctx, res);
   renderPlays(res,ctx);
   renderShop(res,ctx);
   renderHatch(res,ctx);
@@ -3471,6 +4202,8 @@ function draw(){
 }
 
 (function init(){
+  state.log=loadLog();
+  state.who=lsGet(WHO_KEY)||"";
   seam(); wireTabs(); wireChrome();
   draw();
   locate(false);

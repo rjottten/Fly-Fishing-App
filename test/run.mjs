@@ -110,6 +110,12 @@ async function walk(browser, scenario){
   const seen = {};
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
+  // captured before any tab is touched: what a cold open shows
+  seen.defaultTab = await page.evaluate(()=>{
+    const t=document.querySelector('.tab[aria-selected="true"]');
+    const shown=[...document.querySelectorAll(".panel")].filter(p=>!p.hidden).map(p=>p.id);
+    return {tab:t&&t.id, shown};
+  });
 
   await page.click("#tab-where");
   seen.mapRendered = await page.waitForSelector(".leaflet-container",{timeout:5000}).then(()=>true,()=>false);
@@ -146,10 +152,75 @@ async function walk(browser, scenario){
   seen.spotCleared = await page.evaluate(()=>state.spot===null);
 
   seen.tabOrder = await page.$$eval(".tab", ts=>ts.map(t=>t.textContent.trim()));
+  seen.readingInFish = await page.evaluate(()=>!!document.querySelector("#panel-fish > #reading"));
+  seen.readingOnce = await page.evaluate(()=>document.querySelectorAll(".reading").length);
+
   await page.click("#tab-onriver");
-  seen.onRiverChips = await page.$$eval("#panel-onriver .rchip", n=>n.length);
-  seen.onRiverGroups = await page.$$eval("#panel-onriver .rlab", ns=>ns.map(n=>n.textContent.trim().split(" — ")[0]));
+  seen.onRiverChips = await page.$$eval("#refineHost .rchip", n=>n.length);
+  seen.onRiverGroups = await page.$$eval("#refineHost .rlab", ns=>ns.map(n=>n.textContent.trim().split(" — ")[0]));
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
+
+  /* --- the log: file a report, then prove it reaches Fish and the plays --- */
+  seen.logEmpty = await page.$eval("#logHost", n=>n.textContent.replace(/\s+/g," ").trim());
+  seen.checkRows = await page.$$eval("#checkHost .ckrow .ckname", ns=>ns.map(n=>n.textContent.trim()));
+
+  const shownTemp = await page.$eval("#reading .g .val", n=>parseInt(n.textContent,10));
+  const filedTemp = shownTemp + 3;
+  await page.fill("#logWho", "Tester");
+  await page.fill("#logTemp", String(filedTemp));
+  await page.click('#checkHost .rchip[data-k="flow"][data-v="off"]');
+  await page.click('#checkHost .rchip[data-k="clarity"][data-v="ok"]');
+  await page.click("#playHost .rchip");
+  await page.click('#ratingRow .rchip[data-v="5"]');
+  await page.fill("#logFly", "Frenchie #14");
+  await page.fill("#logHours", "3");
+  await page.fill("#logLanded", "4");
+  await page.fill("#logLearn", "They held on the inside seam all afternoon.");
+  await page.click('#crowdRow .rchip[data-v="few"]');
+  await page.fill("#logOthers", "Two swinging wets, one fish between them.");
+  await page.click("#logSave");
+  await page.waitForSelector("#logHost .lentry", {timeout:5000});
+
+  seen.logEntry  = await page.$eval("#logHost .lentry", n=>n.textContent.replace(/\s+/g," ").trim());
+  seen.logWorks  = await page.$eval("#logHost .lworks", n=>n.textContent.replace(/\s+/g," ").trim());
+  seen.logStored = await page.evaluate(()=>JSON.parse(localStorage.getItem("riffle.log.v1")||"[]").length);
+  seen.formCleared = await page.$eval("#logLearn", n=>n.value);
+
+  await page.click("#tab-fish");
+  seen.fishTemp  = await page.$eval("#reading .g .val", n=>parseInt(n.textContent,10));
+  seen.filedTemp = filedTemp;
+  seen.checkBand = await page.$eval("#reading .checked", n=>n.textContent.replace(/\s+/g," ").trim());
+
+  await page.click("#tab-plays");
+  seen.playLede = await page.$eval("#panel-plays .playlede", n=>n.textContent.replace(/\s+/g," ").trim());
+  seen.logChips = await page.$$eval("#panel-plays .chip", ns=>ns.filter(n=>/^log /.test(n.textContent.trim())).length);
+
+  /* pooling: a log from somebody else merges, and merges only once */
+  await page.click("#tab-onriver");
+  seen.pooled = await page.evaluate(()=>{
+    const mine = logFor(water());
+    const theirs = JSON.parse(JSON.stringify(mine)).map(e=>
+      Object.assign({}, e, {id:e.id+"-x", by:"Someone else"}));
+    const first  = mergeEntries(theirs);
+    const second = mergeEntries(theirs);
+    return {first, second, total:logFor(water()).length};
+  });
+
+  /* a pasted log is somebody else's data: wrong types and markup and all */
+  seen.hostile = await page.evaluate(()=>{
+    mergeEntries([{
+      id:"junk1", at:new Date().toISOString(), loc:{key:logKey(water()), name:"x"},
+      by:"<img src=x onerror='window.__pwned=1'>",
+      fished:{rating:"5", play:"euro", label:"L".repeat(300), landed:"lots"},
+      learned:42, others:{level:"bogus", note:"fine"},
+    }]);
+    draw();
+    const e=state.log.find(x=>x.id==="junk1");
+    return {ratingType:typeof e.fished.rating, rating:e.fished.rating,
+            label:e.fished.label.length, landed:e.fished.landed, learned:e.learned,
+            level:e.others.level, injected:!!document.querySelector("#logHost img"),
+            pwned:!!window.__pwned};
+  });
 
   seen.errors = errors; seen.violations = violations;
   await page.close();
@@ -172,11 +243,34 @@ const SCENARIOS = {
     ok(!s.uncalibrated, "bands from the water's own gauge are not flagged uncalibrated");
     ok(s.plays>0 && s.hatch>0 && s.shop>0, "plays, hatch and shop list all render for a spot",
        {plays:s.plays, hatch:s.hatch, shop:s.shop});
-    eq(s.tabOrder, ["Where","Plays","Shop list","Hatch","On river"],
-       "Where leads the tabs and On river closes them");
+    eq(s.tabOrder, ["Fish","Where","Plays","Shop list","Hatch","On river"],
+       "Fish leads the tabs and On river closes them");
+    ok(s.readingInFish && s.readingOnce===1, "the dashboard lives on the Fish tab and nowhere else",
+       {inFish:s.readingInFish, count:s.readingOnce});
+    eq(s.defaultTab, {tab:"tab-fish", shown:["panel-fish"]}, "Fish is the default tab and the only one open");
     ok(s.onRiverChips>0, "the condition chips live on the On river tab", s.onRiverChips);
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with it");
     ok(!s.strayControls, "nothing is left under the dashboard");
+    eq(s.checkRows, ["Water temp","Flow","Clarity","Barometer","Wade call"],
+       "every number on Fish can be confirmed on On river");
+    ok(s.logEmpty.includes("Empty"), "the log starts empty for a location", s.logEmpty);
+    ok(s.logStored===1, "filing a report writes it to storage", s.logStored);
+    ok(s.formCleared==="", "and empties the form behind it", s.formCleared);
+    ok(/Tester/.test(s.logEntry) && /inside seam/.test(s.logEntry)
+       && /Two swinging wets/.test(s.logEntry) && /called off: flow/.test(s.logEntry),
+       "the entry carries who, what was learned, who else was out and what was called wrong", s.logEntry);
+    ok(/5\.0/.test(s.logWorks), "and rolls up into what has worked here", s.logWorks);
+    ok(s.fishTemp===s.filedTemp, "a thermometer reading becomes the water temperature on Fish",
+       {shown:s.fishTemp, filed:s.filedTemp});
+    ok(/1 report/.test(s.checkBand) && /Flow/.test(s.checkBand),
+       "and the Fish tab says who checked it", s.checkBand);
+    ok(/moving the ranking/.test(s.playLede), "the plays say the log is steering them", s.playLede);
+    ok(s.logChips===1, "and the play that worked is marked", s.logChips);
+    eq(s.pooled, {first:1, second:0, total:2},
+       "somebody else's log merges once and never twice");
+    eq(s.hostile, {ratingType:"number", rating:5, label:80, landed:null, learned:"",
+                   level:null, injected:false, pwned:false},
+       "a pasted entry is coerced, bounded and never rendered as markup");
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241
