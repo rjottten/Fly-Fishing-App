@@ -105,6 +105,8 @@ async function mock(page, scenario){
         await new Promise(x=>setTimeout(x, 9000));
         return r.abort();
       }
+      // a wide Overpass query is sometimes just slow; that is not a failure
+      if(scenario==="slowbutok") await new Promise(x=>setTimeout(x, 7000));
     }
     return r.fulfill(json(isShop ? F.SHOPS : overpass));
   });
@@ -368,6 +370,7 @@ async function shopPass(page, seen){
       guide: /hiring a local guide/i.test(document.getElementById("panel-shop").textContent),
       photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
       note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
+      ql: (typeof shopQL!=="undefined") ? shopQL(41.9337,-74.9143,90000) : "",
       // ranking and URL vetting are data concerns; the cap is a rendering one
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
@@ -774,6 +777,13 @@ const SCENARIOS = {
        "what to ask the shop leads the tab, directly under the tabs", s.shops.askFirst);
     ok(s.shops.beforeList, "and come before the list you are handing across the counter");
     ok(s.shops.guide, "the tab suggests a guide before it suggests a fly");
+    /* A bbox+regex rewrite of this query read better, scanned less, and
+       returned no shops at all for a real town. It is the around: form. */
+    ok(/around:90000/.test(s.shops.ql) && /shop"="fishing"/.test(s.shops.ql),
+       "the query asks the way that is known to answer", s.shops.ql.slice(0,80));
+    ok(/out tags center (1\d\d|[2-9]\d\d)/.test(s.shops.ql),
+       "and asks for enough of them that a wide radius cannot truncate the near one",
+       s.shops.ql.slice(-40));
     ok(s.shopCalls.length===1,
        "the counters cost one query, not a near one and then a wide one", s.shopCalls.length);
     ok(s.shopMs < 1500,
@@ -927,6 +937,12 @@ const SCENARIOS = {
        "a silent first mirror hands the query to the second", s.shopCalls);
     ok(s.shops.names.length===3, "and the shops still arrive", s.shops.names);
     ok(s.shopMs < 9000, `without waiting out the wedged host (${s.shopMs} ms)`, s.shopMs);
+  },
+  slowbutok: (s)=>{
+    /* Cutting the client off after 12 s while the query is allowed 25 s
+       server-side turned a slow answer into an empty shop list. */
+    ok(s.shops.names.length===3, "a slow Overpass is waited for, not abandoned", s.shops.names);
+    ok(s.shopMs >= 6500, `and it really was slow (${s.shopMs} ms)`, s.shopMs);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");

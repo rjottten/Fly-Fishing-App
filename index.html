@@ -2940,7 +2940,12 @@ async function overpass(ql){
   const opts={method:"POST",
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
     body:"data="+encodeURIComponent(ql)};
-  const ask=(host)=>withTimeout(host, opts, 12000).then(res=>{
+  /* Generous, and deliberately longer than the 25 s the query itself is
+     allowed server-side: cutting the client off first turns a slow answer
+     into no answer, which is how the shop list came back empty. The
+     stagger below is what keeps the common case quick — not a short
+     deadline on a service that is sometimes legitimately slow. */
+  const ask=(host)=>withTimeout(host, opts, 28000).then(res=>{
     if(!res.ok) throw new Error("overpass "+res.status);
     return res.json();
   });
@@ -3039,16 +3044,21 @@ const SHOP_MAX = 8;
    filed under the general outdoor shop instead, so those come too
    — ranked below, and labelled for what they are. */
 function shopQL(lat, lon, r){
-  /* One statement rather than three: Overpass scans once for the whole
-     shop key instead of once per value. And a bounding box rather than
-     around:, which is its fast path over a wide area — the true radius
-     is applied in flyShops(), where the distance is computed anyway. */
-  const dLat = r/111320;
-  const dLon = r/(111320*Math.max(0.2, Math.cos(lat*Math.PI/180)));
-  const bbox = [lat-dLat, lon-dLon, lat+dLat, lon+dLon].map(v=>v.toFixed(5)).join(",");
-  return `[out:json][timeout:15][bbox:${bbox}];
-nwr["shop"~"^(fishing|outdoor|sports)$"];
-out tags center 80;`;
+  /* Three around: clauses, which is the form that is known to answer.
+     A single regex over a bounding box scans less and reads better, and
+     it also stopped returning the shops that are actually there — a
+     query nobody can run from the machine it was written on is not an
+     optimisation, it is a guess. The limit is high because Overpass
+     returns in its own order, not in distance order: truncating at 60
+     over a wide radius can cut off the near shop and keep a far one. */
+  const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
+  return `[out:json][timeout:25];
+(
+  nwr${at}["shop"="fishing"];
+  nwr${at}["shop"="outdoor"];
+  nwr${at}["shop"="sports"]["sport"~"fishing",i];
+);
+out tags center 200;`;
 }
 
 /* Only http(s) survives. An OSM website tag is a string anyone may
