@@ -142,9 +142,15 @@ const REFUSAL_WORDINGS = [
 /* Walks the app the way a person does: open Where, search an address,
    read the access list, pick the top entry. Returns what it saw. */
 async function walk(browser, scenario){
-  // the security scenario needs a real geolocation to prove the header allows one
-  const ctx = await browser.newContext(scenario==="security"
-    ? {permissions:["geolocation"], geolocation:{latitude:41.9337, longitude:-74.9143}}
+  /* Two scenarios need a real position: security, to prove the header allows
+     one at all, and outofbook, which has to be standing somewhere the book
+     does not cover for the device-location path to be worth testing. */
+  const GEO = {
+    security: {latitude:41.9337, longitude:-74.9143},   // Roscoe, NY
+    outofbook:{latitude:45.6770, longitude:-111.0429},  // Bozeman, MT
+  }[scenario];
+  const ctx = await browser.newContext(GEO
+    ? {permissions:["geolocation"], geolocation:GEO}
     : {});
   const page = await ctx.newPage();
   const errors = [], violations = [], refusals = [];
@@ -173,6 +179,16 @@ async function walk(browser, scenario){
   }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
+
+  /* What the app's own locate() settled on, read before the walk clicks
+     anything — by the end of the walk it has searched, picked a spot and
+     chosen a water, and whatever geolocation decided is long gone. */
+  if(GEO){
+    await page.waitForFunction(()=>state.geo!==null, {timeout:8000}).catch(()=>{});
+    seen.settledOnLoad = await page.evaluate(()=>({
+      geo: !!state.geo, water: water().name, sp: water().sp, spot: !!state.spot,
+    }));
+  }
   /* The app opens on Plan and the day picker is the first thing on it, so
      it has to be filled by the first paint — not by whatever redraw happens
      to come along next. */
@@ -314,6 +330,7 @@ async function walk(browser, scenario){
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
 
   await shopPass(page, seen);
+  await reachPass(page, seen);
 
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
@@ -658,6 +675,31 @@ async function diaryPass(page, seen){
   });
 }
 
+/* The book's reach has two doors, and the distance question has to be asked
+   at both. The pin path asks it. The device-location path did not, and a
+   curated water is never "outside the book" — it IS the book — so a phone
+   in Bozeman opened straight onto a Lake Erie steelhead tributary 1,554
+   miles off, run and hatch chart intact. Same bug, other door.
+
+   This drives the real thing: a browser whose geolocation is in Montana,
+   the app's own locate() on load, and then whatever water it settled on. */
+async function reachPass(page, seen){
+  seen.reach = await page.evaluate(()=>{
+    const out={};
+    /* Colder water to go to instead, asked from a point the book does not
+       cover. Unbounded, this offered Northeast rivers from anywhere. */
+    const keepId=state.waterId, keepSpot=state.spot, keepWhen=state.when;
+    state.when=new Date(new Date().getFullYear(), 6, 20, 14, 0);
+    const ctx=buildContext();
+    const far=Object.assign({}, ctx, {temp:70, w:Object.assign({}, ctx.w, {id:"__x", lat:45.68, lon:-111.04})});
+    out.refugesFromMontana = refuges(far).map(o=>o.w.name+" ("+o.d+" mi)");
+    const near=Object.assign({}, ctx, {temp:70, w:Object.assign({}, ctx.w, {id:"__x", lat:40.85, lon:-77.35})});
+    out.refugesFromPenns = refuges(near).map(o=>o.d);
+    state.waterId=keepId; state.spot=keepSpot; state.when=keepWhen;
+    return out;
+  });
+}
+
 /* ---------- what each scenario must prove ---------- */
 const SCENARIOS = {
   happy: (s)=>{
@@ -874,6 +916,19 @@ const SCENARIOS = {
        "and a modeled temperature is left blank rather than shown as a reading", s.bookUI.tempCell);
     ok(/No list for this water/.test(s.bookUI.shopHead),
        "the shop list says why it is empty", s.bookUI.shopHead);
+
+    /* Same bug, other door: the device-location path never asked the
+       distance question, so this browser — sitting in Bozeman — opened
+       on a Lake Erie steelhead tributary with its run and chart intact. */
+    ok(s.settledOnLoad.geo, "the browser's location was actually read", s.settledOnLoad);
+    ok(s.settledOnLoad.water!=="Conneaut Creek" && s.settledOnLoad.sp!=="steelhead",
+       "a phone in Montana does not open on a steelhead river 1,554 miles away",
+       s.settledOnLoad);
+    eq(s.reach.refugesFromMontana, [],
+       "and there is no colder water 'nearby' to offer from out there");
+    ok(s.reach.refugesFromPenns.length>0 && s.reach.refugesFromPenns.every(d=>d<=150),
+       "while inside the book it still names real ones, at a drivable distance",
+       s.reach.refugesFromPenns);
   },
   slowshops: (s)=>{
     /* The mirrors used to be tried in turn on a 30 s timeout each, so a

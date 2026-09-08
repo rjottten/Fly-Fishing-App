@@ -3601,11 +3601,18 @@ function flyItem(f){
   </div>`;
 }
 
+/* Colder water to go to instead. This is a driving distance, not a
+   statement about the calendar, so it has its own number: far enough to
+   be worth the morning, close enough that "nearby" is not a lie. Without
+   it the list was unbounded, and a spot at the edge of the borrowed band
+   was offered rivers most of a day away. */
+const REFUGE_MAX_MI = 150;
+
 function refuges(ctx){
   return WATERS
     .filter(w=>w.sp==="trout" && w.id!==ctx.w.id && (w.type==="tailwater"||w.type==="limestone"))
     .map(w=>({w, t:modelTemp(w,ctx.d), d:haversine(ctx.w.lat,ctx.w.lon,w.lat,w.lon)}))
-    .filter(o=>o.t<=63)
+    .filter(o=>o.t<=63 && o.d<=REFUGE_MAX_MI)
     .sort((a,b)=>a.d-b.d).slice(0,3);
 }
 /* What Riffle can and cannot say about a water outside its book.
@@ -4644,7 +4651,14 @@ function locate(explicit){
         const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
         if(d<bd){bd=d;best=w;}
       }
-      if(best){ state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best); }
+      /* The same distance question the pin path asks. A curated water is
+         never "outside the book" — it IS the book — so opening on the
+         nearest one put a phone in Bozeman on Conneaut Creek, 1,554 miles
+         off, with its steelhead run and its hatch chart intact. Beyond the
+         book's reach, open on nothing and let Plan say how far away it is. */
+      if(best && rangeOf(bd)!=="beyond"){
+        state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best);
+      }
     }
     draw();
     if(explicit){
