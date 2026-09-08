@@ -154,12 +154,35 @@ async function walk(browser, scenario){
        first byte to the first play card, while the CDN sits on Leaflet. */
     const t0 = Date.now();
     await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"commit"});
-    await page.waitForSelector("#panel-fish .play", {timeout:15000});
+    await page.waitForSelector("#panel-fish .play", {state:"attached", timeout:15000});
     seen.playsAt = Date.now()-t0;
     seen.leafletYet = await page.evaluate(()=>typeof L!=="undefined");
   }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
+  /* The app opens on Plan and the day picker is the first thing on it, so
+     it has to be filled by the first paint — not by whatever redraw happens
+     to come along next. */
+  seen.firstPaint = await page.evaluate(()=>{
+    const w=document.getElementById("whenbar");
+    return {open:(document.querySelector('.tab[aria-selected="true"]')||{}).textContent,
+            chips: w ? w.querySelectorAll("#planChips .rchip").length : 0};
+  });
+
+  /* Which tab the app opens on, before anything has been clicked. Plan is
+     first because the reading is worth nothing until it knows where you
+     are, and the map has to come up on its own for that to be true. */
+  seen.opensOn = await page.evaluate(()=>({
+    tab: (()=>{ const t=[...document.querySelectorAll(".tab")].find(x=>x.getAttribute("aria-selected")==="true");
+                return t ? t.textContent.trim() : null; })(),
+    panels: [...document.querySelectorAll(".panel")].filter(p=>!p.hidden).map(p=>p.id),
+    stateTab: state.tab,
+    mapBox: !!document.querySelector("#map"),
+    searchBox: !!document.querySelector("#findQ"),
+    playsBuilt: document.querySelectorAll("#panel-fish .play").length,
+  }));
+  seen.mapWithoutClick = await page.waitForSelector(".leaflet-container", {timeout:6000})
+    .then(()=>true, ()=>false);
 
   /* An OSM name reaching innerHTML as markup leaves an inline handler in
      the tree for as long as that render lives — which can be a fraction
@@ -567,6 +590,14 @@ async function diaryPass(page, seen){
 const SCENARIOS = {
   happy: (s)=>{
     ok(s.leaflet, "Leaflet loads from the CDN");
+    ok(s.opensOn.tab==="Plan" && s.opensOn.stateTab==="plan",
+       "the app opens on Plan", s.opensOn);
+    eq(s.opensOn.panels, ["panel-plan"], "with only that panel shown");
+    ok(s.opensOn.searchBox && s.opensOn.mapBox,
+       "and the search box and map are there without a tab being clicked", s.opensOn);
+    ok(s.mapWithoutClick, "the map comes up on its own", s.mapWithoutClick);
+    ok(s.opensOn.playsBuilt>0,
+       "and the plays are built behind it, ready for the tab", s.opensOn.playsBuilt);
     ok(s.mapRendered, "the map renders");
     eq(s.names, ["Cooks Falls Access","Riverside Trail","Beaverkill Lot","Read the pin itself"],
        "access is listed best-first, private lot and waterless lot excluded");
@@ -594,6 +625,8 @@ const SCENARIOS = {
     ok(s.layout.tacticAfterCond, "the wade-or-float call follows the numbers", s.layout);
     ok(s.layout.hatchInFish, "and what is hatching closes the same tab", s.layout);
     ok(s.layout.nearUnderMap, "the nearest waters sit directly under the map on Plan", s.layout);
+    ok(s.firstPaint.open==="Plan" && s.firstPaint.chips>0,
+       "the app opens on Plan with the day picker already filled", s.firstPaint);
     ok(s.layout.whenOnPlan && s.layout.whenFirstOnPlan && s.layout.whenNotAboveTabs,
        "the day picker leads the Plan tab and appears nowhere else", s.layout);
     ok(s.layout.ladderOnFish && s.layout.ladderNotOnPlan,
