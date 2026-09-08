@@ -1161,7 +1161,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </p>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Deferred: the app opens on Plays and does not touch Leaflet until the
+     angler taps Where, so 150 KB of map library should not stand between
+     them and the first reading. initMap() waits on this tag if it is still
+     in flight. -->
+<script id="leaflet" defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 "use strict";
 
@@ -3957,9 +3961,22 @@ function wireWhere(){
   $("#findMe").addEventListener("click", ()=>locate(true));
 }
 
+/* "pending" until the deferred tag settles, so a fast tap on Where waits
+   for the library instead of condemning the map on a race. */
+let leafletState = "pending";
+function watchLeaflet(){
+  if(typeof L!=="undefined"){ leafletState="ready"; return; }
+  const tag=document.getElementById("leaflet");
+  if(!tag){ leafletState="failed"; return; }
+  const settle=(st)=>()=>{ leafletState=st; if(state.tab==="where") initMap(); };
+  tag.addEventListener("load",  settle("ready"),  {once:true});
+  tag.addEventListener("error", settle("failed"), {once:true});
+}
+
 function initMap(){
   if(whereMap || mapDead) return;
   if(typeof L==="undefined"){
+    if(leafletState==="pending") return;      // still coming — the load handler calls back
     mapDead=true;
     const c=$("#mapCard"); if(c) c.innerHTML=`<p class="muted">The map library did not load. Search an address above — everything else still works.</p>`;
     return;
@@ -4000,7 +4017,13 @@ function plotAccess(){
   accLayer.clearLayers();
   for(const a of (state.access.list||[])){
     const m=L.marker([a.lat,a.lon], {icon:L.divIcon({className:"acc-i", html:`<i class="k-${a.kind}"></i>`, iconSize:[14,14], iconAnchor:[7,7]})});
-    m.bindTooltip(`${a.name||ACCESS_KINDS[a.kind].label}${a.waterway?" · "+a.waterway:""}`);
+    /* OSM tags are world-writable: anyone may set the name of a node to
+       anything, and Leaflet renders a string tooltip as HTML. So the label
+       goes in as a text node. Everywhere else in the app untrusted text
+       passes through esc(); this was the one sink that did not. */
+    const tip=document.createElement("span");
+    tip.textContent=`${a.name||ACCESS_KINDS[a.kind].label}${a.waterway?" · "+a.waterway:""}`;
+    m.bindTooltip(tip);
     m.on("click", ()=>chooseAccess(a.id));
     m.addTo(accLayer);
   }
@@ -4218,8 +4241,13 @@ function seam(){
     ctx2.globalAlpha=1;
   }
   function loop(){ t+=0.011; paint(); raf=requestAnimationFrame(loop); }
+  /* This app lives in a pocket on a riverbank. A canvas repainting every
+     frame behind a locked screen is battery spent on nothing. */
+  function start(){ if(raf||reduce) return; raf=requestAnimationFrame(loop); }
+  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; }
   size(); paint();
-  if(!reduce) loop();
+  start();
+  document.addEventListener("visibilitychange", ()=> document.hidden ? stop() : start());
   window.addEventListener("resize",()=>{ size(); paint(); });
 }
 
@@ -4285,13 +4313,16 @@ function draw(){
 }
 
 (function init(){
-  seam(); wireTabs(); wireChrome();
+  seam(); watchLeaflet(); wireTabs(); wireChrome();
   state.diaryOK = diaryUsable();
   state.diary   = diaryLoad();     // the book is open before the first reading is taken
   draw();
   locate(false);
   refreshLive(water());
-  tick=setInterval(draw, 10*60*1000);   // re-read the clock every ten minutes
+  tick=setInterval(()=>{ if(!document.hidden) draw(); }, 10*60*1000);
+  /* A tab left open on the bank should not show an hour-old clock for ten
+     minutes after you pick the phone back up. */
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) draw(); });
 })();
 </script>
 

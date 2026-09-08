@@ -137,6 +137,18 @@ library, no tiles. See [test/README.md](test/README.md).
 every push to `main`, against the browser the runner image already carries —
 nothing is downloaded.
 
+Two of the scenarios are about the deploy rather than the app. `security`
+serves an OpenStreetMap node whose name has been edited into an attack and
+proves it renders as text; `slowmap` proves the reading does not wait on the
+map library. Both are things the source cannot tell you on its own.
+
+### Editing index.html
+
+The deploy's Content-Security-Policy allows the inline script by its hash, so
+after changing `index.html` run `npm run seal` in `test/` and commit the
+updated `netlify.toml`. `npm test` fails if you forget. See
+[test/README.md](test/README.md#the-seal).
+
 ## Deploying to Netlify
 
 `netlify.toml` in the repo root holds the whole deploy configuration — there is
