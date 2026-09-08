@@ -14,6 +14,10 @@ Chromium is found in this order: `$CHROME_PATH`, then a browser already on
 disk under `$PLAYWRIGHT_BROWSERS_PATH` (or `/opt/pw-browsers`), then the usual
 system paths. Nothing is downloaded. If none is found the run says so.
 
+CI runs this same suite on every pull request — see
+`.github/workflows/test.yml`, which resolves the runner image's own Chrome into
+`$CHROME_PATH` before handing over.
+
 ## What it does
 
 `run.mjs` serves `index.html` behind the exact `Content-Security-Policy` from

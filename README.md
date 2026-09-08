@@ -133,6 +133,10 @@ how much of the gauge survives into a planned day, and — deliberately — the
 four ways the access flow can degrade: Overpass down, no drainage area, no map
 library, no tiles. See [test/README.md](test/README.md).
 
+`.github/workflows/test.yml` runs the same suite on every pull request and on
+every push to `main`, against the browser the runner image already carries —
+nothing is downloaded.
+
 ## Deploying to Netlify
 
 `netlify.toml` in the repo root holds the whole deploy configuration — there is

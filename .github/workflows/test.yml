@@ -1,0 +1,56 @@
+# Riffle's browser suite, on every push and pull request.
+#
+# The app has no build step and no dependencies; the tests have two — a
+# copy of Leaflet to serve in place of the CDN, and a browser to drive.
+# Nothing is downloaded for the browser: the runner image already ships
+# one, and run.mjs finds it through CHROME_PATH.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# a new push supersedes the run in flight for the same ref
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: test/package-lock.json
+
+      # Resolve the browser here rather than inside the suite, so a change
+      # to the runner image fails with a sentence instead of a stack trace.
+      - name: Find a browser
+        run: |
+          for p in /usr/bin/google-chrome /opt/google/chrome/chrome \
+                   /usr/bin/chromium /usr/bin/chromium-browser; do
+            if [ -x "$p" ]; then
+              echo "Using $p"
+              echo "CHROME_PATH=$p" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "No Chrome or Chromium on this runner image. Install one, or set CHROME_PATH." >&2
+          exit 1
+
+      - name: Install the test's dependencies
+        working-directory: test
+        run: npm ci
+
+      - name: Run the suite
+        working-directory: test
+        run: npm test
