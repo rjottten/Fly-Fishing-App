@@ -34,8 +34,25 @@ export default async (req) => {
     return json({error:"lat and lon required"}, 400, false);
   }
 
-  const key = process.env.PLACES_API_KEY;
-  if(!key) return json({configured:false, shops:[]}, 200, false);
+  /* Say which of the ways this can be unset it actually is. A bare
+     `false` sends someone back to the dashboard to guess, and the two
+     causes want opposite fixes: a variable that was never applied needs
+     a redeploy, and one that is blank in *this* deploy context needs
+     editing. Netlify sets CONTEXT, so the answer can name the context
+     it is speaking for. The key itself is never echoed. */
+  const raw = process.env.PLACES_API_KEY;
+  const key = typeof raw === "string" ? raw.trim() : "";
+  if(!key){
+    return json({
+      configured: false,
+      shops: [],
+      why: raw === undefined
+        ? "PLACES_API_KEY is not in this function's environment — add it, then trigger a redeploy, because Netlify applies variable changes at deploy time"
+        : "PLACES_API_KEY exists but is empty for this deploy context — open the variable and check the value for the context named below",
+      context: process.env.CONTEXT || "unknown",
+      branch: process.env.BRANCH || null,
+    }, 200, false);
+  }
 
   try{
     const c = new AbortController();
@@ -46,7 +63,13 @@ export default async (req) => {
       body: JSON.stringify(searchBody(lat, lon, radius)),
     });
     clearTimeout(t);
-    if(!res.ok) return json({configured:true, error:`upstream ${res.status}`, shops:[]}, 200, false);
+    if(!res.ok){
+      /* Google's own message names the cause — billing off, API not
+         enabled, referrer restriction — and is worth more than a status
+         code. It never contains the key. */
+      let detail=""; try{ detail=(await res.text()).slice(0,300); }catch(e){}
+      return json({configured:true, error:`upstream ${res.status}`, detail, shops:[]}, 200, false);
+    }
     const body = await res.json();
     const shops = normalise(body, lat, lon, radius);
     /* Only a real answer is worth caching for a month. An empty one may
