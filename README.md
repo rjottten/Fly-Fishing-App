@@ -8,10 +8,13 @@ fishing at all.
 
 ## What it does
 
-- **Reading panel** — modeled water temperature, flow band, wade safety and a
-  plain-language "go / think / stay home" call for the selected water.
-- **Plays** — ranked, confidence-scored tactics for right now, each with the
-  flies, sizes, rig specs and how to fish it.
+- **Plan bar** — which water is being read, and which day. Fish today, or point
+  it at a Saturday three weeks out and the whole app reads that date.
+- **Plays** — the wade-or-float call for the day, then ranked,
+  confidence-scored tactics, each with the flies, sizes, rig specs and how to
+  fish it.
+- **River conditions** — water temperature, flow band, clarity, light and
+  barometric pressure for the selected water, under the map on **Where**.
 - **Shop list** — the flies and terminal tackle the plays actually call for,
   as a checkable list.
 - **Hatch** — what is on and off across the season for that water.
@@ -19,7 +22,55 @@ fishing at all.
   Riffle lists the public access mapped nearby and reads the water from there.
   The 27 hand-written waters — Catskill and Delaware tailwaters, Pennsylvania
   limestoners, New England freestones, Lake Ontario / Lake Erie steelhead
-  tributaries — are still one tap away.
+  tributaries — re-sort around wherever you last pointed, nearest first.
+- **On river** — one-tap corrections for what you can see and the model cannot:
+  flow, clarity, sky, the glass.
+- **Diary** — what actually happened out there, and the only input to the plays
+  that is not modeled. See below.
+
+## The diary
+
+Everything else in Riffle is modeled: seasonal curves, hatch calendars,
+averages taken across a whole region. A day on the river is a measurement *of*
+that river, and once there are a few of them the book knows things the model
+never will — that the Hendricksons run a week late in this pool, that the fish
+here only ever come to a swung wet, that high-and-green is the streamer day.
+
+Log a day and it records how it went, what you fished, what came off the water,
+the flies that caught, the river as it looked, and your notes. Days live in the
+browser's own storage and are never sent anywhere.
+
+What Riffle does with them:
+
+- **Ranks the plays.** A logged day counts for the water it was logged on (or
+  one within 12 miles), for the three weeks of calendar around it, more when
+  the season is recent, and more again when today's river matches what you
+  wrote down. From that it derives a multiplier per method, **bounded to ±15
+  percent** — a handful of days is evidence, not proof. Play cards say which
+  days moved them and by how much.
+- **Weights the hatch.** A bug you have logged here at this time of year is
+  weighted up on the hatch panel, and a sighting near this date will stretch a
+  hatch window by up to twelve days — hatches run early or late and the book
+  knows which way this water runs. It will never open one months out of season.
+- **Fills in the days you cannot see.** Planning a Saturday two weeks out, the
+  gauge has nothing to say; the diary does.
+
+Export the book to JSON and import it back — browser storage is not a durable
+place to keep several seasons of notes.
+
+## Planning a day
+
+The plan bar reads any day up to three weeks ahead. A gauge reading is not a
+forecast, but the gap between the gauge and the model for today is closer to
+one: a river running warm or high this afternoon is still likely to be running
+warm or high tomorrow. So Riffle carries that anomaly forward and lets it
+decay — quickly for flow, which a single storm resets, slowly for water
+temperature, which has a season's mass behind it. A week out there is almost
+nothing of the gauge left, and the reading is the seasonal curve plus whatever
+the diary knows about that week on that water. The bar always says which it is.
+
+Barometric pressure is never carried forward at all. It is weather, not season;
+check a forecast the night before and tap it on **On river**.
 
 ## Choosing where you fish
 
@@ -77,9 +128,14 @@ Content-Security-Policy, with the upstream services mocked:
 cd test && npm install && npm test
 ```
 
-It covers the access flow and, deliberately, the four ways it can degrade —
-Overpass down, no drainage area, no map library, no tiles. See
-[test/README.md](test/README.md).
+It covers the access flow, the diary's whole round trip through the ranking,
+how much of the gauge survives into a planned day, and — deliberately — the
+four ways the access flow can degrade: Overpass down, no drainage area, no map
+library, no tiles. See [test/README.md](test/README.md).
+
+`.github/workflows/test.yml` runs the same suite on every pull request and on
+every push to `main`, against the browser the runner image already carries —
+nothing is downloaded.
 
 ## Deploying to Netlify
 
