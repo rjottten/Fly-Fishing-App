@@ -283,6 +283,9 @@ async function walk(browser, scenario){
       gaugesInPlan: !!plan.querySelector(".gauges"),
       callInPlan: !!plan.querySelector(".acc-call"),
       builtCard: /How this reading was built/.test(document.body.textContent),
+      reportCond: (()=>{ const r=document.getElementById("panel-report"), c=document.getElementById("conditionsReport");
+        return !!c && r.contains(c) && r.firstElementChild.id==="reportConditions" && !!c.querySelector(".gauges"); })(),
+      oneConditionsId: document.querySelectorAll("#conditions").length===1,
     };
   });
 
@@ -302,6 +305,7 @@ async function walk(browser, scenario){
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
   if(scenario==="security") await securityPass(page, seen);
+  if(scenario==="outofbook") await outOfBookPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
@@ -328,12 +332,63 @@ async function shopPass(page, seen){
       links: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.getAttribute("href"))),
       labels: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.textContent.trim())),
       miles: rows.map(r=>r.querySelector(".wd").textContent.trim()),
-      beforeList: !!card.nextElementSibling && card.nextElementSibling.classList.contains("shopcard"),
+      firstOnTab: document.getElementById("panel-shop").firstElementChild.classList.contains("hint"),
+      askFirst: /Ask the shop one question/.test(document.getElementById("panel-shop").firstElementChild.textContent),
+      beforeList: !!card.compareDocumentPosition(document.querySelector("#panel-shop .shopcard"))
+                  && (card.compareDocumentPosition(document.querySelector("#panel-shop .shopcard"))&Node.DOCUMENT_POSITION_FOLLOWING)>0,
+      guide: /hiring a local guide/i.test(document.getElementById("panel-shop").textContent),
+      photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
       note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
       // ranking and URL vetting are data concerns; the cap is a rendering one
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
   });
+}
+
+/* The book is 27 Northeast rivers, and the westernmost of them are Lake
+   Erie steelhead tributaries. A pin far enough west takes one of those as
+   its nearest water, which is how a Montana trout river came to be read as
+   a steelhead run with egg patterns ranked first. Distance has to switch
+   the modeled half of the app off, not quietly reassign the fishery. */
+async function outOfBookPass(page, seen){
+  seen.book = await page.evaluate(()=>{
+    const at=(lat,lon)=>{ const t=templateFor(lat,lon); return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp}; };
+    const read=(lat,lon,name)=>{
+      const t=templateFor(lat,lon);
+      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN);
+      state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
+      const ctx=buildContext();
+      return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
+              hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length};
+    };
+    const out={
+      nearest:{bozeman:at(45.677,-111.043), boise:at(43.615,-116.202)},
+      montana: read(45.677,-111.043,"Gallatin River"),
+      roscoe:  read(41.9337,-74.9143,"Beaverkill"),
+      edge:    read(40.7934,-77.86,"Spring Creek"),
+    };
+    state.spot=null; state.when=new Date();
+    return out;
+  });
+
+  // and what the angler is actually shown out there
+  seen.bookUI = await page.evaluate(()=>{
+    const t=templateFor(45.677,-111.043);
+    state.spot=spotProfile({lat:45.677,lon:-111.043,name:"Gallatin River"}, t.w, t.dist, null, NaN);
+    draw();
+    const fish=document.getElementById("panel-fish");
+    return {
+      gate: !!fish.querySelector(".gate h2") && fish.querySelector(".gate h2").textContent,
+      says: /outside the book/i.test(fish.textContent),
+      plays: fish.querySelectorAll(".play").length,
+      tactic: !!fish.querySelector("#tactic"),
+      ladder: !!fish.querySelector("#ladderCard"),
+      tempCell: (fish.querySelector(".gauges .g .val")||{}).textContent,
+      shopHead: (document.querySelector("#panel-shop .shop-intro h2")||{}).textContent,
+      eggs: /egg/i.test(fish.textContent),
+    };
+  });
+  await page.evaluate(()=>{ state.spot=null; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -454,7 +509,8 @@ async function diaryPass(page, seen){
 
   await page.click("#tab-report");
   await page.waitForSelector("#dSave");
-  seen.diaryEmpty = await page.$eval("#diary", n=>n.textContent.includes("Nothing logged yet"));
+  seen.diaryEmpty = await page.$eval("#diary", n=>n.textContent.includes("Days you save show up here"));
+  seen.noReadout = await page.$eval("#diary", n=>!/telling the plays/i.test(n.textContent));
 
   // a day with nothing said about it is not a day the engine can use
   await page.click("#dSave");
@@ -501,7 +557,6 @@ async function diaryPass(page, seen){
     const t = buildContext().mem.tech;
     return {streamer: t.streamer?t.streamer.pct:null, dry: t.dry?t.dry.pct:null};
   });
-  seen.readout = (await page.$$eval("#diary .mrow .mname", ns=>ns.map(n=>n.textContent.trim())));
 
   /* The engine, with the book and without it. Read off every play that
      scored rather than the three on the card: in a month the streamer is
@@ -629,6 +684,8 @@ const SCENARIOS = {
        "the app opens on Plan with the day picker already filled", s.firstPaint);
     ok(s.layout.whenOnPlan && s.layout.whenFirstOnPlan && s.layout.whenNotAboveTabs,
        "the day picker leads the Plan tab and appears nowhere else", s.layout);
+    ok(s.layout.reportCond, "river conditions lead the Report tab too", s.layout.reportCond);
+    ok(s.layout.oneConditionsId, "and the second copy carries its own id rather than duplicating one");
     ok(s.layout.ladderOnFish && s.layout.ladderNotOnPlan,
        "the access ladder sits on Fish, under the call it explains", s.layout);
     ok(!s.layout.strayReading && !s.layout.gaugesInPlan && !s.layout.callInPlan,
@@ -657,7 +714,11 @@ const SCENARIOS = {
        "a website tag edited into javascript: is dropped before it can reach an href", s.shops.all[1]);
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "so every href on the tab is one the app built or vetted", s.shops.links);
-    ok(s.shops.beforeList, "the shops come before the list you are handing across the counter");
+    ok(s.shops.firstOnTab && s.shops.askFirst,
+       "what to ask the shop leads the tab, directly under the tabs", s.shops.askFirst);
+    ok(s.shops.beforeList, "and come before the list you are handing across the counter");
+    ok(s.shops.guide, "the tab suggests a guide before it suggests a fly");
+    ok(!s.shops.photo, "and no longer opens by telling you to photograph it", s.shops.photo);
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241
@@ -681,6 +742,7 @@ const SCENARIOS = {
   },
   diary: (s)=>{
     ok(s.diaryEmpty, "an empty book says so rather than showing a blank panel");
+    ok(s.noReadout, "and Report no longer explains the ranking — the play cards do that");
     ok(/how the day went/i.test(s.needsOutcome), "a day with no outcome is refused", s.needsOutcome);
     ok(s.stored.n===1 && s.stored.outcome==="hot", "the day is written to storage", s.stored);
     eq(s.stored.methods, ["streamer"], "with the method that caught");
@@ -692,7 +754,6 @@ const SCENARIOS = {
     ok(s.oneDay>0 && s.oneDay<=15, "one hot day nudges the streamer, no more than 15%", s.oneDay);
     ok(s.pcts.streamer===15, "four of them lean on it as hard as the cap allows", s.pcts);
     ok(s.pcts.dry<0, "and a blank on the dry fly reads the other way", s.pcts);
-    ok(s.readout.some(r=>/Streamer/.test(r)), "the readout names what it is moving", s.readout);
     ok(s.rank.found, "the streamer play is among those the engine scored", s.rank);
     ok(s.rank.moved, "and scores higher with the book than without it", s.rank);
     ok(s.playsNote.length>0 && /your book|day/i.test(s.playsNote.join(" ")),
@@ -762,6 +823,29 @@ const SCENARIOS = {
     ok(s.playsAt < CDN_LAG, `and in ${s.playsAt} ms, not the ${CDN_LAG} ms the CDN took`, s.playsAt);
     ok(s.mapRendered, "and the map still comes up once it lands", s.mapRendered);
     ok(s.names.length>1, "with the access flow unaffected", s.names);
+  },
+  outofbook: (s)=>{
+    ok(s.book.nearest.bozeman.sp==="steelhead" && s.book.nearest.bozeman.miles>1000,
+       "the nearest water to Montana really is a steelhead tributary 1,500 miles off", s.book.nearest);
+    ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
+    ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
+       "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
+    ok(s.book.montana.hatches===0 && s.book.montana.plays===0,
+       "no hatch chart and no plays, in the middle of May", s.book.montana);
+    ok(s.book.roscoe.out===false && s.book.roscoe.plays>0 && s.book.roscoe.hatches>0,
+       "a water in the book still reads in full", s.book.roscoe);
+    ok(s.book.edge.out===false && s.book.edge.plays>0,
+       "and so does one a few miles off it", s.book.edge);
+    ok(/Outside the book/.test(s.bookUI.gate) && s.bookUI.says,
+       "the Fish tab says so in place of the plays", s.bookUI);
+    ok(s.bookUI.plays===0 && !s.bookUI.eggs,
+       "with nothing ranked, and no egg patterns anywhere on it", s.bookUI);
+    ok(!s.bookUI.tactic && !s.bookUI.ladder,
+       "no wade call either — those thresholds are the other river's", s.bookUI);
+    ok(s.bookUI.tempCell==="\u2014",
+       "and a modeled temperature is left blank rather than shown as a reading", s.bookUI.tempCell);
+    ok(/No list for this water/.test(s.bookUI.shopHead),
+       "the shop list says why it is empty", s.bookUI.shopHead);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
