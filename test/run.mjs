@@ -330,6 +330,29 @@ async function securityPass(page, seen){
     };
   });
 
+  /* The watcher above only sees a card the walk happens to render, and the
+     too-warm gate — where the unescaped name actually was — needs the water
+     at 65 F or more. That is a function of the month and the hour, so CI
+     missed this bug for as long as it ran in the evening. Drive the gate
+     directly instead, at a temperature that always opens it. */
+  seen.gate = await page.evaluate((xss)=>{
+    const base = buildContext();
+    const out = {};
+    for(const [name, temp] of [["marginal", 66], ["stop", 70]]){
+      const html = gateCard(Object.assign({}, base, {
+        isGL:false, temp, w:Object.assign({}, base.w, {name:xss}),
+      }));
+      const box = document.createElement("div");
+      box.innerHTML = html;                       // detached: nothing can load
+      out[name] = {
+        rendered: /class="gate"/.test(html),
+        hasElement: !!box.querySelector("img,[onerror],[onload],[onclick]"),
+        showsText: box.textContent.includes("<img src=x"),
+      };
+    }
+    return out;
+  }, XSS);
+
   /* Defence in depth: even a sink nobody has found yet must not be able
      to run a handler, because script-src no longer allows inline script. */
   seen.cspBlocks = await page.evaluate(()=>{
@@ -673,6 +696,12 @@ const SCENARIOS = {
        "and so does the access list", s.sec);
     eq(s.sec.inlineHandlers, [],
        "and at no point in the walk does it land in the tree as an element");
+    ok(s.gate.marginal.rendered && s.gate.stop.rendered,
+       "the too-warm gate opens when driven at 66 and 70 degrees", s.gate);
+    ok(!s.gate.marginal.hasElement && !s.gate.stop.hasElement,
+       "and names the water as text at both temperatures, not as an element", s.gate);
+    ok(s.gate.marginal.showsText && s.gate.stop.showsText,
+       "so the markup in the name is shown, which is the whole point", s.gate);
     ok(s.cspBlocks===0,
        "the policy blocks an inline handler even from a sink nobody has found yet", s.cspBlocks);
     ok(s.refusals.length===1 && /script-src/.test(s.refusals[0]),
