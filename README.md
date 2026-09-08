@@ -1,17 +1,38 @@
 # Riffle
 
+### [robsriffle.netlify.app](https://robsriffle.netlify.app)
+
 A single-file fly fishing app for the Northeast US: point at where you are
 fishing — an address, a pin on the map, your own location — and it finds the
 public access nearby, then reads the date, clock, season and conditions to tell
 you what is likely hatching, what to tie on, and whether the water is worth
 fishing at all.
 
+No account, no install, nothing to configure. Open the link and it is already
+reading a river. It is one HTML file, so it works on the phone in your waders
+as well as it does on a desktop.
+
+## Start here
+
+1. Open **Plan** and say where you are fishing — type a town, tap the map, or
+   use your location. Riffle lists the public access mapped around that point
+   and the waters nearest to it.
+2. Go to **Fish**. Top of the tab is what the river is doing; under it, whether
+   to wade or float; under that, three ranked plays with the flies, sizes and
+   rig for each.
+3. Before you drive, open **Shop** for the shops nearest that water and the
+   list of everything the plays call for.
+4. When you get back, open **Report** and write the day down. That is the one
+   thing Riffle cannot model, and it is what makes the next reading better.
+
+Fishing a Saturday three weeks out? Set the day under the tabs first and every
+tab reads that date instead of today.
+
 ## What it does
 
 Four tabs, and two strips that belong to all of them: the water being read sits
 above the tabs, and the day you are fishing sits below them, because every
-panel is read through it. Fish today, or point it at a Saturday three weeks out
-and the whole app reads that date.
+panel is read through it.
 
 - **Plan** — search an address, drop a pin on the map, or use your location.
   The 27 hand-written waters — Catskill and Delaware tailwaters, Pennsylvania
@@ -32,6 +53,53 @@ and the whole app reads that date.
   glass, as one-tap corrections), and what the day came to. The second half is
   the diary, the only input to the plays that is not modeled. See below.
 
+## Where it works
+
+Riffle reads any point you drop in the Northeast — it borrows the seasonal
+curves of the nearest of these 27 hand-written waters and rescales the flow
+bands to the gauge it finds. So your home pool does not have to be on this list
+for the app to read it; the list is what it reasons *from*.
+
+<details>
+<summary><b>The 27 waters in the book</b></summary>
+
+**Tailwaters** — West Branch Delaware (Hale Eddy, NY) · East Branch Delaware
+(Harvard, NY) · Main Stem Delaware (Lordville, NY) · Neversink River (Neversink
+Gorge, NY) · Farmington River (Riverton / Church Pool, CT)
+
+**Freestones** — Beaverkill (Cooks Falls, NY) · Willowemoc Creek (Livingston
+Manor, NY) · Esopus Creek (Coldbrook, NY) · Housatonic River (Cornwall Bridge,
+CT) · West Branch Ausable (Wilmington, NY) · Battenkill (Arlington, VT) · South
+Branch Raritan (Ken Lockwood Gorge, NJ)
+
+**Limestoners** — Spring Creek (Fisherman's Paradise, PA) · Penns Creek
+(Coburn, PA) · Little Juniata (Spruce Creek, PA) · Yellow Breeches (Boiling
+Springs, PA) · Letort Spring Run (Carlisle, PA) · Big Fishing Creek (The
+Narrows, Lamar, PA) · Lackawanna River (Archbald, PA) · Musconetcong River
+(Point Mountain, NJ)
+
+**Great Lakes tributaries** — Salmon River (Altmar / Pineville, NY) · Oak
+Orchard Creek (The Bridges, NY) · Cattaraugus Creek (Gowanda, NY) · Elk Creek
+(Folly's End / Legion Hole, PA) · Walnut Creek (Manchester Hole, PA) · Conneaut
+Creek (State Line, PA/OH) · Eighteenmile Creek (Burt Dam, NY)
+
+</details>
+
+## What it is not
+
+- **It is not a gauge.** Where USGS has a live reading Riffle shows it and says
+  so. Everywhere else the numbers are **modeled** from date, water type and
+  season. Check the gauge and your own thermometer before you commit to a day.
+- **It is not a statement of legal access.** The access list is features mapped
+  in OpenStreetMap — a launch, a lot, a trailhead. Verify with the state agency
+  or posted signs before you park.
+- **It is not a substitute for your own judgement about wading.** The ladder is
+  built from flow numbers, and flow numbers do not know about the ledge you
+  cannot see.
+- **Stop fishing trout above 68 °F.** Released fish die hours later even when
+  they swim away strong. Riffle says so on the day and names colder water
+  nearby, but it cannot make the call for you.
+
 ## The diary
 
 Everything else in Riffle is modeled: seasonal curves, hatch calendars,
@@ -42,7 +110,10 @@ here only ever come to a swung wet, that high-and-green is the streamer day.
 
 Log a day and it records how it went, what you fished, what came off the water,
 the flies that caught, the river as it looked, and your notes. Days live in the
-browser's own storage and are never sent anywhere.
+browser's own storage and are never sent anywhere — there is no account, no
+backend of Riffle's own, and no analytics of any kind. The only things the page
+ever talks to are the map, the gauges and the weather, and it only asks them
+about the water, never about you.
 
 What Riffle does with them:
 
@@ -64,14 +135,15 @@ place to keep several seasons of notes.
 
 ## Planning a day
 
-The day strip under the tabs reads any day up to three weeks ahead. A gauge reading is not a
-forecast, but the gap between the gauge and the model for today is closer to
-one: a river running warm or high this afternoon is still likely to be running
-warm or high tomorrow. So Riffle carries that anomaly forward and lets it
-decay — quickly for flow, which a single storm resets, slowly for water
-temperature, which has a season's mass behind it. A week out there is almost
-nothing of the gauge left, and the reading is the seasonal curve plus whatever
-the diary knows about that week on that water. The strip always says which it is.
+The day strip under the tabs reads any day up to three weeks ahead. A gauge
+reading is not a forecast, but the gap between the gauge and the model for
+today is closer to one: a river running warm or high this afternoon is still
+likely to be running warm or high tomorrow. So Riffle carries that anomaly
+forward and lets it decay — quickly for flow, which a single storm resets,
+slowly for water temperature, which has a season's mass behind it. A week out
+there is almost nothing of the gauge left, and the reading is the seasonal
+curve plus whatever the diary knows about that week on that water. The strip
+always says which it is.
 
 Barometric pressure is never carried forward at all. It is weather, not season;
 check a forecast the night before and tap it on **Report**.
@@ -83,11 +155,12 @@ Point at a spot and Riffle assembles a reading for it:
 1. **Find the spot** — [Nominatim](https://nominatim.openstreetmap.org) geocodes
    an address or town; a map tap or a drag of the pin works the same way.
 2. **List the access** — the [Overpass API](https://overpass-api.de) is asked
-   what OpenStreetMap has mapped within five miles: slipways, fishing access,
-   piers, trailheads, and parking within 400 m of a waterway. Lots tagged
-   `access=private` are dropped, and parking with no water near it never
-   appears. **These are mapped features, not a statement of legal access** —
-   verify with the state agency or posted signs before you park.
+   what OpenStreetMap has mapped within five miles, widening to twelve if that
+   finds nothing: slipways, fishing access, piers, trailheads, and parking
+   within 400 m of a waterway. Lots tagged `access=private` are dropped, and
+   parking with no water near it never appears. **These are mapped features,
+   not a statement of legal access** — verify with the state agency or posted
+   signs before you park.
 3. **Read the water** — the nearest USGS gauge supplies live flow and
    temperature. Seasonal temperature curves, hatch timing and flow character
    are borrowed from the nearest of the 27 curated waters, and the flow bands
@@ -96,9 +169,10 @@ Point at a spot and Riffle assembles a reading for it:
    says so rather than implying a precision it does not have.
 4. **Find the counter** — the same Overpass API is asked, when you open
    **Shop**, for the tackle and outdoor shops mapped within 25 miles of that
-   point. A shop's own website is linked where OpenStreetMap has one, and its
-   place on the map where it does not. Those tags are world-writable, so only
-   an `http(s)` URL is ever turned into a link.
+   point, widening to 55 if none are. A shop's own website is linked where
+   OpenStreetMap has one, and its place on the map where it does not. Those
+   tags are world-writable, so only an `http(s)` URL is ever turned into a
+   link.
 
 Every step degrades instead of failing: no Overpass, and you can still read the
 pin itself and the shop list is simply shopless; no gauge, and the numbers are
@@ -106,10 +180,10 @@ modeled; no map library or tiles, and the address search still drives
 everything.
 
 Live flow and water temperature come from the USGS Instantaneous Values service
-(`waterservices.usgs.gov`) when a gauge reading is available. When it is not,
-the numbers shown are **modeled** from date, water type and season — check the
-gauge and your own thermometer before you commit to a day. Stop fishing trout
-above 68 °F.
+(`waterservices.usgs.gov`) when a gauge reading is available; barometric
+pressure comes from [Open-Meteo](https://open-meteo.com). Every panel says
+which of its numbers were read and which were modeled, because the difference
+is the whole point.
 
 ## Running it
 
@@ -161,6 +235,9 @@ updated `netlify.toml`. `npm test` fails if you forget. See
 
 ## Deploying to Netlify
 
+Riffle is live at **[robsriffle.netlify.app](https://robsriffle.netlify.app)**,
+deployed from `main` — a push to that branch is the deploy.
+
 `netlify.toml` in the repo root holds the whole deploy configuration — there is
 no build step, so Netlify publishes the repository root as-is:
 
@@ -174,7 +251,8 @@ no build step, so Netlify publishes the repository root as-is:
   uses: its own inline styles and script, Leaflet from cdnjs, Google Fonts,
   OpenStreetMap tiles, and the USGS, Open-Meteo, Nominatim and Overpass APIs.
 
-Point a Netlify site at this repository (or run `netlify deploy --prod` from the
-root) and the config is applied automatically. If you add an external script,
+To stand up your own copy, point a Netlify site at a fork (or run
+`netlify deploy --prod` from the root) and the config is applied automatically.
+If you add an external script,
 stylesheet or data source, widen the matching CSP directive in `netlify.toml` or
 the browser will block it.
