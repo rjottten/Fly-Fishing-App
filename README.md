@@ -249,6 +249,40 @@ after changing `index.html` run `npm run seal` in `test/` and commit the
 updated `netlify.toml`. `npm test` fails if you forget. See
 [test/README.md](test/README.md#the-seal).
 
+## Where the fly shops come from
+
+OpenStreetMap is a map of the landscape, and Riffle leans on it for the things
+it is good at — boat launches, fishing access, trailheads, parking near water.
+It is **not a business directory**. A rural fly shop is in OSM only where a
+volunteer mapped that storefront, and for most of the West Branch nobody has.
+No query fixes a record that was never written.
+
+So the Shop tab asks a places directory first and falls back to OSM:
+
+1. `/api/shops` — a Netlify Function holding the API key server-side, so it is
+   never in a page anyone can view source on. Its answers are cached at the CDN
+   for a month, because fly shops do not move: the waters in the book resolve to
+   a handful of upstream calls rather than one per page view.
+2. OpenStreetMap, whenever the Function has no key or cannot answer.
+3. A search link, always — because both can come up short.
+
+### Turning the directory on
+
+The Function ships dark. Without a key it replies `{"configured": false}` and
+the app falls back to the map, so nothing breaks and nothing is billed.
+
+1. Create a Google Cloud project and enable the **Places API (New)**.
+2. Create an API key, restrict it to that API, and — since it is only ever used
+   from the server — restrict it by IP or leave it unrestricted rather than by
+   referrer.
+3. In Netlify: **Site configuration → Environment variables** → add
+   `PLACES_API_KEY`.
+4. Redeploy. The Shop tab picks it up with no code change.
+
+Check Google's current pricing before you enable billing; the field mask in
+`netlify/functions/_places.mjs` deliberately asks for only what the card draws,
+because the field mask is the bill.
+
 ## Deploying to Netlify
 
 Riffle is live at **[robsriffle.netlify.app](https://robsriffle.netlify.app)**,

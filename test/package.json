@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Browser tests for Riffle. The app itself has no dependencies; these are the test's.",
   "scripts": {
-    "test": "node run.mjs",
+    "test": "node places.test.mjs && node pool.test.mjs && node run.mjs",
     "seal": "node seal.mjs"
   },
   "devDependencies": {

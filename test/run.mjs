@@ -83,6 +83,23 @@ async function mock(page, scenario){
         : r.fulfill({status:200, contentType:"image/png", body:F.PNG_1PX}));
   }
   await page.route("**://fonts.googleapis.com/**", r=>r.fulfill({status:200, contentType:"text/css", body:""}));
+
+  /* /api/shops is the app's own endpoint. Left unmocked it 404s, which is
+     what an un-keyed deploy looks like — so every other scenario proves
+     the OpenStreetMap fallback. The `places` scenario stands it up. */
+  await page.route("**/api/shops**", r => {
+    if(scenario!=="places") return r.fulfill({status:404, contentType:"application/json", body:"{}"});
+    return r.fulfill(json({configured:true, shops:[
+      {id:"places/1", name:"Cross Current Outfitters", kind:"fishing", kindLabel:"Fly and tackle", pri:0,
+       where:"123 River Rd, Starlight", site:"https://crosscurrentoutfitters.example/",
+       tel:"(570) 555-0134", map:"https://www.google.com/maps/search/?api=1&query=Cross%20Current",
+       lat:41.91, lon:-75.34, dist:12000},
+      {id:"places/2", name:"West Branch Angler", kind:"fishing", kindLabel:"Fly and tackle", pri:0,
+       where:"150 Faulkner Rd, Hancock", site:"https://westbranchangler.example/", tel:null,
+       map:"https://www.google.com/maps/search/?api=1&query=West%20Branch%20Angler",
+       lat:42.015, lon:-75.38, dist:4000},
+    ]}));
+  });
   await page.route("**://nominatim.openstreetmap.org/search**",  r=>r.fulfill(json(F.GEOCODE)));
   await page.route("**://nominatim.openstreetmap.org/reverse**", r=>r.fulfill(json(F.REVERSE)));
   /* Anyone may edit an OpenStreetMap node's name. The security scenario
@@ -162,7 +179,11 @@ async function walk(browser, scenario){
     if(scenario==="security" && isHandlerRefusal(t)) refusals.push(t);
     else if(/Content Security Policy|Refused to/i.test(t)) violations.push(t);
     // a mocked 504 is the point of the overpassdown scenario, not a defect
-    else if(m.type()==="error" && !/favicon|ERR_|504/.test(t)) errors.push("console: " + t);
+    /* /api/shops 404s when the app is served as plain files, which is how
+       this harness serves it and how an un-deployed copy behaves. The
+       fallback to OpenStreetMap is the tested behaviour; the browser's
+       note about it is not a defect. */
+    else if(m.type()==="error" && !/favicon|ERR_|504|404/.test(t)) errors.push("console: " + t);
   });
   await mock(page, scenario);
 
@@ -967,6 +988,20 @@ const SCENARIOS = {
        "a silent first mirror hands the query to the second", s.shopCalls);
     ok(s.shops.names.length===3, "and the shops still arrive", s.shops.names);
     ok(s.shopMs < 9000, `without waiting out the wedged host (${s.shopMs} ms)`, s.shopMs);
+  },
+  places: (s)=>{
+    /* OpenStreetMap is a map of the landscape, not a business directory.
+       The shops on this river are in a directory and not in the map, so
+       the directory answers first where one is configured. */
+    eq(s.shops.names, ["West Branch Angler","Cross Current Outfitters"],
+       "the directory's shops are what the tab lists, nearest first");
+    ok(!s.shops.all.some(x=>/Beaverkill Angler/.test(x.name)),
+       "and OpenStreetMap is not asked at all when it answers", s.shops.all.map(x=>x.name));
+    ok(s.shops.links[0].some(h=>/google\.com\/maps/.test(h)),
+       "each carries somewhere to go", s.shops.links[0]);
+    ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
+       "and every href is still one the app built or vetted", s.shops.links);
+    ok(s.shops.guide, "the guide card is unaffected by where the shops came from");
   },
   slowbutok: (s)=>{
     /* Cutting the client off after 12 s while the query is allowed 25 s
