@@ -8,18 +8,51 @@ fishing at all.
 
 ## What it does
 
-- **Reading panel** — modeled water temperature, flow band, wade safety and a
-  plain-language "go / think / stay home" call for the selected water.
-- **Plays** — ranked, confidence-scored tactics for right now, each with the
-  flies, sizes, rig specs and how to fish it.
-- **Shop list** — the flies and terminal tackle the plays actually call for,
-  as a checkable list.
-- **Hatch** — what is on and off across the season for that water.
+- **Fish** — the dashboard, and the tab you land on: modeled water
+  temperature, flow band, wade safety, barometer and a plain-language
+  "go / think / stay home" call for the selected water. It appears here and
+  nowhere else.
 - **Where** — search an address, drop a pin on the map, or use your location.
   Riffle lists the public access mapped nearby and reads the water from there.
   The 27 hand-written waters — Catskill and Delaware tailwaters, Pennsylvania
   limestoners, New England freestones, Lake Ontario / Lake Erie steelhead
   tributaries — are still one tap away.
+- **Plays** — ranked, confidence-scored tactics for right now, each with the
+  flies, sizes, rig specs and how to fish it.
+- **Shop list** — the flies and terminal tackle the plays actually call for,
+  as a checkable list.
+- **Hatch** — what is on and off across the season for that water.
+- **On river** — the conditions you can see and the log you keep: confirm
+  whether the Fish tab told the truth, then file how the day actually went.
+
+## The river log
+
+Everything on **Fish** is a model with a gauge bolted to it, and the gauge is
+usually miles downstream. The **On river** tab is where that gets corrected,
+and where a location slowly accumulates a record worth reading before you
+drive out.
+
+- **Confirm the read** — mark each number on Fish *matched* or *off*: water
+  temperature, flow, clarity, barometer, the wade call. Fish shows the running
+  tally, and names whichever number anglers most often say is wrong.
+- **Your thermometer** — a reading filed here becomes the water temperature on
+  Fish for the next six hours, ahead of both the gauge and the seasonal curve.
+- **How you fished it** — which play you ran, the fly that did it, hours, fish
+  moved and landed, and how the day rated.
+- **What you learned**, and **who else was out** — what the others were doing
+  and whether it worked.
+
+Reports are kept per location — a water from the book by its own name, a
+picked spot rounded to about 110 m, so two anglers at the same pool file into
+the same log. Reports from that spot at that time of year re-rank the plays:
+gently, shrunk toward neutral until several agree, and never by more than a
+tenth either way, so one bad afternoon can't bury a play the model likes.
+Each play card says when the log moved it.
+
+Riffle has no server. The log lives in your browser and is sent nowhere, so
+pooling one is manual and deliberate: copy your entries, hand them to whoever
+you fish with, paste theirs back in. Entries already on file are skipped, so
+the same log can be merged twice with no harm.
 
 ## Choosing where you fish
 
@@ -77,8 +110,10 @@ Content-Security-Policy, with the upstream services mocked:
 cd test && npm install && npm test
 ```
 
-It covers the access flow and, deliberately, the four ways it can degrade —
-Overpass down, no drainage area, no map library, no tiles. See
+It covers the deploy's own headers, the access flow, the river log end to end
+— filing a report, the thermometer reading reaching Fish, the play it moves,
+pooling somebody else's log — and, deliberately, the four ways the access flow
+can degrade: Overpass down, no drainage area, no map library, no tiles. See
 [test/README.md](test/README.md).
 
 ## Deploying to Netlify
@@ -91,10 +126,15 @@ no build step, so Netlify publishes the repository root as-is:
   bookmarked or mistyped URL still lands on the app instead of a 404.
 - **Caching** — `index.html` is served `must-revalidate` so a new deploy is
   picked up on the next load rather than from a stale cache.
-- **Headers** — `nosniff`, a strict referrer policy, a locked-down permissions
-  policy, and a Content-Security-Policy that allows only what the page actually
-  uses: its own inline styles and script, Leaflet from cdnjs, Google Fonts,
-  OpenStreetMap tiles, and the USGS, Open-Meteo, Nominatim and Overpass APIs.
+- **Headers** — `nosniff`, a strict referrer policy, a permissions policy that
+  grants the page geolocation for itself and nothing else, and a
+  Content-Security-Policy that allows only what the page actually uses: its own
+  inline styles and script, Leaflet from cdnjs, Google Fonts, OpenStreetMap
+  tiles, and the USGS, Open-Meteo, Nominatim and Overpass APIs.
+
+The tests serve all of these headers, not just the CSP — a policy that turns
+off a browser feature the app uses reads fine in the file and only breaks once
+deployed.
 
 Point a Netlify site at this repository (or run `netlify deploy --prod` from the
 root) and the config is applied automatically. If you add an external script,

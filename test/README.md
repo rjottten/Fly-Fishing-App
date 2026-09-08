@@ -16,16 +16,31 @@ system paths. Nothing is downloaded. If none is found the run says so.
 
 ## What it does
 
-`run.mjs` serves `index.html` behind the exact `Content-Security-Policy` from
-`netlify.toml` and mocks the five services the app talks to — Nominatim,
+`run.mjs` serves `index.html` behind the exact headers the deploy sets on
+`/*` — read out of `netlify.toml`, CSP and permissions policy alike — and
+mocks the five services the app talks to — Nominatim,
 Overpass, USGS, Open-Meteo, and the tile server — then drives the app the way
 a person does: open **Where**, search an address, read the access list, pick
-the top entry.
+the top entry, then walk over to **On river** and file a report on the day.
+
+The report is the second half of the walk, and it is checked end to end: the
+entry lands in storage and in the log for that location, the thermometer
+reading it carries becomes the water temperature on **Fish**, the tally of
+what anglers said was right or wrong shows up there too, and the play that
+worked is marked and moved in the ranking. Pooling is checked as well — a log
+from somebody else merges once and is skipped the second time.
 
 A CSP violation or a console error fails the run, so the deploy policy is
-tested as hard as the code. The suite also checks the subresource-integrity
-hash pinned in `index.html` against the Leaflet in `node_modules`, which is
-how a version bump that forgets the hash gets caught.
+tested as hard as the code. The `deploy headers` section goes further and
+proves a browser feature the app depends on still works behind the real
+policy: it grants geolocation, loads the page, and calls
+`getCurrentPosition`. That check exists because `geolocation=()` in the
+permissions policy had quietly killed "Use my location" on the deploy while it
+kept working locally — the header is only wrong once it is served.
+
+The suite also checks the subresource-integrity hash pinned in `index.html`
+against the Leaflet in `node_modules`, which is how a version bump that
+forgets the hash gets caught.
 
 ## The scenarios
 
