@@ -35,10 +35,11 @@ above the tabs, and the day you are fishing sits below them, because every
 panel is read through it.
 
 - **Plan** — search an address, drop a pin on the map, or use your location.
-  The 27 hand-written waters — Catskill and Delaware tailwaters, Pennsylvania
-  limestoners, New England freestones, Lake Ontario / Lake Erie steelhead
-  tributaries — re-sort directly under the map, nearest to wherever you last
-  pointed. Below them, the public access OpenStreetMap has mapped around that
+  Sixty-nine waters re-sort directly under the map, nearest to wherever you last
+  pointed: the 27 hand-written ones — Catskill and Delaware tailwaters,
+  Pennsylvania limestoners, New England freestones, Lake Ontario / Lake Erie
+  steelhead tributaries — and 42 more marked **read live**, which are a name and
+  a point and nothing else until you tap one. Below them, the public access OpenStreetMap has mapped around that
   point, and this water's wading ladder.
 - **Fish** — everything you read standing in the river, in the order you ask
   it. **River conditions** first: water temperature, flow band, clarity, light
@@ -60,6 +61,23 @@ curves of the nearest of these 27 hand-written waters and rescales the flow
 bands to the gauge it finds. So your home pool does not have to be on this list
 for the app to read it; the list is what it reasons *from*.
 
+The **read live** waters are that same machinery with a name on the front. A
+hand-written entry is a verified USGS gauge, flow and wading bands tuned to that
+gauge's numbers, a twelve-month temperature curve and a note on how the river
+fishes — weeks of work, which is why there are only 27 of them. A read-live
+entry is a name and a point. Tap one and Riffle looks up its gauge, scales the
+nearest written water's bands by the ratio of the two drainage areas, and prints
+which gauge it found and what it borrowed. Nothing is claimed that the card
+cannot show you the source of, so the list can grow without the book losing its
+footing — and a river that is missing costs you a search rather than a wrong
+reading.
+
+The water it borrows from is matched on fishery, not just distance. Oatka Creek
+is a western New York trout stream 29 miles from Oak Orchard, a steelhead
+tributary, and 139 miles from the nearest written trout water; nearest-of-all
+would have put it on a steelhead calendar and ranked egg patterns in May. Every
+read-live water borrows from a written water of its own kind.
+
 How far that reaches is measured, not assumed. Spring hatch timing moves about a
 week per hundred miles, so:
 
@@ -77,7 +95,7 @@ Erie steelhead tributaries, so without the limit a pin on a Montana trout river
 inherited a steelhead fishery and was told to drift egg patterns in May.
 
 <details>
-<summary><b>The 27 waters in the book</b></summary>
+<summary><b>The 27 hand-written waters</b></summary>
 
 **Tailwaters** — West Branch Delaware (Hale Eddy, NY) · East Branch Delaware
 (Harvard, NY) · Main Stem Delaware (Lordville, NY) · Neversink River (Neversink
@@ -98,6 +116,63 @@ Narrows, Lamar, PA) · Lackawanna River (Archbald, PA) · Musconetcong River
 Orchard Creek (The Bridges, NY) · Cattaraugus Creek (Gowanda, NY) · Elk Creek
 (Folly's End / Legion Hole, PA) · Walnut Creek (Manchester Hole, PA) · Conneaut
 Creek (State Line, PA/OH) · Eighteenmile Creek (Burt Dam, NY)
+
+</details>
+
+<details>
+<summary><b>The 42 read-live waters</b></summary>
+
+A name and a point each — the gauge, the flow bands and the calendar are
+resolved when you tap one, and the card says what it found.
+
+East Branch Ausable (Jay, NY) · Pequest River (Belvidere, NJ) · Rondout Creek
+(Sundown, NY) · Callicoon Creek (Callicoon, NY) · Big Spring Creek (Newville,
+PA) · Mettawee River (Dorset, VT) · Bushkill Creek (Easton, PA) · Schoharie
+Creek (Hunter, NY) · Naugatuck River (Thomaston, CT) · Brodhead Creek
+(Analomink, PA) · Lackawaxen River (Rowland, PA) · Big Flat Brook (Layton, NJ)
+· Falling Spring Branch (Chambersburg, PA) · Pine Creek (Slate Run, PA) · East
+Branch Westfield (Chesterfield, MA) · Deerfield River (Charlemont, MA) ·
+Kettle Creek (Cross Fork, PA) · Willimantic River (Coventry, CT) · West Branch
+Croton (Croton Falls, NY) · Salmon River (Colchester, CT) · Swift River
+(Belchertown, MA) · Gunpowder Falls (Monkton, MD) · Winooski River (Waterbury,
+VT) · White River (Stockbridge, VT) · Loyalsock Creek (Forksville, PA) ·
+Lamoille River (Johnson, VT) · Tulpehocken Creek (Reading, PA) · Youghiogheny
+River (Confluence, PA) · West Canada Creek (Trenton Falls, NY) · Savage River
+(Bloomington, MD) · Allegheny River (Kinzua tailwater, Warren, PA) ·
+Pemigewasset River (Woodstock, NH) · North Branch Potomac (Barnum, WV) · Oil
+Creek (Titusville, PA) · Wiscoy Creek (Pike, NY) · Saco River (North Conway,
+NH) · Connecticut River, Trophy Stretch (Pittsburg, NH) · Androscoggin River
+(Errol, NH) · Oatka Creek (Mumford, NY) · Rapid River (Upton, ME) · Kennebec
+River (Bingham, ME) · Roach River (Kokadjo, ME)
+
+</details>
+
+<details>
+<summary><b>The seventeen plays</b></summary>
+
+Nine read a hatch off the calendar and rank against it — **hatch dry**, **spinner
+fall**, **wet-fly swing**, **dry-dropper**, **indicator nymph**, **euro nymph**,
+**midge**, **streamer**, **terrestrial** — and four are the Great Lakes set:
+**indicator**, **swung fly**, **tight-line** and **streamer** for steelhead.
+
+Four answer questions a hatch calendar cannot, and are ranked on conditions
+alone:
+
+- **Mouse, after dark** — summer nights on water big enough to swim one. The
+  largest brown in a river barely eats in daylight in July, and until this the
+  app had nothing to say between last light and dawn but "too warm, go home".
+- **High water** — pushy, high or blown, where the fish have left the main
+  current entirely and are sitting in water you could stand in. Not a lost day,
+  a different map.
+- **Scuds and cress bugs** — limestoners and bottom-release tailwaters, ranked
+  *up* on the day nothing is hatching, which is the day it is for. It stays off
+  the freestones, which do not hold them in numbers worth planning around.
+- **Sight fishing** — low, clear and bright enough to see into. The conditions
+  that make a river impossible to fool at random are the ones that let you find
+  fish one at a time.
+
+Each is scored from the reading, nudged by the barometer, and moved by your own
+logged days like any other play.
 
 </details>
 
@@ -179,7 +254,8 @@ Point at a spot and Riffle assembles a reading for it:
    signs before you park.
 3. **Read the water** — the nearest USGS gauge supplies live flow and
    temperature. Seasonal temperature curves, hatch timing and flow character
-   are borrowed from the nearest of the 27 curated waters, and the flow bands
+   are borrowed from the nearest of the 27 hand-written waters of the same
+   fishery, and the flow bands
    are rescaled by the ratio of the two gauges' drainage areas. When USGS has
    no drainage area for one of them, the bands travel unscaled and the dashboard
    says so rather than implying a precision it does not have.

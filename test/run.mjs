@@ -166,9 +166,15 @@ async function walk(browser, scenario){
     security: {latitude:41.9337, longitude:-74.9143},   // Roscoe, NY
     outofbook:{latitude:45.6770, longitude:-111.0429},  // Bozeman, MT
   }[scenario];
+  /* Half of what this app decides is a function of the clock — which light
+     window it is, whether a hatch is on its hours, whether it is dark enough
+     to swim a mouse. Left to the container the browser runs in UTC, which is
+     a timezone no user of a Northeast fly-fishing app is ever in, and 23:00
+     in July then reads as evening rather than night. Pin it to the water. */
+  const TZ = {timezoneId:"America/New_York"};
   const ctx = await browser.newContext(GEO
-    ? {permissions:["geolocation"], geolocation:GEO}
-    : {});
+    ? Object.assign({permissions:["geolocation"], geolocation:GEO}, TZ)
+    : Object.assign({}, TZ));
   const page = await ctx.newPage();
   const errors = [], violations = [], refusals = [];
   page.on("pageerror", e => errors.push("pageerror: " + e.message));
@@ -271,6 +277,10 @@ async function walk(browser, scenario){
   await page.click("#nearMore");
   seen.nearOrdered = await page.$$eval("#nearWaters .wbtn .wd",
     ns=>ns.map(n=>parseInt(n.textContent,10)));
+  /* Read the total off the app rather than pinning an integer here: the
+     book grows, and a test that has to be edited every time it does is a
+     test that gets edited without being read. */
+  seen.waterRows = await page.evaluate(()=>WATERS.length + NAMED.length);
   await page.click("#nearLess");
   seen.nearCollapsed = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
   await page.click("#nearMore");        // open, so the water switch below can reach Penns
@@ -357,6 +367,8 @@ async function walk(browser, scenario){
   if(scenario==="plan")  await planPass(page, seen);
   if(scenario==="security") await securityPass(page, seen);
   if(scenario==="outofbook") await outOfBookPass(page, seen);
+  if(scenario==="plays") await playsPass(page, seen);
+  if(scenario==="named") await namedPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
@@ -445,6 +457,129 @@ async function outOfBookPass(page, seen){
     };
   });
   await page.evaluate(()=>{ state.spot=null; draw(); });
+}
+
+/* The four condition-driven plays added alongside the hatch ones answer
+   a question the calendar cannot: what to do when nothing is coming off,
+   when the river is up, when it is too clear, and after dark. None of
+   them can be checked by reading the source — a play is only correct if
+   it appears under the conditions it is for and stays out of the way
+   otherwise, and that is a property of the whole scoring engine, not of
+   the builder. So the engine is driven directly, one condition set at a
+   time, and asked what it would have said. */
+async function playsPass(page, seen){
+  seen.plays4 = await page.evaluate(()=>{
+    const keep={water:state.waterId, when:state.when, ov:state.ov, live:state.live, spot:state.spot};
+    state.spot=null; state.plan=null;
+
+    const at=(o)=>{
+      state.waterId = o.water;
+      state.when = new Date(2026, o.mo-1, o.d, o.h, 0);
+      state.ov = {flow:o.flow||null, clarity:o.clarity||null, sky:o.sky||null, baro:null};
+      state.live = o.tempF!=null ? {gauge:water().gauge, tempF:o.tempF, cfs:null} : null;
+      const ctx = buildContext(), r = recommend(ctx);
+      return {all:(r.all||[]).map(p=>p.key), top:r.picked.map(p=>p.key),
+              lw:ctx.lw.k, fs:ctx.fs.k, clarity:ctx.clarity.k, temp:Math.round(ctx.temp)};
+    };
+
+    const out = {
+      /* every play the engine knows, and the diary's map of them — an
+         unmapped key is not an error anywhere, it just silently stops
+         the angler's own days from ever moving that play again */
+      keys: PLAYS.map(p=>p.key),
+      unmapped: PLAYS.map(p=>p.key).filter(k=>!METHOD_OF_PLAY[k]),
+
+      // mouse: a warm July night on a river big enough to swim one
+      mouseNight: at({water:"bkill", mo:7, d:15, h:23, tempF:64, flow:"normal"}),
+      mouseNoon:  at({water:"bkill", mo:7, d:15, h:13, tempF:64, flow:"normal"}),
+      mouseWinter:at({water:"bkill", mo:1, d:15, h:23, tempF:38, flow:"normal"}),
+      mouseSmall: at({water:"willo", mo:7, d:15, h:23, tempF:64, flow:"normal"}),
+
+      // high water: the flow is the whole trigger
+      highUp:   at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"high",   clarity:"stained"}),
+      highBlown:at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"blown",  clarity:"muddy"}),
+      highNorm: at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"normal", clarity:"clear"}),
+
+      // scuds: the limestone and the tailwater carry them, the freestone does not
+      scudLime: at({water:"spring", mo:2, d:10, h:12, tempF:48, flow:"low", clarity:"clear"}),
+      scudTail: at({water:"wbd",    mo:2, d:10, h:12, tempF:42, flow:"low", clarity:"clear"}),
+      scudFree: at({water:"bkill",  mo:2, d:10, h:12, tempF:38, flow:"low", clarity:"clear"}),
+
+      // sight fishing: low, clear, and bright enough to see into
+      sightLow:  at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"verylow", clarity:"gin",   sky:"bright"}),
+      sightMuddy:at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"verylow", clarity:"muddy", sky:"bright"}),
+      sightHigh: at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"high",    clarity:"gin",   sky:"bright"}),
+      sightDark: at({water:"spring", mo:8, d:20, h:23, tempF:58, flow:"verylow", clarity:"gin",   sky:"bright"}),
+
+      /* A steelhead trib has its own four plays and none of these. A scud
+         play on the Salmon River would be a trout play wearing a hat. */
+      gl: at({water:"salmonr", mo:11, d:5, h:12, flow:"low", clarity:"clear"}),
+    };
+
+    state.waterId=keep.water; state.when=keep.when; state.ov=keep.ov;
+    state.live=keep.live; state.spot=keep.spot;
+    return out;
+  });
+}
+
+/* The named waters are the half of the book that is deliberately not
+   written down: a name and a point, with the gauge, the bands and the
+   calendar all resolved at the moment you tap one. That only stays
+   honest if two things hold — that no entry smuggles in numbers nobody
+   verified, and that the water it borrows its calendar from is the same
+   kind of fishery it is. Both are checked here, and the second is
+   checked on the entry that would have got it wrong. */
+async function namedPass(page, seen){
+  seen.named = await page.evaluate(()=>{
+    const ids=new Set(WATERS.map(w=>w.id));
+    const invented = NAMED.filter(w=>w.gauge||w.flow||w.wade||w.temps||w.shift!=null);
+    const incomplete = NAMED.filter(w=>!w.name||!w.place||!isFinite(w.lat)||!isFinite(w.lon)||!w.sp);
+    const collide = NAMED.filter(w=>ids.has(w.id));
+    const dupes = NAMED.map(w=>w.name).filter((n,i,a)=>a.indexOf(n)!==i);
+
+    /* Every named water has to sit inside the book's reach of a written
+       water of its own species, or the hatch chart it borrows is fiction. */
+    const reach = NAMED.map(w=>{
+      const {w:t, dist} = templateFor(w.lat, w.lon, w.sp);
+      return {name:w.name, tmpl:t.name, sp:t.sp, mi:Math.round(dist/1609.34)};
+    });
+
+    /* Oatka Creek is a western New York trout stream 29 miles from Oak
+       Orchard, a steelhead tributary, and 139 from the nearest written
+       trout water. Nearest-of-all would hand it a steelhead calendar. */
+    const oatka = NAMED.find(w=>/Oatka/.test(w.name));
+    return {
+      count: NAMED.length, invented:invented.map(w=>w.name), incomplete:incomplete.map(w=>w.name),
+      collide:collide.map(w=>w.id), dupes,
+      worst: reach.reduce((a,b)=>b.mi>a.mi?b:a, reach[0]),
+      wrongSp: reach.filter(r=>r.sp!=="trout").map(r=>r.name),
+      blind:  oatka ? templateFor(oatka.lat, oatka.lon).w : null,
+      keyed:  oatka ? templateFor(oatka.lat, oatka.lon, oatka.sp).w : null,
+    };
+  });
+
+  // and the row itself, tapped the way a person taps it
+  await page.click("#tab-plan");
+  await page.waitForSelector("#nearWaters .wbtn");
+  await page.evaluate(()=>{ state.nearAll=true; draw(); });
+  await page.waitForSelector('#nearWaters .wbtn[data-named]');
+  seen.namedUI = await page.evaluate(()=>({
+    rows: document.querySelectorAll('#nearWaters .wbtn[data-named]').length,
+    label: !!document.querySelector('#nearWaters .wbtn[data-named] .wt'),
+    note: /read live/i.test(document.getElementById("nearWaters").textContent),
+  }));
+  const row = await page.$('#nearWaters .wbtn[data-named]');
+  seen.namedUI.rowName = (await row.$eval(".wn", n=>n.childNodes[0].textContent.trim()));
+  await row.click();
+  await page.waitForFunction(()=>!!state.spot, {timeout:10000}).catch(()=>{});
+  seen.namedPick = await page.evaluate(()=>{
+    const w=water();
+    return {name:w.name, sp:w.sp, isSpot:!!w.spot, gauge:w.gauge,
+            tmpl:w.spot&&w.spot.template.name, tmplSp:w.spot&&w.spot.template.sp,
+            saysGauge:/USGS \d/.test(w.note||""), saysBorrowed:/modeled on/.test(w.note||""),
+            beyond:!!w.beyond};
+  });
+  await page.evaluate(()=>{ state.spot=null; state.nearAll=false; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -750,8 +885,9 @@ const SCENARIOS = {
     eq(s.nearFirst, ["Beaverkill","Willowemoc Creek","East Branch Delaware"],
        "and lists the Catskill waters around Roscoe first");
     ok(s.nearOpen<=9, "only the near end of the book is open, so the map is not buried", s.nearOpen);
-    ok(s.nearOrdered.length===27 && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
-       "and one tap opens every water in the book, nearest first", s.nearOrdered.slice(0,5));
+    ok(s.nearOrdered.length===s.waterRows && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
+       "and one tap opens every water Riffle knows, nearest first",
+       {shown:s.nearOrdered.length, known:s.waterRows});
     ok(s.nearCollapsed===s.nearOpen, "and another folds it back", {open:s.nearOpen, back:s.nearCollapsed});
     ok(s.layout.condInFish && s.layout.condFirstInFish, "river conditions lead the Fish tab", s.layout);
     ok(s.layout.condHasGauges && s.layout.condHasBaro, "with the gauges and the barometer in them", s.layout);
@@ -873,7 +1009,15 @@ const SCENARIOS = {
     ok(s.formReset===0, "the form clears what you said for the next day", s.formReset);
     ok(s.formKeepsCond===3, "but keeps the conditions prefilled from the reading", s.formKeepsCond);
     ok(s.oneDay>0 && s.oneDay<=15, "one hot day nudges the streamer, no more than 15%", s.oneDay);
-    ok(s.pcts.streamer===15, "four of them lean on it as hard as the cap allows", s.pcts);
+    /* Four hot days on the streamer put the multiplier within a point of the
+       ceiling and never through it. Pinning the exact integer was pinning a
+       rounding boundary — the confidence term is asymptotic, so it approaches
+       15% without ever reaching it, and which side of 14.5 it lands on moves
+       with the water and the date. The cap is the invariant; the lean is the
+       claim. */
+    ok(s.pcts.streamer>s.oneDay, "four of them lean harder than one", s.pcts);
+    ok(s.pcts.streamer>=14 && s.pcts.streamer<=15,
+       "as hard as the cap allows, and no harder", s.pcts);
     ok(s.pcts.dry<0, "and a blank on the dry fly reads the other way", s.pcts);
     ok(s.rank.found, "the streamer play is among those the engine scored", s.rank);
     ok(s.rank.moved, "and scores higher with the book than without it", s.rank);
@@ -1009,6 +1153,84 @@ const SCENARIOS = {
     ok(s.shops.names.length===3, "a slow Overpass is waited for, not abandoned", s.shops.names);
     ok(s.shopMs >= 6500, `and it really was slow (${s.shopMs} ms)`, s.shopMs);
   },
+  plays: (s)=>{
+    const p=s.plays4, has=(r,k)=>r.all.includes(k);
+    ok(p.keys.length===17, "the book carries seventeen plays", p.keys.length);
+    eq(p.unmapped, [], "and the diary can weight every one of them");
+
+    // --- after dark ---
+    ok(p.mouseNight.lw==="night", "23:00 in July reads as night", p.mouseNight.lw);
+    ok(has(p.mouseNight,"mouse"), "a mouse is on the table after dark in July", p.mouseNight.all);
+    ok(p.mouseNight.top.includes("mouse"),
+       "and it is one of the three shown — nothing else was answering the dark", p.mouseNight.top);
+    ok(!has(p.mouseNoon,"mouse"), "but not at one in the afternoon", p.mouseNoon.all);
+    ok(!has(p.mouseWinter,"mouse"), "and not on a January night", p.mouseWinter.all);
+    ok(!has(p.mouseSmall,"mouse"),
+       "nor on a creek too small to swim one", p.mouseSmall.all);
+
+    // --- the river up ---
+    ok(has(p.highUp,"highwater"), "high water gets its own play", p.highUp.all);
+    ok(p.highUp.top.includes("highwater"), "and it leads with the river up", p.highUp.top);
+    ok(has(p.highBlown,"highwater"), "a blown river is still the edges, not a lost day", p.highBlown.all);
+    ok(!has(p.highNorm,"highwater"), "at normal flow it stays out of the way", p.highNorm.all);
+
+    // --- crustaceans, on the day nothing hatches ---
+    ok(has(p.scudLime,"crustacean"), "February on the limestone is scud water", p.scudLime.all);
+    ok(p.scudLime.top.includes("crustacean"),
+       "and with no hatch on, that is what it says to fish", p.scudLime.top);
+    ok(has(p.scudTail,"crustacean"), "a bottom-release tailwater grows them too", p.scudTail.all);
+    ok(!has(p.scudFree,"crustacean"),
+       "a Catskill freestone does not, and is not told it does", p.scudFree.all);
+
+    // --- low and clear ---
+    ok(has(p.sightLow,"sight"), "low, gin-clear and bright is sight-fishing", p.sightLow.all);
+    ok(p.sightLow.top.includes("sight"), "and it is worth the top three there", p.sightLow.top);
+    ok(!has(p.sightMuddy,"sight"), "you cannot hunt fish you cannot see", p.sightMuddy.all);
+    ok(!has(p.sightHigh,"sight"), "and not with the river up", p.sightHigh.all);
+    ok(!has(p.sightDark,"sight"), "nor in the dark", p.sightDark.all);
+
+    // --- and none of it leaks onto a steelhead river ---
+    eq(p.gl.all.filter(k=>["mouse","highwater","crustacean","sight"].includes(k)), [],
+       "no trout play reaches a Great Lakes tributary");
+    ok(p.gl.all.every(k=>k.startsWith("gl-")), "which still runs only its own four", p.gl.all);
+
+    ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
+    ok(s.errors.length===0, "no console or page errors", s.errors);
+  },
+
+  named: (s)=>{
+    const n=s.named;
+    ok(n.count>=40, "the named waters roughly triple what the list reaches", n.count);
+    eq(n.invented, [], "and not one of them carries a gauge, band or curve nobody verified");
+    eq(n.incomplete, [], "every one has a name, a place, a point and a fishery");
+    eq(n.collide, [], "and none of them shadows a water in the written book");
+    eq(n.dupes, [], "no river is listed twice");
+
+    ok(n.worst.mi<=250, "the furthest one is still inside the book's reach", n.worst);
+    eq(n.wrongSp, [], "and every one borrows from a trout water, not a steelhead run");
+
+    /* The bug this rule exists for, pinned on the entry that has it. */
+    ok(n.blind && n.blind.sp==="steelhead",
+       "nearest-of-all would put Oatka Creek on a steelhead river", n.blind && n.blind.name);
+    ok(n.keyed && n.keyed.sp==="trout",
+       "asking for its own fishery gets a trout one instead", n.keyed && n.keyed.name);
+
+    ok(s.namedUI.rows>0, "the read-live rows are in the same list as the book", s.namedUI);
+    ok(s.namedUI.note, "with a line saying what read-live means", s.namedUI);
+
+    ok(s.namedPick.isSpot, "tapping one reads it as a spot rather than a book water", s.namedPick);
+    ok(s.namedPick.name===s.namedUI.rowName,
+       "and it reads the river whose row was tapped", {got:s.namedPick.name, row:s.namedUI.rowName});
+    ok(s.namedPick.sp==="trout" && s.namedPick.tmplSp==="trout",
+       "on a trout calendar, borrowed from a trout river", s.namedPick);
+    ok(!s.namedPick.beyond, "inside the book, so the plays and the hatch chart stay on", s.namedPick);
+    ok(s.namedPick.saysGauge, "the card names the gauge it actually found", s.namedPick);
+    ok(s.namedPick.saysBorrowed, "and which written water it borrowed from", s.namedPick);
+
+    ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
+    ok(s.errors.length===0, "no console or page errors", s.errors);
+  },
+
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
     ok(s.mapNote.includes("blocked"), "blank tiles are explained", s.mapNote);

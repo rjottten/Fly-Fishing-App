@@ -1362,6 +1362,73 @@ const WATERS = [
   note:"Small, flashy and quick — drops back into shape in 24 to 48 hours. Fish concentrate below Burt Dam."},
 ];
 
+/* --- named waters, read live -------------------------------
+   The 27 entries above are hand-written: a verified USGS gauge,
+   flow and wading bands tuned to that gauge's numbers, a seasonal
+   temperature curve, and a note about how the river actually
+   fishes. That is weeks of work per river and it is why the book
+   is small.
+
+   These are not that. Each one is a name and a point, nothing
+   more — no gauge id, no flow bands, no invented curve. Tapping
+   one runs exactly the path a dropped pin runs: Riffle asks USGS
+   for the nearest active gauge to that point, scales the nearest
+   hand-written water's bands by the ratio of the two drainage
+   areas, and says on the card which gauge it found and what it
+   borrowed. Nothing here is asserted that the app cannot show you
+   the source of.
+
+   So this list can grow without the book losing its footing, and
+   a river that is missing costs an angler a search rather than a
+   wrong reading. Every entry is inside the book's 250-mile reach
+   of a hand-written trout water, which is what keeps the hatch
+   calendar honest.
+------------------------------------------------------------ */
+const NAMED = [
+ {id:"n-ebau", name:"East Branch Ausable", place:"Jay, NY", lat:44.36, lon:-73.72, sp:"trout"},
+ {id:"n-pequest", name:"Pequest River", place:"Belvidere, NJ", lat:40.87, lon:-74.98, sp:"trout"},
+ {id:"n-rondout", name:"Rondout Creek", place:"Sundown, NY", lat:41.93, lon:-74.42, sp:"trout"},
+ {id:"n-callicoon", name:"Callicoon Creek", place:"Callicoon, NY", lat:41.76, lon:-75.06, sp:"trout"},
+ {id:"n-bigspring", name:"Big Spring Creek", place:"Newville, PA", lat:40.17, lon:-77.4, sp:"trout"},
+ {id:"n-mettawee", name:"Mettawee River", place:"Dorset, VT", lat:43.25, lon:-73.1, sp:"trout"},
+ {id:"n-bushkill", name:"Bushkill Creek", place:"Easton, PA", lat:40.7, lon:-75.22, sp:"trout"},
+ {id:"n-schoharie", name:"Schoharie Creek", place:"Hunter, NY", lat:42.21, lon:-74.22, sp:"trout"},
+ {id:"n-naugatuck", name:"Naugatuck River", place:"Thomaston, CT", lat:41.67, lon:-73.07, sp:"trout"},
+ {id:"n-brodhead", name:"Brodhead Creek", place:"Analomink, PA", lat:41.05, lon:-75.2, sp:"trout"},
+ {id:"n-lackawaxen", name:"Lackawaxen River", place:"Rowland, PA", lat:41.47, lon:-74.98, sp:"trout"},
+ {id:"n-flatbrook", name:"Big Flat Brook", place:"Layton, NJ", lat:41.17, lon:-74.85, sp:"trout"},
+ {id:"n-fallingsp", name:"Falling Spring Branch", place:"Chambersburg, PA", lat:39.94, lon:-77.66, sp:"trout"},
+ {id:"n-pine", name:"Pine Creek", place:"Slate Run, PA", lat:41.47, lon:-77.5, sp:"trout"},
+ {id:"n-westfield", name:"East Branch Westfield", place:"Chesterfield, MA", lat:42.4, lon:-72.85, sp:"trout"},
+ {id:"n-deerfield", name:"Deerfield River", place:"Charlemont, MA", lat:42.63, lon:-72.87, sp:"trout"},
+ {id:"n-kettle", name:"Kettle Creek", place:"Cross Fork, PA", lat:41.48, lon:-77.83, sp:"trout"},
+ {id:"n-willimantic", name:"Willimantic River", place:"Coventry, CT", lat:41.8, lon:-72.32, sp:"trout"},
+ {id:"n-croton", name:"West Branch Croton", place:"Croton Falls, NY", lat:41.34, lon:-73.72, sp:"trout"},
+ {id:"n-salmonct", name:"Salmon River", place:"Colchester, CT", lat:41.56, lon:-72.44, sp:"trout"},
+ {id:"n-swift", name:"Swift River", place:"Belchertown, MA", lat:42.27, lon:-72.35, sp:"trout"},
+ {id:"n-gunpowder", name:"Gunpowder Falls", place:"Monkton, MD", lat:39.57, lon:-76.67, sp:"trout"},
+ {id:"n-winooski", name:"Winooski River", place:"Waterbury, VT", lat:44.34, lon:-72.75, sp:"trout"},
+ {id:"n-white", name:"White River", place:"Stockbridge, VT", lat:43.77, lon:-72.68, sp:"trout"},
+ {id:"n-loyalsock", name:"Loyalsock Creek", place:"Forksville, PA", lat:41.49, lon:-76.6, sp:"trout"},
+ {id:"n-lamoille", name:"Lamoille River", place:"Johnson, VT", lat:44.64, lon:-72.68, sp:"trout"},
+ {id:"n-tully", name:"Tulpehocken Creek", place:"Reading, PA", lat:40.35, lon:-75.98, sp:"trout"},
+ {id:"n-yough", name:"Youghiogheny River", place:"Confluence, PA", lat:39.81, lon:-79.35, sp:"trout"},
+ {id:"n-wcanada", name:"West Canada Creek", place:"Trenton Falls, NY", lat:43.29, lon:-75.13, sp:"trout"},
+ {id:"n-savage", name:"Savage River", place:"Bloomington, MD", lat:39.5, lon:-79.12, sp:"trout"},
+ {id:"n-allegheny", name:"Allegheny River", place:"Kinzua tailwater, Warren, PA", lat:41.84, lon:-79.14, sp:"trout"},
+ {id:"n-pemi", name:"Pemigewasset River", place:"Woodstock, NH", lat:43.98, lon:-71.68, sp:"trout"},
+ {id:"n-nbpotomac", name:"North Branch Potomac", place:"Barnum, WV", lat:39.44, lon:-79.15, sp:"trout"},
+ {id:"n-oilck", name:"Oil Creek", place:"Titusville, PA", lat:41.63, lon:-79.67, sp:"trout"},
+ {id:"n-wiscoy", name:"Wiscoy Creek", place:"Pike, NY", lat:42.55, lon:-78.13, sp:"trout"},
+ {id:"n-saco", name:"Saco River", place:"North Conway, NH", lat:44.05, lon:-71.13, sp:"trout"},
+ {id:"n-cttrophy", name:"Connecticut River, Trophy Stretch", place:"Pittsburg, NH", lat:45.09, lon:-71.28, sp:"trout"},
+ {id:"n-androscoggin", name:"Androscoggin River", place:"Errol, NH", lat:44.78, lon:-71.13, sp:"trout"},
+ {id:"n-oatka", name:"Oatka Creek", place:"Mumford, NY", lat:43.0, lon:-77.87, sp:"trout"},
+ {id:"n-rapid", name:"Rapid River", place:"Upton, ME", lat:44.72, lon:-70.9, sp:"trout"},
+ {id:"n-kennebec", name:"Kennebec River", place:"Bingham, ME", lat:45.05, lon:-69.88, sp:"trout"},
+ {id:"n-roach", name:"Roach River", place:"Kokadjo, ME", lat:45.66, lon:-69.28, sp:"trout"},
+];
+
 /* --- hatches -------------------------------------------------
    win   : [startDOY, peakDOY, endDOY]  (Catskill baseline)
    hrs   : emergence clock window, or 'dusk' | 'dawn' | 'allday'
@@ -2344,6 +2411,215 @@ const PLAYS = [
   };
 }},
 
+{key:"mouse", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.day<DOY(6,1)||ctx.day>DOY(10,1)) return null;
+  if(ctx.lw.k!=="night"&&ctx.lw.k!=="dusk") return null;
+  if(ctx.w.size<2) return null;                 // a mouse needs room to swim
+  let s = 12;
+  if(ctx.lw.k==="night") s+=14;
+  if(ctx.temp>=58&&ctx.temp<=70) s+=10;         // the fish are awake and eating
+  if(ctx.temp>70) s-=10;                        // too warm to be handling them at all
+  if(ctx.temp<54) s-=12;
+  if(ctx.day>=DOY(6,20)&&ctx.day<=DOY(9,10)) s+=8;
+  if(ctx.w.type==="freestone") s+=5;
+  if(ctx.fs.k==="normal"||ctx.fs.k==="pushy") s+=6;
+  if(ctx.fs.k==="verylow") s-=6;
+  if(ctx.fs.k==="blown") s-=14;
+  if(ctx.clarity.n<=1) s-=6;
+  if(ctx.sky==="overcast") s+=4;                // no moon is better than a moon
+  const warm = ctx.temp>68;
+  return {
+    score:s,
+    title: ctx.lw.k==="night" ? "Swim a mouse in the dark" : "Mouse the last of the light out",
+    technique:"Mouse — night, swung and swum on top",
+    chips:[["After dark","grn"],["Big fish, few fish",""],[warm?"Handle carefully":"Bank water",""]],
+    why:`The largest brown in this river almost never eats in daylight in ${ctx.day<DOY(8,1)?"midsummer":"late summer"} — it eats at night, and it eats things that are swimming, not drifting. A mouse gives a fish that has seen ten thousand drifted flies something it has never been fooled by. Expect very few takes and an outsized average fish.${warm?" At this temperature, fight them fast and keep them wet — a night-caught fish in warm water is easy to kill by accident." : ""}`,
+    where:"Wade water you walked in daylight. Cast tight to the far bank, undercuts and log jams, and swim it back across the soft inside of every seam. The tailout of a big pool at 2am is the classic spot.",
+    steps:[
+      "<b>Walk it in the light first.</b> Pick one pool, learn its wading, then come back after dark. Do not explore at night.",
+      "<b>Cast to the bank and swim, don't drift.</b> Quarter down, keep the line tight, and lead the fly so it pushes a small wake the whole way across.",
+      "<b>Wait for weight.</b> You will hear the take before you feel it. Do not set on the sound — set when the rod loads, and set sideways.",
+      "<b>Cover it once, then move.</b> A fish that boils and misses will often come again in ten minutes; a pool you have swum twice is done for the night."
+    ],
+    flyGroups:[
+      {lab:"Mice & big waking flies", items:[
+        {name:"Deer-hair Mouse (Morrish or Master Splinter)", size:"#2–4", hex:"#6B5844", qty:"2", note:"the one that has to float all night"},
+        {name:"Foam Gurgler, black", size:"#2–6", hex:"#1E1B18", qty:"2", note:"easier to cast, wakes just as well"},
+        {name:"Muddler Minnow, oversized", size:"#2–6", hex:"#A9865A", qty:"2", note:"fish it dry on top or wet just under"}]},
+      {lab:"When they will not eat on top", items:[
+        {name:"Black Woolly Bugger", size:"#2–6", hex:"#1A1A1A", qty:"3", note:"a black silhouette is the whole point after dark"},
+        {name:"Zoo Cougar / Sculpin, tan", size:"#2–4", hex:"#B08F5E", qty:"2", note:""}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft 6–7 wt, weight-forward floating — you are casting a wet golf ball",
+      "Leader":"6–7 ft: 3 ft of 30 lb, 2 ft of 20 lb, 2 ft of 12–16 lb",
+      "Tippet":"0X–1X (12–16 lb). Fine tippet at night only loses fish you will think about for years.",
+      "Weight":"None. Dress it and squeeze it dry often.",
+      "Connection":"Non-slip loop knot so it swims with its nose up",
+      "Bring":"A headlamp with a red mode, and a wading staff. Rig up before dark."
+    },
+    tackle:[T.fluoro("0X"), T.fluoro("1X"), T.floatant()],
+    windowTxt: ctx.lw.k==="night" ? "Full dark to about 2:00" : "Last light into full dark"
+  };
+}},
+
+{key:"highwater", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.fs.k!=="pushy"&&ctx.fs.k!=="high"&&ctx.fs.k!=="blown") return null;
+  let s = 15;
+  if(ctx.fs.k==="high") s+=12;
+  if(ctx.fs.k==="blown") s+=8;                  // still fishable, but only the edges
+  if(ctx.fs.k==="pushy") s+=4;
+  if(ctx.clarity.n<=1) s+=8;                    // dirty water is exactly when this wins
+  if(ctx.clarity.n>=3) s-=6;
+  if(ctx.temp>=45&&ctx.temp<=65) s+=6;
+  if(ctx.temp<42) s-=8;
+  if(ctx.w.size>=3) s+=4;
+  if(ctx.acc&&ctx.acc.tone==="bad") s-=6;       // when it is not safe to be in it, lean on it less
+  const filthy = ctx.clarity.n<=1;
+  return {
+    score:s,
+    title: ctx.fs.k==="blown" ? "Fish the edges of a blown river" : "Work the high-water edge",
+    technique:"High water — heavy fly, short line, hard against the bank",
+    chips:[[ctx.fs.label,"warn"],[ctx.clarity.label,""],["Edges only",""]],
+    why:`At ${ctx.cfs.toLocaleString()} ${ctx.w.unit} the fish are not where you normally find them. They have left the main current entirely and are sitting in water you could stand in — inside bends, flooded grass, the slack behind a boulder, the seam six inches off the bank. ${filthy?"They cannot see far, so they are hunting by silhouette and vibration: go big, go dark, and go close.":"The river is pushing but readable — the fish have simply slid sideways."} High water is not a lost day, it is a different map.`,
+    where:"The first three feet from the bank, the slack inside every bend, flooded willow and grass margins, and the cushion in front of and behind any boulder large enough to break the surface. Walk the bank, do not wade the middle.",
+    steps:[
+      "<b>Fish where you would normally walk.</b> The lie you are looking for is ankle to knee deep, out of the push, and often behind you.",
+      "<b>Short casts, tight line.</b> Ten to twenty feet. You cannot mend your way to a drift in this — get close and lead the fly.",
+      `<b>${filthy?"Go dark and go big.":"Go big before you go heavy."}</b> ${filthy?"Black and olive show as a silhouette in stained water where naturals disappear. Size is how the fish finds it.":"A #8 stonefly gets seen where a #16 pheasant tail vanishes."} Weight is what keeps it in the strike zone in fast water.`,
+      "<b>Check the bank before every step.</b> Rising water undercuts and moves gravel. If you would not wade it sober in daylight, do not wade it at all."
+    ],
+    flyGroups:[
+      {lab:"Big nymphs", items:[
+        {name:"Pat's Rubber Legs, black/brown", size:"#6–10", hex:"#3A2E22", qty:"3", note:"the high-water fly in the Northeast, and it is not close"},
+        {name:"Tungsten Stonefly, golden", size:"#8–12", hex:"#B98A3C", qty:"3", note:""},
+        {name:"Squirmy Worm / San Juan Worm, pink or red", size:"#10–12", hex:"#D2596B", qty:"4", note:"washed in from the banks — this is the real thing right now"},
+        {name:"Egg pattern, peach or chartreuse", size:"#12–14", hex:"#F2A65A", qty:"3", note:"a visible round target in bad water"}]},
+      {lab:"Streamers for the same water", items:[
+        {name:"Black or olive Woolly Bugger, coneheaded", size:"#4–8", hex:"#22301F", qty:"3", note:""},
+        {name:"Sculpin pattern, dark", size:"#4–6", hex:"#5A4A38", qty:"2", note:"swim it slowly along the bank you are standing on"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft – 10 ft 6 wt, weight-forward floating. The extra length is reach, not distance.",
+      "Leader":"7½–9 ft tapered to 2X–3X — short and stout, it must turn over the weight",
+      "Tippet":"2X–3X fluorocarbon. Fine tippet in high water just donates flies to the river.",
+      "Weight":"Enough to tick bottom in the first two feet of the drift. Add shot until you touch, then take one off.",
+      "Indicator":"Large and buoyant, or a tight-line sighter if you are within a rod length",
+      "Bring":"A wading staff and a belt, cinched. This is the water that drowns people."
+    },
+    tackle:[T.leader("9 ft","3X","nylon"), T.fluoro("2X"), T.fluoro("3X"), T.shot("#4, BB, 3/0"), T.bobber("¾ in")],
+    windowTxt:"All day — the water, not the clock, is what changes"
+  };
+}},
+
+{key:"crustacean", build(ctx, ah){
+  if(ctx.isGL) return null;
+  const scud = ah.filter(o=>o.hx.kind==="crustacean")[0];
+  const limestone = ctx.w.type==="limestone", tail = ctx.w.type==="tailwater";
+  if(!scud && !tail) return null;               // freestones do not hold enough of them to plan on
+  let s = 11;
+  if(scud) s+=10;
+  if(limestone) s+=10;
+  if(tail) s+=6;
+  if(ctx.w.size<=2) s+=3;
+  if(ctx.fs.k==="verylow"||ctx.fs.k==="low"||ctx.fs.k==="normal") s+=5;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=10;
+  if(ctx.clarity.n>=3) s+=4;
+  /* Its whole reason for existing is the day with no hatch on it. */
+  const best = ah.filter(o=>o.hx.kind!=="crustacean")[0];
+  if(!best || best.i<0.35) s+=12;
+  else if(best.i>0.7) s-=8;
+  if(ctx.temp>=38&&ctx.temp<=60) s+=5;
+  if(ctx.day<DOY(4,15)||ctx.day>DOY(10,15)) s+=6;   // the cold months are scud months
+  return {
+    score:s,
+    title: limestone ? "Scuds and cress bugs on the limestone" : "Scuds through the tailwater",
+    technique:"Nymph — crustacean, dead drift near the bottom",
+    chips:[["Scud · sowbug · cress bug","sul"],["No hatch needed",""],[limestone?"Weed beds":"Below the dam",""]],
+    why:`${limestone?"A limestoner carries scuds and cress bugs in the weed all year, in numbers no mayfly ever reaches. Its trout eat them every day of their lives — which is why a good cress bug outfishes a good hatch imitation on eleven months out of twelve.":"Tailwater fish below a bottom-release dam live on scuds. The steady cold water grows them year-round, and there is no season when the fish stop expecting them."} This is the play for the day when nothing is coming off and everything still needs to eat.`,
+    where:"The downstream edge of every weed bed, the gravel between the weed, the first slot below a riffle, and any channel a foot deeper than the water beside it. On the limestone, fish the seam where the weed ends and the sand begins.",
+    steps:[
+      "<b>Get it on the bottom and keep it there.</b> A scud that drifts a foot off the gravel is a scud no fish has ever seen.",
+      "<b>Match the size before the colour.</b> #14–16 covers most of it. Grey-olive when the water is clear, tan when it is stained.",
+      "<b>Fish it short.</b> Fifteen to twenty-five feet, leader mostly out of the water, watching the sighter or the leader butt for the hesitation.",
+      "<b>Add an orange one.</b> A scud that has been eaten or is carrying eggs goes orange, and a single hot-spot scud in the team gets a disproportionate share of the takes."
+    ],
+    flyGroups:[
+      {lab:"Scuds & sowbugs", items:[
+        {name:"Grey-Olive Scud, tungsten bead", size:"#14–16", hex:"#8C8A6E", qty:"4", note:"the anchor"},
+        {name:"Sowbug / Cress Bug, grey", size:"#14–18", hex:"#9A9A8C", qty:"4", note:"flat, drab, and deadly on the Letort and Spring Creek"},
+        {name:"Tan Scud", size:"#14–16", hex:"#C2A87A", qty:"3", note:"stained water"},
+        {name:"Hot-Orange Scud", size:"#14–16", hex:"#E07B2C", qty:"2", note:"the one that gets eaten out of turn"}]},
+      {lab:"The natural dropper", items:[
+        {name:"Pheasant Tail, small", size:"#16–20", hex:"#6E4B2A", qty:"3", note:"18 in below the scud, for the fish that wanted something else"},
+        {name:"Zebra Midge, black-silver", size:"#18–20", hex:"#2A2A2A", qty:"3", note:"winter droppers"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft – 10 ft 3–4 wt, weight-forward floating",
+      "Leader":limestone?"12 ft tapered to 5X — these fish are looked at every weekend":"9–10 ft tapered to 4X",
+      "Tippet":limestone?"3 ft of 5X–6X fluorocarbon":"2–3 ft of 4X–5X fluorocarbon",
+      "Weight":"A 2.5 mm tungsten bead on the scud is usually enough. One #8 shot if the slot is deep.",
+      "Indicator":"Wool, a greased leader butt, or nothing at all if you are close enough to watch the leader",
+      "Connection":"Tippet ring above the point fly; hang the dropper off a tag"
+    },
+    tackle:[T.leader(limestone?"12 ft":"9 ft",limestone?"5X":"4X","nylon"), T.fluoro("5X"), T.fluoro("6X"), T.rings(), T.shot("#8, #6")],
+    windowTxt:"All day, best when nothing is hatching"
+  };
+}},
+
+{key:"sight", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.fs.k!=="verylow"&&ctx.fs.k!=="low") return null;
+  if(ctx.clarity.n<3) return null;              // you cannot sight-fish water you cannot see into
+  if(ctx.lw.k==="night"||ctx.lw.k==="dawn"||ctx.lw.k==="dusk") return null;
+  let s = 13;
+  if(ctx.fs.k==="verylow") s+=8;
+  if(ctx.clarity.n>=4) s+=6;
+  if(ctx.lw.k==="midday"||ctx.lw.k==="afternoon") s+=8;   // overhead sun is what lets you see
+  if(ctx.sky==="bright") s+=7;
+  if(ctx.sky==="overcast") s-=8;
+  if(ctx.w.size<=2) s+=5;
+  if(ctx.w.type==="limestone") s+=6;
+  if(ctx.w.char==="flat") s+=4;
+  if(ctx.temp>70) s-=10;
+  return {
+    score:s,
+    title:"Hunt single fish in low, clear water",
+    technique:"Sight fishing — one fish at a time",
+    chips:[[ctx.clarity.label,"grn"],[ctx.fs.label,""],["Move slowly",""]],
+    why:`At ${ctx.cfs.toLocaleString()} ${ctx.w.unit} and ${ctx.clarity.vis} of visibility, blind-fishing this river mostly educates fish. But the same conditions that make them impossible to fool at random make them possible to find: you can see them. Sight fishing turns a hard day into a small number of very good chances, and the fish you can see is nearly always bigger than the fish you cannot.`,
+    where:"Walk the bank and look before you wade. Tailouts, the sand between weed beds, the shade line under a bank, and the flat immediately above a riffle where a feeding fish sits high. Look for the shadow on the bottom, the white of a mouth, or a tail — not a whole fish.",
+    steps:[
+      "<b>Spend the first ten minutes not casting.</b> Sun over your shoulder, polarised glasses, and look at the bottom. If you are moving, you are not looking.",
+      "<b>Get below and to the side.</b> Approach from downstream on your knees if you have to. Every fish you spook is one you could have caught.",
+      "<b>One cast, well ahead.</b> Land it three to six feet upstream of the fish and off to its side — never over its back. If the first drift is wrong, wait, do not recast into it.",
+      "<b>Watch the fish, not the fly.</b> Set when it moves or its mouth flashes white. On a nymph you will never see the take any other way."
+    ],
+    flyGroups:[
+      {lab:"On top", items:[
+        {name:"Parachute Adams or Comparadun", size:"#16–20", hex:"#8E8E88", qty:"3", note:"drab, low-riding, small"},
+        {name:"Foam Beetle, small", size:"#16–18", hex:"#221E1A", qty:"3", note:"the fish that refuses everything else eats a beetle"},
+        {name:"Parachute Ant, black", size:"#18–20", hex:"#26211C", qty:"3", note:""}]},
+      {lab:"Under it", items:[
+        {name:"Unweighted Pheasant Tail", size:"#16–20", hex:"#6E4B2A", qty:"3", note:"no bead — a bead lands too loud on a fish you can see"},
+        {name:"Walt's Worm / Sowbug, small", size:"#16–18", hex:"#9A9A8C", qty:"3", note:""},
+        {name:"Zebra Midge", size:"#18–22", hex:"#2A2A2A", qty:"3", note:"for the fish holding low and barely moving"}]},
+    ],
+    rig:{
+      "Rod / line":"8 ft 6 in – 9 ft 3–4 wt. A soft rod protects fine tippet on a short line.",
+      "Leader":"12–15 ft tapered to 5X — length is what buys you the drift at this range",
+      "Tippet":"4–5 ft of 6X–7X nylon. Long and fine, so slack lands before the fly does.",
+      "Weight":"None on top. Nothing heavier than a bare nymph underneath.",
+      "Connection":"Improved clinch. Check the knot after every fish and every snag.",
+      "Bring":"Polarised glasses, a brimmed hat, and drab clothing. This is the day the details matter."
+    },
+    tackle:[T.leader("12 ft","5X","nylon"), T.nylon("6X"), T.nylon("7X"), T.floatant()],
+    windowTxt:"10:00 – 16:00, when the sun is high enough to see into the water"
+  };
+}},
+
 /* ---------- GREAT LAKES ---------- */
 {key:"gl-indicator", build(ctx, ah, runs){
   if(!ctx.isGL) return null;
@@ -2572,12 +2848,12 @@ const MEM_STRETCH = 12;       // days a sighting may stretch a hatch window
 /* The six ways a fly gets fished, and the plays each one covers.
    The angler logs a method; the engine ranks plays. */
 const METHODS = [
-  {k:"dry",        label:"Dry fly",           plays:["hatch-dry","spinner","terrestrial"]},
+  {k:"dry",        label:"Dry fly",           plays:["hatch-dry","spinner","terrestrial","sight"]},
   {k:"drydropper", label:"Dry-dropper",       plays:["drydropper"]},
-  {k:"nymph",      label:"Nymph under an indicator", plays:["indicator","midge","gl-indicator"]},
+  {k:"nymph",      label:"Nymph under an indicator", plays:["indicator","midge","gl-indicator","highwater","crustacean"]},
   {k:"tightline",  label:"Euro / tight-line", plays:["euro","gl-tightline"]},
   {k:"swing",      label:"Wet fly / swung fly", plays:["wetswing","gl-swing"]},
-  {k:"streamer",   label:"Streamer",          plays:["streamer","gl-streamer"]},
+  {k:"streamer",   label:"Streamer",          plays:["streamer","gl-streamer","mouse"]},
 ];
 const METHOD_OF_PLAY = (()=>{ const m={}; METHODS.forEach(x=>x.plays.forEach(k=>m[k]=x.k)); return m; })();
 const METHOD_BY_KEY  = (()=>{ const m={}; METHODS.forEach(x=>m[x.k]=x); return m; })();
@@ -3258,9 +3534,16 @@ function rangeOf(miles){
   return "beyond";
 }
 
-function templateFor(lat, lon){
-  let best=WATERS[0], bd=Infinity;
-  for(const w of WATERS){
+/* When the fishery is known — a named water below says what it is — the
+   template has to match it. Nearest-of-all put Oatka Creek, a Finger Lakes
+   trout stream, on Oak Orchard's steelhead calendar because Oak Orchard is
+   29 miles away and the Little Juniata is 139. That is the Montana bug at
+   a scale small enough to look plausible, which is worse. */
+function templateFor(lat, lon, sp){
+  const pool = sp ? WATERS.filter(w=>w.sp===sp) : WATERS;
+  const from = pool.length ? pool : WATERS;
+  let best=from[0], bd=Infinity;
+  for(const w of from){
     const d=metres(lat,lon,w.lat,w.lon);
     if(d<bd){ bd=d; best=w; }
   }
@@ -3339,7 +3622,7 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
    degradations, never dead ends: worst case the angler still
    gets the nearest water in the book, modeled. */
 async function buildSpot(point){
-  const {w:tmpl, dist} = templateFor(point.lat, point.lon);
+  const {w:tmpl, dist} = templateFor(point.lat, point.lon, point.sp);
   let gauge=null, ratio=NaN;
   try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; }
   if(gauge && gauge.id!==tmpl.gauge){
@@ -4616,14 +4899,19 @@ function renderWater(ctx){
   const from = state.pin ? {lat:state.pin.lat, lon:state.pin.lon, what:short(state.pin.label)||"your pin"}
              : g        ? {lat:g.lat, lon:g.lon, what:"your location"}
              : null;
-  const list=WATERS.map(w=>({w, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
+  /* The book and the named waters go in one list, sorted by distance, because
+     the question is "what is near me" and not "which of these did someone hand-
+     write". What separates them travels with each row instead: a book water
+     names the gauge it was built around, a named one says it is read live. */
+  const rows=[...WATERS.map(w=>({w, named:false})), ...NAMED.map(w=>({w, named:true}))];
+  const list=rows.map(o=>({...o, d:from?haversine(from.lat,from.lon,o.w.lat,o.w.lon):null}))
     .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
 
   /* Nearest first, directly under the map — the answer to the question
      the map has just been asked. Everything about how the reading was
      built now travels with the reading itself, on Fish.
 
-     Only the near end of the book is open, because 27 rows between the
+     Only the near end is open, because sixty-nine rows between the
      map and the access list is a wall rather than an answer; the rest
      is one tap away, and the water being read is always in view. */
   const NEAR_OPEN=8;
@@ -4639,12 +4927,16 @@ function renderWater(ctx){
           ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
           : `Location is off, so Riffle opened on <b>${esc(ctx.w.name)}</b>. Search above, tap the map, or pick from the list.`}</p>
       <div class="wlist">
-        ${shownList.map(({w,d})=>`
-          <button class="wbtn" data-w="${w.id}" aria-current="${!ctx.w.spot&&w.id===ctx.w.id}">
-            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
+        ${shownList.map(({w,d,named})=>`
+          <button class="wbtn" data-w="${w.id}"${named?` data-named="1" data-lat="${w.lat}" data-lon="${w.lon}" data-sp="${esc(w.sp)}"`:""}
+                  aria-current="${named ? (!!ctx.w.spot && ctx.w.name===w.name) : (!ctx.w.spot&&w.id===ctx.w.id)}">
+            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${named?"read live":esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
             ${d!=null?`<span class="wd">${d} mi</span>`:""}
           </button>`).join("")}
       </div>
+      ${shownList.some(o=>o.named)?`<p class="muted">Rows marked <b>read live</b> are not in the hand-written book.
+         Riffle reads their gauge from USGS when you tap one and borrows the nearest written water's
+         seasonal curves — the card then says which gauge it found and what it borrowed.</p>`:""}
       ${hidden>0?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearMore">Show all ${list.length} waters</button></div>`
         : state.nearAll?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearLess">Show the nearest ${NEAR_OPEN}</button></div>`:""}
     </div>`;
@@ -4653,7 +4945,20 @@ function renderWater(ctx){
   if(less) less.addEventListener("click",()=>{ state.nearAll=false; draw(); });
 
   document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
-    state.waterId=b.dataset.w; state.spot=null; state.access.chosen=null;
+    state.access.chosen=null;
+    if(b.dataset.named){
+      /* A named water has no bands of its own, so it is read the way a pin is
+         read: find its gauge, borrow the nearest hand-written water's curves,
+         and say so. That takes a round trip, so the row is marked busy. */
+      b.setAttribute("aria-busy","true");
+      const n=NAMED.find(w=>w.id===b.dataset.w);
+      try{ await selectSpot({lat:+b.dataset.lat, lon:+b.dataset.lon, sp:b.dataset.sp,
+                             name:n?n.name:b.dataset.w, place:n?n.place:""}); }
+      finally{ const el=document.querySelector(`#nearWaters .wbtn[data-w="${CSS.escape(b.dataset.w)}"]`);
+               if(el) el.removeAttribute("aria-busy"); }
+      return;
+    }
+    state.waterId=b.dataset.w; state.spot=null;
     state.live=null; state.baro=null; draw();
     refreshLive(water());
   }));
