@@ -337,6 +337,14 @@ async function diaryPass(page, seen){
     return null;
   });
 
+  /* Export builds a blob: URL and clicks it. The deploy CSP is strict
+     enough that this is worth proving here rather than discovering on
+     the live site, where a blocked download is silent. */
+  const dl = page.waitForEvent("download", {timeout:5000}).catch(()=>null);
+  await page.click("#dExport");
+  const got = await dl;
+  seen.exported = got ? got.suggestedFilename() : null;
+
   // and it all survives the tab being closed
   await page.reload({waitUntil:"networkidle"});
   await page.click("#tab-diary");
@@ -434,6 +442,8 @@ const SCENARIOS = {
        "a logged sighting stretches the window and puts it back on the panel", s.stretch);
     ok(s.stretch && s.stretch.farAfter===0,
        "but a bug months out of season stays off it", s.stretch);
+    ok(/^riffle-diary-\d{4}-\d{2}-\d{2}\.json$/.test(s.exported||""),
+       "the book exports as a file the deploy's CSP does not block", s.exported);
     ok(s.afterReload===5, "every day survives the tab being closed", s.afterReload);
     ok(s.reloadPct.penns>=12, "and still lean the plays hard on the next visit", s.reloadPct);
     ok(s.reloadPct.elsewhere===null, "on the water they were logged on, and no other", s.reloadPct);
