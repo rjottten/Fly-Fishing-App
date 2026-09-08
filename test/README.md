@@ -23,8 +23,10 @@ CI runs this same suite on every pull request — see
 `run.mjs` serves `index.html` behind the exact `Content-Security-Policy` from
 `netlify.toml` and mocks the five services the app talks to — Nominatim,
 Overpass, USGS, Open-Meteo, and the tile server — then drives the app the way
-a person does: open **Where**, search an address, read the access list, pick
-the top entry.
+a person does: open **Plan**, search an address, read the access list, pick
+the top entry, then open **Shop** and read the counters near it. Overpass is
+asked two different questions, so the mock answers by what the query asks
+for.
 
 A CSP violation or a console error fails the run, so the deploy policy is
 tested as hard as the code. The suite also checks the subresource-integrity
@@ -35,7 +37,7 @@ how a version bump that forgets the hash gets caught.
 
 | name | proves |
 | --- | --- |
-| `happy` | access is ranked and labelled, the private lot and the lot with no water near it are excluded, and picking a point re-reads the whole app there |
+| `happy` | access is ranked and labelled, the private lot and the lot with no water near it are excluded, picking a point re-reads the whole app there, the four tabs carry what they should in the order they should, and the fly shops link out without ever building a link from a `javascript:` tag |
 | `scaled` | flow bands rescale by the ratio of the two gauges' drainage areas (23.4 mi² against 241 turns 150–500 cfs into 15–49) |
 | `noarea` | with no drainage area the bands travel unscaled and are flagged uncalibrated |
 | `overpassdown` | an Overpass outage is stated plainly and the pin is still readable |
@@ -51,7 +53,7 @@ feed the ranking, and both are bounded on purpose, so a regression in either
 would show up as plays that quietly stop moving — or start moving too much —
 rather than as anything that looks broken.
 
-Of the rest, the last four are the ones worth keeping. Every step of the Where flow depends
+Of the rest, the last four are the ones worth keeping. Every step of the Plan flow depends
 on a service that will eventually be down, and the app is supposed to degrade
 rather than fail — that is only true for as long as something checks it.
 
@@ -78,4 +80,6 @@ elements by attribute, which no hash covers.
 `fixtures.mjs` holds the canned responses, shaped like the real services —
 including the RDB format line (`5s`, `16d`, `8n`) that USGS puts between the
 header and the data, which is exactly the kind of thing a hand-rolled parser
-gets wrong.
+gets wrong. The shop fixture carries a `website` tag edited into a
+`javascript:` URL, because that tag is world-writable and the app puts it in
+an `href`.

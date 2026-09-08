@@ -89,11 +89,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 }
 .srcpill.live{border-color:var(--verd);color:var(--verd);background:var(--verd-soft)}
 
-/* the strip above the tabs — which water, and which day */
+/* two strips: which water, above the tabs — which day, below them */
 .plan{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
   margin-top:16px;box-shadow:var(--shadow);overflow:hidden;
 }
+.plan.when{margin-top:14px}
+.plan.when .pb-when{border-top:0}
 .pb-id{padding:13px 16px 11px}
 .pb-id h2{
   font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;margin:0;
@@ -166,7 +168,32 @@ button{font:inherit;color:inherit;cursor:pointer}
 .baro-trace{flex:none;width:60px;height:22px;opacity:.8;align-self:center}
 .baro-trace polyline{fill:none;stroke:var(--ink2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 
-/* ---------- conditions, on the On river tab ---------- */
+/* the gauge and the river's own character, inside the dashboard —
+   this is what the old "how this reading was built" card carried */
+.rd-meta{padding:12px 16px 14px;border-top:1px solid var(--line-soft)}
+.rd-meta p{margin:0 0 7px;font-size:12px;color:var(--ink2);line-height:1.5}
+.rd-meta p:last-child{margin-bottom:0}
+.rd-meta b{color:var(--ink);font-weight:600}
+.rd-meta .rd-note{color:var(--ink3);font-size:11.5px}
+.rd-meta .hint{margin:9px 0 0}
+
+/* fly shops on the Shop tab */
+.shoprow{
+  display:flex;gap:10px;align-items:flex-start;padding:10px 0;
+  border-bottom:1px solid var(--line-soft);
+}
+.shoprow:last-child{border-bottom:0}
+.shoprow .sn{flex:1;min-width:0;font-size:13.5px;font-weight:600;line-height:1.3}
+.shoprow .sn span{display:block;font-weight:400;font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.4}
+.shoprow .wd{flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink3);padding-top:2px}
+.shoplinks{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.shoplinks a{
+  font-size:11px;font-weight:600;text-decoration:none;color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--raised);
+}
+.shoplinks a:hover{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ---------- conditions, on the Report tab ---------- */
 .panel .refine{margin-top:16px}
 .refine-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px}
 .refine-head h2{font-family:Fraunces,Georgia,serif;font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
@@ -1140,20 +1167,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="wrap">
   <section class="plan" id="planbar"></section>
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
-    <button class="tab" role="tab" id="tab-where" aria-controls="panel-where" aria-selected="false">Where</button>
-    <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
-    <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop list</button>
-    <button class="tab" role="tab" id="tab-hatch" aria-controls="panel-hatch" aria-selected="false">Hatch</button>
-    <button class="tab" role="tab" id="tab-onriver" aria-controls="panel-onriver" aria-selected="false">On river</button>
-    <button class="tab" role="tab" id="tab-diary" aria-controls="panel-diary" aria-selected="false">Diary</button>
+    <button class="tab" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="false">Plan</button>
+    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="true">Fish</button>
+    <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop</button>
+    <button class="tab" role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false">Report</button>
   </nav>
 
-  <div class="panel" id="panel-where" role="tabpanel" aria-labelledby="tab-where" hidden></div>
-  <div class="panel" id="panel-plays" role="tabpanel" aria-labelledby="tab-plays"></div>
+  <!-- Which day you are fishing sits under the tabs, not above them: it
+       re-reads every panel, so it belongs to all four rather than to the
+       masthead. -->
+  <section class="plan when" id="whenbar"></section>
+
+  <div class="panel" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden></div>
+  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish"></div>
   <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
-  <div class="panel" id="panel-hatch" role="tabpanel" aria-labelledby="tab-hatch" hidden></div>
-  <div class="panel" id="panel-onriver" role="tabpanel" aria-labelledby="tab-onriver" hidden></div>
-  <div class="panel" id="panel-diary" role="tabpanel" aria-labelledby="tab-diary" hidden></div>
+  <!-- Report is the two halves of writing the river down: what you can see
+       from where you are standing, and what the day came to. -->
+  <div class="panel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden>
+    <div id="onriver"></div>
+    <div id="diary"></div>
+  </div>
 
   <p class="foot">
     Water temperature and flow are <b>modeled</b> from date, water type and season unless a live gauge reading is shown.
@@ -1487,8 +1520,10 @@ const state = {
   pin:null,                                    // {lat,lon,label} — where the angler pointed
   spot:null,                                   // water-shaped profile synthesized for that point
   access:{status:"idle", list:[], radius:8000, chosen:null},
+  shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
+  nearAll:false,                               // whether the whole book is open under the map
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
-  tab:"plays", checked:new Set(),
+  tab:"fish", checked:new Set(),
   plan:null,                                   // {date,hour} — a day being read ahead of time
   diary:[],                                    // the angler's logged days — see section 3b
   diaryOK:true,                                // false when the browser refuses to store them
@@ -1785,7 +1820,7 @@ function resolveBaro(w, lead){
   }
   if(lead) return Object.assign({}, BARO_STATES.steady, {source:"ahead", hPa:null, hist:null, delta:null,
     srcLabel:"Not yet", chipLabel:"too far out to read",
-    line:`Pressure is the one thing that cannot be carried ${lead===1?"even a day":`${lead} days`} forward — it is weather, not season. Riffle assumes flat until the day gets close, which nudges nothing. Check a forecast the night before, then tap it on <b>On river</b>.`});
+    line:`Pressure is the one thing that cannot be carried ${lead===1?"even a day":`${lead} days`} forward — it is weather, not season. Riffle assumes flat until the day gets close, which nudges nothing. Check a forecast the night before, then tap it on <b>Report</b>.`});
   return Object.assign({}, BARO_STATES.steady, {source:"assumed", hPa:null, hist:null, delta:null,
     srcLabel:"Assumed", chipLabel:"not measured here", line:"No pressure reading here. Riffle assumes flat, which nudges nothing. If the glass is moving, tap it below and the plays re-rank."});
 }
@@ -2966,6 +3001,92 @@ async function accessPoints(lat, lon, radiusM){
   return uniq;
 }
 
+/* --- fly shops, from OpenStreetMap ---------------------------
+   The shop list is worth nothing at home. These are the counters
+   it can actually be handed across, nearest first, with a way to
+   reach each one — a shop's own website where OSM has it, and the
+   place on the map where it does not.
+
+   Every string here is world-writable, the website tag included,
+   so a link is only ever built from a URL that survives safeUrl().
+------------------------------------------------------------ */
+const SHOP_MAX = 8;
+
+/* A tackle shop is tagged shop=fishing; plenty of fly shops are
+   filed under the general outdoor shop instead, so those come too
+   — ranked below, and labelled for what they are. */
+function shopQL(lat, lon, r){
+  const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
+  return `[out:json][timeout:25];
+(
+  nwr${at}["shop"="fishing"];
+  nwr${at}["shop"="outdoor"];
+  nwr${at}["shop"="sports"]["sport"~"fishing",i];
+);
+out tags center 60;`;
+}
+
+/* Only http(s) survives. An OSM website tag is a string anyone may
+   edit, and a javascript: URL in an href is script that the page's
+   own CSP cannot see coming. */
+function safeUrl(u){
+  const raw=String(u||"").trim();
+  if(!raw) return null;
+  try{
+    const url=new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : "https://"+raw);
+    return (url.protocol==="http:"||url.protocol==="https:") ? url.href : null;
+  }catch(e){ return null; }
+}
+function safeTel(t){
+  const raw=String(t||"").trim();
+  return /^[0-9+][0-9+()\-. ]{5,24}$/.test(raw) ? raw : null;
+}
+
+function shopKindOf(tags){
+  if(!tags) return null;
+  if(tags.shop==="fishing") return {k:"fishing", label:"Fly and tackle", pri:0};
+  if(tags.shop==="outdoor") return {k:"outdoor", label:"Outdoor shop", pri:1};
+  if(tags.shop==="sports")  return {k:"sports",  label:"Sporting goods", pri:2};
+  return null;
+}
+
+async function flyShops(lat, lon, radiusM){
+  const j=await overpass(shopQL(lat, lon, radiusM));
+  const out=[];
+  for(const el of (j && j.elements) || []){
+    const kind=shopKindOf(el.tags);
+    if(!kind) continue;
+    const p = el.type==="node" ? {lat:el.lat, lon:el.lon}
+            : el.center ? {lat:el.center.lat, lon:el.center.lon} : null;
+    if(!p || !isFinite(p.lat) || !isFinite(p.lon)) continue;
+    const t=el.tags;
+    /* An outdoor shop with no name is a map note, not somewhere to
+       send a person at seven in the morning. */
+    const name=(t.name||"").trim();
+    if(!name) continue;
+    const addr=[t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" ");
+    out.push({
+      id: el.type+"/"+el.id,
+      name, kind:kind.k, kindLabel:kind.label, pri:kind.pri,
+      where: [addr, t["addr:city"]].filter(Boolean).join(", ") || null,
+      site: safeUrl(t.website || t["contact:website"] || t.url),
+      tel:  safeTel(t.phone || t["contact:phone"]),
+      map:  `https://www.openstreetmap.org/${el.type}/${el.id}`,
+      lat:p.lat, lon:p.lon,
+      dist: metres(lat, lon, p.lat, p.lon),
+    });
+  }
+  out.sort((a,b)=> (a.pri-b.pri) || (a.dist-b.dist));
+  const seen=new Set(), uniq=[];
+  for(const sh of out){
+    const key=sh.name.toLowerCase()+"|"+sh.lat.toFixed(2)+","+sh.lon.toFixed(2);
+    if(seen.has(key)) continue;
+    seen.add(key); uniq.push(sh);
+    if(uniq.length>=SHOP_MAX) break;
+  }
+  return uniq;
+}
+
 /* --- USGS gauges --------------------------------------------- */
 function parseRDB(text){
   const rows=[]; let head=null;
@@ -3129,14 +3250,12 @@ function accFlipTxt(ctx){
   return `${src}Wading thresholds here: <b>${a.wd.full}</b> full river · <b>${a.wd.good}</b> most of it · <b>${a.wd.limited}</b> ${a.canFloat?"boat wins":"edges only"} · <b>${a.wd.max}</b> ${u} is the ceiling. Today is <b>${a.flip.gap} ${u}</b> below the next step up.`;
 }
 
-/* --- the dashboard, in two halves ---------------------------
-   Conditions and tactics answer different questions and are read
-   at different moments, so they live where each is wanted: the
-   river's numbers sit under the map on Where, where you are
-   deciding which water to drive to, and the go/wade/float call
-   sits at the top of Plays, where you are deciding what to do
-   once you are standing in it. The strip above the tabs carries
-   only what both need — which water, and which day.
+/* --- what sits where ----------------------------------------
+   Everything you read while you are standing in the river is on
+   Fish, in the order you ask it: the river's numbers, then the
+   wade-or-float call, then the plays, then what is hatching. The
+   strip above the tabs names the water; the strip below them
+   carries the day, because every panel is read through it.
 ------------------------------------------------------------ */
 
 /* Quick ways to say "the day I am actually going". */
@@ -3189,7 +3308,9 @@ function renderPlanBar(ctx){
         <span>${ctx.lw.label}</span>
         <span class="srcpill ${pill[0]}">${pill[1]}</span>
       </div>
-    </div>
+    </div>`;
+
+  $("#whenbar").innerHTML=`
     <div class="pb-when">
       <div class="dlab">Which day are you fishing?</div>
       <div class="rchips" id="planChips">
@@ -3233,9 +3354,35 @@ function wirePlan(){
   if(nowBtn) nowBtn.addEventListener("click",()=>{ state.plan=null; draw(); });
 }
 
-/* --- section one: the river's numbers, under the map --------- */
-function renderConditions(ctx){
-  const el=$("#conditions"); if(!el) return;
+/* --- section one: the river's numbers, at the top of Fish -----
+   The dashboard carries the gauge it is reading and what this
+   river is actually like, so there is nothing left to look up on
+   another tab to know where a number came from.
+------------------------------------------------------------ */
+function gaugeMetaHTML(ctx){
+  const w=ctx.w, sp=w.spot;
+  const src = ctx.flowSource==="live"
+    ? "Reading live."
+    : "No live reading here \u2014 flow and temperature are modeled from the date and this water's seasonal character.";
+  const borrowed = sp
+    ? `<p>Seasonal curves come from <b>${esc(sp.template.name)}</b> \u2014 ${sp.templateMiles<1?"you are on it":esc(sp.away)}.</p>`
+    : "";
+  const uncal = sp && !sp.calibrated
+    ? `<div class="hint" role="note">
+        <span>\u2691</span>
+        <span><b>Flow bands are uncalibrated.</b> Drainage area was unavailable for one of the gauges, so the
+          numbers above are ${esc(sp.template.name)}'s. Read the band, not the threshold.</span>
+       </div>`
+    : "";
+  return `<div class="rd-meta">
+    <p><b>Gauge ${esc(w.gauge)}</b> \u00b7 ideal ${w.flow.ideal[0]}\u2013${w.flow.ideal[1]} ${esc(w.unit)} \u00b7 blown above ${w.flow.blown}. ${src}</p>
+    ${borrowed}
+    <p class="rd-note">${esc(w.note)}</p>
+    ${uncal}
+  </div>`;
+}
+
+function conditionsHTML(ctx){
   const w=ctx.w;
   const tmin=ctx.isGL?30:32, tmax=ctx.isGL?70:76;
   const pos=clamp((ctx.temp-tmin)/(tmax-tmin),0,1)*100;
@@ -3244,8 +3391,8 @@ function renderConditions(ctx){
      the gauge, which the pill above has already said. */
   const word={live:"read live", carried:"carried forward from today's gauge", you:"your own read", model:"modeled"};
   const prov = ctx.tempSource==="live" && ctx.flowSource==="live" ? ""
-    : `Water temperature ${word[ctx.tempSource]}, flow ${word[ctx.flowSource]}. `;
-  el.innerHTML=`
+    : `Water temperature ${word[ctx.tempSource]}, flow ${word[ctx.flowSource]}.`;
+  return `<section class="reading" id="conditions">
     <div class="rd-head">
       <div class="rd-water">
         <h2>River conditions</h2>
@@ -3282,8 +3429,10 @@ function renderConditions(ctx){
     <div class="thermal">
       <div class="tl"><span>${tmin}°</span><span>Trout comfort ${ctx.isGL?"— steelhead scale":""}</span><span>${tmax}°</span></div>
       <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
-      <div class="cap">${esc(prov)}${esc(w.note)}</div>
-    </div>`;
+      ${prov?`<div class="cap">${esc(prov)}</div>`:""}
+    </div>
+    ${gaugeMetaHTML(ctx)}
+  </section>`;
 }
 
 /* --- section two: the call, at the top of the plays ---------- */
@@ -3388,9 +3537,15 @@ function gateCard(ctx){
   </div>`;
 }
 
-function renderPlays(res, ctx){
-  const el=$("#panel-plays");
+/* --- the Fish tab -------------------------------------------
+   Read top to bottom it answers the questions in the order they
+   are asked on the bank: what is the river doing, can I get in
+   it, what do I tie on, and what is coming off the water.
+------------------------------------------------------------ */
+function renderFish(res, ctx){
+  const el=$("#panel-fish");
   el.innerHTML=`
+  ${conditionsHTML(ctx)}
   ${tacticHTML(ctx)}
   ${gateCard(ctx)}
   <div class="plays">
@@ -3431,19 +3586,20 @@ function renderPlays(res, ctx){
       </div>
     </article>`).join("")}
   </div>
+  ${hatchHTML(res, ctx)}
   <div class="dcard">
-    <div class="dhead"><h2>How did it actually go?</h2><span class="dh-src">Diary</span></div>
+    <div class="dhead"><h2>How did it actually go?</h2><span class="dh-src">Report</span></div>
     <p class="dintro">${ctx.mem.days
       ? `${ctx.mem.days} day${ctx.mem.days===1?"":"s"} from your book fed the ranking above. Add today's and it feeds the next one.`
       : `These are modeled from the calendar and the gauge. Write down what the river actually did today and it comes back the next time you stand here at this point in the season.`}</p>
     <div class="dactions"><button type="button" class="dbtn ghost" id="toDiary">Log this day</button></div>
   </div>`;
   const go=$("#toDiary");
-  if(go) go.addEventListener("click",()=>showTab("diary"));
+  if(go) go.addEventListener("click",()=>showTab("report"));
 }
 
 function renderControls(ctx){
-  $("#panel-onriver").innerHTML=renderRefine(ctx);
+  $("#onriver").innerHTML=renderRefine(ctx);
   wireRefine();
 }
 
@@ -3470,7 +3626,9 @@ function renderRefine(ctx){
   </div>`;
 }
 function wireRefine(){
-  document.querySelectorAll(".rchip").forEach(b=>{
+  /* scoped: the day-picker chips above the tabs are .rchip too, and a
+     handler that read their missing data-k wrote a stray override. */
+  document.querySelectorAll("#onriver .rchip").forEach(b=>{
     b.addEventListener("click",()=>{
       const k=b.dataset.k, v=b.dataset.v||null;
       state.ov[k]= (state.ov[k]===v)?null:v;
@@ -3522,7 +3680,7 @@ function memLine(m){
 }
 
 function renderDiary(ctx){
-  const el=$("#panel-diary");
+  const el=$("#diary");
   const typing=document.activeElement;
   // a background redraw must never yank the field the caret is in
   if(typing && el.contains(typing) && /^(INPUT|TEXTAREA)$/.test(typing.tagName) && !state.dredraw) return;
@@ -3546,7 +3704,7 @@ function renderDiary(ctx){
   <div class="dcard first">
     <div class="dhead"><h2>Log a day</h2><span class="dh-src">Feeds the plays</span></div>
     <p class="dintro">What actually happened out there is the one input Riffle cannot model. Write the day down and it comes back the next time you stand here at this point in the season — in how the plays are ranked, and in which bugs the hatch panel believes.</p>
-    <p class="dwhere">Logging against <b>${esc(w.name)}</b>${w.place?` · ${esc(w.place)}`:""}. Pick a different water or spot on <b>Where</b> to log that one instead.</p>
+    <p class="dwhere">Logging against <b>${esc(w.name)}</b>${w.place?` · ${esc(w.place)}`:""}. Pick a different water or spot on <b>Plan</b> to log that one instead.</p>
 
     <div class="dfield">
       <div class="dlab">Date</div>
@@ -3686,7 +3844,7 @@ function renderDiary(ctx){
 
 function wireDiary(ctx){
   const f=state.dform;
-  document.querySelectorAll("#panel-diary .dchip").forEach(b=>{
+  document.querySelectorAll("#diary .dchip").forEach(b=>{
     b.addEventListener("click",()=>{
       harvestDiaryForm();
       const key=b.dataset.f, v=b.dataset.v;
@@ -3731,7 +3889,7 @@ function wireDiary(ctx){
   const clear=$("#dClear");
   if(clear) clear.addEventListener("click",()=>{ state.dform=freshForm(ctx); state.dmsg=null; renderDiary(ctx); });
 
-  document.querySelectorAll("#panel-diary .dedel").forEach(b=>{
+  document.querySelectorAll("#diary .dedel").forEach(b=>{
     b.addEventListener("click",()=>{
       const id=b.dataset.del;
       if(state.dpend!==id){ state.dpend=id; renderDiary(ctx); return; }   // one tap to arm, one to delete
@@ -3773,6 +3931,67 @@ function wireDiary(ctx){
   }
 }
 
+/* --- the shops themselves ------------------------------------
+   Looked up when the tab is opened rather than at startup: it is
+   a second Overpass call, and most sessions never ask for it.
+------------------------------------------------------------ */
+function shopCentre(){
+  const w=water();
+  return state.pin ? {lat:state.pin.lat, lon:state.pin.lon, what:(state.pin.label||"your pin").split(",")[0].trim()}
+                   : {lat:w.lat, lon:w.lon, what:w.name};
+}
+
+async function loadShops(){
+  const c=shopCentre();
+  const key=c.lat.toFixed(2)+","+c.lon.toFixed(2);
+  const st=state.shops;
+  if(st.key===key && (st.status==="ok"||st.status==="empty"||st.status==="loading")) return;
+  state.shops={status:"loading", list:[], radius:0, key};
+  renderShopsCard();
+  try{
+    let list=await flyShops(c.lat, c.lon, 40000), radius=40000;
+    if(!list.length){ list=await flyShops(c.lat, c.lon, 90000); radius=90000; }
+    state.shops={status:list.length?"ok":"empty", list, radius, key};
+  }catch(e){
+    state.shops={status:"error", list:[], radius:0, key:null};   // null key, so opening the tab tries again
+  }
+  renderShopsCard();
+}
+
+function shopRow(sh){
+  const links=[
+    sh.site?`<a href="${esc(sh.site)}" target="_blank" rel="noopener noreferrer">Website</a>`:"",
+    sh.tel?`<a href="tel:${esc(sh.tel.replace(/[^0-9+]/g,""))}">${esc(sh.tel)}</a>`:"",
+    `<a href="${esc(sh.map)}" target="_blank" rel="noopener noreferrer">Map</a>`,
+  ].filter(Boolean).join("");
+  return `<div class="shoprow">
+    <span class="sn">${esc(sh.name)}
+      <span>${esc(sh.kindLabel)}${sh.where?` \u00b7 ${esc(sh.where)}`:""}</span>
+      <span class="shoplinks">${links}</span>
+    </span>
+    <span class="wd">${esc(milesOf(sh.dist))}</span>
+  </div>`;
+}
+
+function renderShopsCard(){
+  const el=$("#shopsCard"); if(!el) return;
+  const st=state.shops, c=shopCentre();
+  const head=`<h3>Fly shops near ${esc(c.what)}</h3>`;
+  if(st.status==="loading"){ el.innerHTML=head+`<p class="muted">Looking up shops…</p>`; return; }
+  if(st.status==="error"){
+    el.innerHTML=head+`<p class="muted">The OpenStreetMap lookup did not answer, so there is no shop list this time. The flies below do not need it.</p>`;
+    return;
+  }
+  if(st.status==="empty"){
+    el.innerHTML=head+`<p class="muted">Nothing is mapped as a tackle or outdoor shop within ${Math.round(st.radius/1609.34)} miles. That means OpenStreetMap has no record of one — not that there is none. Order the list below ahead of the drive.</p>`;
+    return;
+  }
+  if(st.status!=="ok"){ el.innerHTML=head+`<p class="muted">Opening this tab looks up the counters nearest the water you are reading.</p>`; return; }
+  el.innerHTML=head
+    + `<p class="muted">Nearest first, within ${Math.round(st.radius/1609.34)} miles, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
+    + st.list.map(shopRow).join("");
+}
+
 /* --- shop list --------------------------------------------- */
 function renderShop(res, ctx){
   const flyMap=new Map(), tackMap=new Map();
@@ -3812,6 +4031,8 @@ function renderShop(res, ctx){
       ${esc(ctx.w.name)}, ${ctx.d.toLocaleDateString(undefined,{month:"long",day:"numeric"})}, water ${ctx.temp.toFixed(0)} °F, ${ctx.fs.label.toLowerCase()} flow, ${ctx.clarity.label.toLowerCase()}.</p>
     </div>
 
+    <div class="wcard" id="shopsCard"></div>
+
     <div class="shopcard">
       <h3>Flies — ${flies.length} patterns</h3>
       <ul class="slist">
@@ -3833,9 +4054,13 @@ function renderShop(res, ctx){
 
     <div class="hint">
       <span>⚑</span>
-      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip on the On river tab.</span>
+      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip on the Report tab.</span>
     </div>`;
 
+  renderShopsCard();
+  /* Move the pin while the tab is open and the counters follow it;
+     loadShops() is a no-op while the centre has not changed. */
+  if(state.tab==="shop") loadShops();
   document.querySelectorAll(".sitem").forEach(li=>{
     li.addEventListener("click",()=>{
       const k=li.dataset.key;
@@ -3845,8 +4070,8 @@ function renderShop(res, ctx){
   });
 }
 
-/* --- hatch tab ---------------------------------------------- */
-function renderHatch(res, ctx){
+/* --- what is hatching, at the foot of Fish ------------------- */
+function hatchHTML(res, ctx){
   const now=res.ah.filter(o=>o.i>0.28);
   const soon=HATCHES.filter(hx=>{
     if(ctx.w.sp!=="trout") return false;
@@ -3873,8 +4098,8 @@ function renderHatch(res, ctx){
         </div>`).join("")}
     </div>` : "";
 
-  $("#panel-hatch").innerHTML=`
-    <div class="shop-intro">
+  return `
+    <div class="shop-intro" id="hatchIntro">
       <h2>What is on the water</h2>
       <p>Windows are shifted ${ctx.w.shift===0?"to the Catskill baseline":`${Math.abs(ctx.w.shift)} days ${ctx.w.shift>0?"later":"earlier"} than the Catskill baseline`} for ${esc(ctx.w.name)}, and damped when the modeled water temperature sits outside each insect's trigger range.</p>
     </div>
@@ -3904,16 +4129,18 @@ function haversine(a,b,c,d){
   const h=Math.sin(dLat/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLon/2)**2;
   return Math.round(2*R*Math.asin(Math.sqrt(h)));
 }
-/* --- the Where panel ----------------------------------------
+/* --- the Plan panel — where are you fishing? -----------------
    The map is expensive to build and must survive the ten-minute
    redraw, so the shell is rendered once and only the cards
-   around the map are re-rendered.
+   around the map are re-rendered. The book of waters sits
+   directly under the map: point at a place, and the answer to
+   "what is near here?" is the next thing you read.
 ------------------------------------------------------------ */
 let whereMap=null, pinMarker=null, accLayer=null, whereBuilt=false, mapDead=false;
 
 function whereShell(){
   if(whereBuilt) return;
-  $("#panel-where").innerHTML=`
+  $("#panel-plan").innerHTML=`
     <div class="wcard">
       <h3>Where are you fishing?</h3>
       <p>Search an address, a town or a water — or tap the map to drop a pin. Riffle then looks up the
@@ -3930,7 +4157,7 @@ function whereShell(){
       <div id="map" role="application" aria-label="Map. Tap to choose where you are fishing."></div>
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
-    <section class="reading" id="conditions"></section>
+    <div id="nearWaters"></div>
     <div class="wcard" id="accessCard"></div>
     <div id="waterMeta"></div>`;
   wireWhere();
@@ -3968,7 +4195,7 @@ function watchLeaflet(){
   if(typeof L!=="undefined"){ leafletState="ready"; return; }
   const tag=document.getElementById("leaflet");
   if(!tag){ leafletState="failed"; return; }
-  const settle=(st)=>()=>{ leafletState=st; if(state.tab==="where") initMap(); };
+  const settle=(st)=>()=>{ leafletState=st; if(state.tab==="plan") initMap(); };
   tag.addEventListener("load",  settle("ready"),  {once:true});
   tag.addEventListener("error", settle("failed"), {once:true});
 }
@@ -4145,12 +4372,10 @@ function wireAccessRows(){
 
 function renderWater(ctx){
   whereShell();
-  if(state.tab==="where") initMap();
+  if(state.tab==="plan") initMap();
   renderAccessCard();
-  renderConditions(ctx);
 
   const g=state.geo;
-  const sp=ctx.w.spot;
   /* The book re-sorts around wherever the angler last pointed — a
      searched address, a dropped pin, an access point they picked —
      and only falls back to the device location when they have
@@ -4163,23 +4388,40 @@ function renderWater(ctx){
   const list=WATERS.map(w=>({w, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
     .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
 
-  $("#waterMeta").innerHTML=`
+  /* Nearest first, directly under the map — the answer to the question
+     the map has just been asked. Everything about how the reading was
+     built now travels with the reading itself, on Fish.
+
+     Only the near end of the book is open, because 27 rows between the
+     map and the access list is a wall rather than an answer; the rest
+     is one tap away, and the water being read is always in view. */
+  const NEAR_OPEN=8;
+  const shownList = state.nearAll ? list
+    : list.filter((o,i)=> i<NEAR_OPEN || o.w.id===ctx.w.id);
+  const hidden = list.length - shownList.length;
+  $("#nearWaters").innerHTML=`
     <div class="wcard">
-      <h3>How this reading was built</h3>
-      <p>${sp
-          ? `You picked <b>${esc(ctx.w.name)}</b>${ctx.w.place?" — "+esc(ctx.w.place):""}. `
-            + `Seasonal curves come from <b>${esc(sp.template.name)}</b> — ${sp.templateMiles<1?"you are on it":esc(sp.away)}.`
-          : (from?`${state.pin?"Your pin is":"Your location is"} <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
-              :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Search above, tap the map, or pick from the list.`)}</p>
-      <p><b>Gauge ${esc(ctx.w.gauge)}</b> · ideal ${ctx.w.flow.ideal[0]}–${ctx.w.flow.ideal[1]} ${esc(ctx.w.unit)} · blown above ${ctx.w.flow.blown}.
-      ${ctx.flowSource==="live"?"Reading live.":"No live reading here — flow and temperature are modeled from the date and this water's seasonal character."}</p>
-      ${sp&&!sp.calibrated?`<div class="hint" role="note">
-        <span>\u2691</span>
-        <span><b>Flow bands are uncalibrated.</b> Drainage area was unavailable for one of the gauges, so the
-          numbers above are ${esc(sp.template.name)}'s. Read the band, not the threshold.</span>
-       </div>`:""}
-      <p style="color:var(--ink3)">${esc(ctx.w.note)}</p>
-    </div>
+      <h3>${from?`Nearest waters to ${esc(from.what)}`:"Waters in the book"}</h3>
+      <p>${ctx.w.spot
+          ? `Reading <b>${esc(ctx.w.name)}</b>, picked off the map. Tap a water below to read that one instead.`
+          : from
+          ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
+          : `Location is off, so Riffle opened on <b>${esc(ctx.w.name)}</b>. Search above, tap the map, or pick from the list.`}</p>
+      <div class="wlist">
+        ${shownList.map(({w,d})=>`
+          <button class="wbtn" data-w="${w.id}" aria-current="${!ctx.w.spot&&w.id===ctx.w.id}">
+            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
+            ${d!=null?`<span class="wd">${d} mi</span>`:""}
+          </button>`).join("")}
+      </div>
+      ${hidden>0?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearMore">Show all ${list.length} waters</button></div>`
+        : state.nearAll?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearLess">Show the nearest ${NEAR_OPEN}</button></div>`:""}
+    </div>`;
+  const more=$("#nearMore"), less=$("#nearLess");
+  if(more) more.addEventListener("click",()=>{ state.nearAll=true; draw(); });
+  if(less) less.addEventListener("click",()=>{ state.nearAll=false; draw(); });
+
+  $("#waterMeta").innerHTML=`
     <div class="wcard">
       <h3>Access ladder — ${esc(ctx.w.name)}</h3>
       <p>${esc(FLOAT_TXT[ctx.w.float])} Today's reading is <b>${ctx.cfs} ${esc(ctx.w.unit.split(" ")[0])}</b>${ctx.flowSource==="live"?" (live)":" (modeled)"}.</p>
@@ -4191,18 +4433,8 @@ function renderWater(ctx){
            ["Above "+ctx.w.wade.max,"Blown — do not wade"]]
           .map(([a,b])=>`<div class="refuge"><span class="rn">${esc(b)}</span><span class="wd">${esc(a)}</span></div>`).join("")}
       </div>
-    </div>
-    <div class="wcard">
-      <h3>${from?`Nearest waters to ${esc(from.what)}`:"Waters in the book"}</h3>
-      <div class="wlist">
-        ${list.map(({w,d})=>`
-          <button class="wbtn" data-w="${w.id}" aria-current="${!sp&&w.id===ctx.w.id}">
-            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
-            ${d!=null?`<span class="wd">${d} mi</span>`:""}
-          </button>`).join("")}
-      </div>
     </div>`;
-  document.querySelectorAll("#waterMeta .wbtn").forEach(b=>b.addEventListener("click",async()=>{
+  document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
     state.waterId=b.dataset.w; state.spot=null; state.access.chosen=null;
     state.live=null; state.baro=null; draw();
     refreshLive(water());
@@ -4258,7 +4490,8 @@ function wireTabs(){
       state.tab=t.id.replace("tab-","");
       document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x===t));
       document.querySelectorAll(".panel").forEach(p=>{ p.hidden = p.id!=="panel-"+state.tab; });
-      if(state.tab==="where") whereShown();
+      if(state.tab==="plan") whereShown();
+      if(state.tab==="shop") loadShops();
       window.scrollTo({top:0,behavior:"smooth"});
     });
   });
@@ -4287,7 +4520,7 @@ function locate(explicit){
     }
     draw();
     if(explicit){
-      showTab("where");
+      showTab("plan");
       setPin(state.geo.lat, state.geo.lon, "Your location");
     }
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
@@ -4305,9 +4538,8 @@ function draw(){
   const res=recommend(ctx);
   renderPlanBar(ctx);
   renderControls(ctx);
-  renderPlays(res,ctx);
+  renderFish(res,ctx);
   renderShop(res,ctx);
-  renderHatch(res,ctx);
   renderWater(ctx);
   renderDiary(ctx);
 }

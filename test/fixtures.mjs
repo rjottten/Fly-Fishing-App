@@ -19,6 +19,23 @@ export const OVERPASS = {elements:[
   {type:"way",  id:9, tags:{waterway:"river", name:"Beaverkill"}, geometry:RIVER},
 ]};
 
+/* Shops around Roscoe, as Overpass returns them for the shop query.
+   Four must survive and two must not: the unnamed outdoor shop is a
+   map note rather than a counter, and the shop whose website tag has
+   been edited into a javascript: URL must render with no link at all. */
+export const SHOPS = {elements:[
+  {type:"node", id:11, lat:41.9330, lon:-74.9150, tags:{shop:"fishing", name:"Beaverkill Angler",
+    website:"https://beaverkillangler.example", phone:"+1 607-498-5001",
+    "addr:housenumber":"12", "addr:street":"Stewart Ave", "addr:city":"Roscoe"}},
+  {type:"way",  id:12, center:{lat:41.9400, lon:-74.9300}, tags:{shop:"outdoor", name:"Catskill Outfitters",
+    "contact:website":"catskilloutfitters.example"}},
+  {type:"node", id:13, lat:41.9100, lon:-74.8000, tags:{shop:"fishing", name:"Willowemoc Fly Shop"}},
+  {type:"node", id:14, lat:41.9200, lon:-74.8500, tags:{shop:"outdoor"}},
+  {type:"node", id:15, lat:41.9350, lon:-74.9200, tags:{shop:"fishing", name:"Poisoned Tackle",
+    website:"javascript:window.__xss=(window.__xss||0)+1"}},
+  {type:"node", id:16, lat:41.9000, lon:-74.7000, tags:{shop:"sports", sport:"fishing", name:"Sullivan Sports"}},
+]};
+
 export const GEOCODE = [
   {display_name:"Roscoe, Sullivan County, New York, USA", lat:"41.9337", lon:"-74.9143"},
 ];

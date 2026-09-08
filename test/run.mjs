@@ -91,9 +91,14 @@ async function mock(page, scenario){
     ? (()=>{ const p=JSON.parse(JSON.stringify(F.OVERPASS));
              p.elements[0].tags.name = XSS; return p; })()
     : F.OVERPASS;
-  await page.route("**://overpass**", r =>
-    scenario==="overpassdown" ? r.fulfill({status:504, contentType:"text/plain", body:"gateway timeout"})
-      : r.fulfill(json(overpass)));
+  /* One endpoint, two questions: the access query and the fly-shop
+     query, told apart by what they ask for. */
+  await page.route("**://overpass**", r => {
+    if(scenario==="overpassdown") return r.fulfill({status:504, contentType:"text/plain", body:"gateway timeout"});
+    // the query travels form-encoded, so match the tag name, not the quotes
+    const asked = r.request().postData() || "";
+    return r.fulfill(json(/shop/.test(asked) ? F.SHOPS : overpass));
+  });
   await page.route("**://api.open-meteo.com/**", r=>r.fulfill(json(F.meteo())));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
 
@@ -149,14 +154,14 @@ async function walk(browser, scenario){
        first byte to the first play card, while the CDN sits on Leaflet. */
     const t0 = Date.now();
     await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"commit"});
-    await page.waitForSelector("#panel-plays .play", {timeout:15000});
+    await page.waitForSelector("#panel-fish .play", {timeout:15000});
     seen.playsAt = Date.now()-t0;
     seen.leafletYet = await page.evaluate(()=>typeof L!=="undefined");
   }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
 
-  await page.click("#tab-where");
+  await page.click("#tab-plan");
   seen.mapRendered = await page.waitForSelector(".leaflet-container",{timeout:5000}).then(()=>true,()=>false);
   seen.mapCard = (await page.$eval("#mapCard", n=>n.textContent)).replace(/\s+/g," ").trim();
 
@@ -166,11 +171,16 @@ async function walk(browser, scenario){
   if(scenario==="notiles") await page.waitForTimeout(4000);
 
   // the book re-sorts around the searched point, not the device location
-  seen.nearHead = await page.$eval("#waterMeta .wcard:last-child h3", n=>n.textContent.trim());
-  seen.nearFirst = await page.$$eval("#waterMeta .wcard:last-child .wbtn .wn",
+  seen.nearHead = await page.$eval("#nearWaters h3", n=>n.textContent.trim());
+  seen.nearFirst = await page.$$eval("#nearWaters .wbtn .wn",
     ns=>ns.slice(0,3).map(n=>n.childNodes[0].textContent.trim()));
-  seen.nearOrdered = await page.$$eval("#waterMeta .wcard:last-child .wbtn .wd",
+  seen.nearOpen = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
+  await page.click("#nearMore");
+  seen.nearOrdered = await page.$$eval("#nearWaters .wbtn .wd",
     ns=>ns.map(n=>parseInt(n.textContent,10)));
+  await page.click("#nearLess");
+  seen.nearCollapsed = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
+  await page.click("#nearMore");        // open, so the water switch below can reach Penns
 
   seen.names = await page.$$eval(".wbtn.apt .wn", ns=>ns.map(n=>n.childNodes[0].textContent.trim()));
   seen.kinds = await page.$$eval(".wbtn.apt .akind", ns=>ns.map(n=>n.textContent.trim()));
@@ -179,48 +189,68 @@ async function walk(browser, scenario){
   seen.mapNote = await page.$eval("#mapNote", n=>n.textContent.trim()).catch(()=>"");
 
   await page.click(".wbtn.apt");
-  await page.waitForFunction(()=>document.querySelector("#waterMeta")
-    && document.querySelector("#waterMeta").textContent.includes("Seasonal curves"), {timeout:8000});
+  // how the reading was built now travels with the reading, in the dashboard
+  await page.waitForFunction(()=>document.querySelector("#conditions")
+    && document.querySelector("#conditions").textContent.includes("Seasonal curves"), {timeout:8000});
 
   seen.spot  = await page.$eval("#planbar .pb-id h2", n=>n.textContent.trim());
-  const meta = (await page.$eval("#waterMeta", n=>n.textContent)).replace(/\s+/g," ");
+  const meta = (await page.$eval("#conditions .rd-meta", n=>n.textContent)).replace(/\s+/g," ");
   seen.meta  = meta;
   seen.bands = (meta.match(/ideal ([\d]+)[–-]([\d]+) cfs · blown above (\d+)/)||[]).slice(1).map(Number);
   seen.uncalibrated = meta.includes("uncalibrated");
-  seen.plays = await page.$$eval("#panel-plays .play", n=>n.length);
-  seen.hatch = await page.$$eval("#panel-hatch .hrow", n=>n.length);
+  seen.plays = await page.$$eval("#panel-fish .play", n=>n.length);
+  seen.hatch = await page.$$eval("#panel-fish .hrow", n=>n.length);
   seen.shop  = await page.$$eval("#panel-shop .sitem", n=>n.length);
 
   // a water from the book must clear the synthesized spot
-  await page.click('#waterMeta .wbtn[data-w="penns"]');
+  await page.click('#nearWaters .wbtn[data-w="penns"]');
   await page.waitForTimeout(400);
   seen.afterBook = await page.$eval("#planbar .pb-id h2", n=>n.textContent.trim());
   seen.spotCleared = await page.evaluate(()=>state.spot===null);
 
-  // conditions under the map on Where; the call at the top of Plays
+  /* Conditions lead Fish, the call follows them, the hatch closes the tab,
+     and the nearest waters sit directly under the map on Plan. */
   seen.layout = await page.evaluate(()=>{
-    const where=document.getElementById("panel-where");
+    const plan=document.getElementById("panel-plan");
+    const fish=document.getElementById("panel-fish");
     const cond=document.getElementById("conditions");
-    const plays=document.getElementById("panel-plays");
     const map=document.getElementById("mapCard");
+    const near=document.getElementById("nearWaters");
+    const tactic=document.getElementById("tactic");
+    const hatch=document.getElementById("hatchIntro");
+    const when=document.getElementById("whenbar");
+    const tabs=document.querySelector(".tabs");
+    const after=(a,b)=> !!a && !!b && (a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)>0;
     return {
-      condInWhere: !!cond && where.contains(cond),
-      condUnderMap: !!cond && !!map && (map.compareDocumentPosition(cond)&Node.DOCUMENT_POSITION_FOLLOWING)>0,
+      condInFish: !!cond && fish.contains(cond),
+      condFirstInFish: fish.firstElementChild && fish.firstElementChild.id==="conditions",
       condHasGauges: !!cond && !!cond.querySelector(".gauges"),
       condHasBaro: !!cond && !!cond.querySelector(".baro"),
-      tacticFirstInPlays: plays.firstElementChild && plays.firstElementChild.id==="tactic",
-      tacticHasCall: !!plays.querySelector("#tactic .acc-call"),
+      condHasGaugeId: !!cond && /Gauge \d/.test(cond.textContent),
+      condHasNote: !!cond && !!cond.querySelector(".rd-note") && cond.querySelector(".rd-note").textContent.length>40,
+      tacticAfterCond: after(cond, tactic) && !!fish.querySelector("#tactic .acc-call"),
+      hatchInFish: !!hatch && fish.contains(hatch) && after(tactic, hatch),
+      nearUnderMap: !!near && plan.contains(near) && after(map, near),
+      whenUnderTabs: !!when && after(tabs, when) && !!when.querySelector("#planChips"),
       strayReading: !!document.getElementById("reading"),
-      gaugesInPlays: !!plays.querySelector(".gauges"),
-      callInWhere: !!where.querySelector(".acc-call"),
+      gaugesInPlan: !!plan.querySelector(".gauges"),
+      callInPlan: !!plan.querySelector(".acc-call"),
+      builtCard: /How this reading was built/.test(document.body.textContent),
     };
   });
 
   seen.tabOrder = await page.$$eval(".tab", ts=>ts.map(t=>t.textContent.trim()));
-  await page.click("#tab-onriver");
-  seen.onRiverChips = await page.$$eval("#panel-onriver .rchip", n=>n.length);
-  seen.onRiverGroups = await page.$$eval("#panel-onriver .rlab", ns=>ns.map(n=>n.textContent.trim().split(" — ")[0]));
+  await page.click("#tab-report");
+  seen.onRiverChips = await page.$$eval("#onriver .rchip", n=>n.length);
+  seen.onRiverGroups = await page.$$eval("#onriver .rlab", ns=>ns.map(n=>n.textContent.trim().split(" — ")[0]));
+  // the Report tab carries both halves: what you can see, and what came of it
+  seen.reportHasBoth = await page.evaluate(()=>{
+    const r=document.getElementById("panel-report");
+    return !!r.querySelector("#onriver .refine") && !!r.querySelector("#diary #dSave");
+  });
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
+
+  await shopPass(page, seen);
 
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
@@ -229,6 +259,31 @@ async function walk(browser, scenario){
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
   return seen;
+}
+
+/* The shop list is worth nothing at home, so it carries the counters it
+   can be handed across. Those names and website tags are world-writable
+   OpenStreetMap strings, which is why one of them is an attack. */
+async function shopPass(page, seen){
+  await page.click("#tab-shop");
+  await page.waitForFunction(()=>{
+    const c=document.getElementById("shopsCard");
+    return c && !/Looking up/.test(c.textContent);
+  }, {timeout:12000}).catch(()=>{});
+
+  seen.shops = await page.evaluate(()=>{
+    const card=document.getElementById("shopsCard");
+    if(!card) return null;
+    const rows=[...card.querySelectorAll(".shoprow")];
+    return {
+      head: (card.querySelector("h3")||{}).textContent || "",
+      names: rows.map(r=>r.querySelector(".sn").childNodes[0].textContent.trim()),
+      links: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.getAttribute("href"))),
+      labels: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.textContent.trim())),
+      miles: rows.map(r=>r.querySelector(".wd").textContent.trim()),
+      beforeList: !!card.nextElementSibling && card.nextElementSibling.classList.contains("shopcard"),
+    };
+  });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -274,8 +329,8 @@ async function securityPass(page, seen){
    and the diary, which is keyed to the time of year rather than the
    clock, takes over. */
 async function planPass(page, seen){
-  await page.click("#tab-plays");
-  await page.waitForSelector("#planbar .pb-when");
+  await page.click("#tab-fish");
+  await page.waitForSelector("#whenbar .pb-when");
 
   seen.plan = await page.evaluate(()=>{
     const iso=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -307,7 +362,7 @@ async function planPass(page, seen){
   await page.waitForSelector("#planNow");
   seen.planUI = {
     lead: await page.evaluate(()=>buildContext().lead),
-    lead1: await page.$eval("#planbar .pb-lead", n=>n.textContent.replace(/\s+/g," ").trim()),
+    lead1: await page.$eval("#whenbar .pb-lead", n=>n.textContent.replace(/\s+/g," ").trim()),
     date: await page.$eval("#planDate", n=>n.value),
   };
   await page.click("#planNow");
@@ -318,24 +373,24 @@ async function planPass(page, seen){
    the only input that outlives the tab. So it is driven twice: once
    through the form, and once again after a reload. */
 async function diaryPass(page, seen){
-  const chip = (field, value) => `#panel-diary .dchip[data-f="${field}"][data-v="${value}"]`;
+  const chip = (field, value) => `#diary .dchip[data-f="${field}"][data-v="${value}"]`;
 
-  await page.click("#tab-diary");
+  await page.click("#tab-report");
   await page.waitForSelector("#dSave");
-  seen.diaryEmpty = await page.$eval("#panel-diary", n=>n.textContent.includes("Nothing logged yet"));
+  seen.diaryEmpty = await page.$eval("#diary", n=>n.textContent.includes("Nothing logged yet"));
 
   // a day with nothing said about it is not a day the engine can use
   await page.click("#dSave");
-  seen.needsOutcome = await page.$eval("#panel-diary .dsaved", n=>n.textContent.trim());
+  seen.needsOutcome = await page.$eval("#diary .dsaved", n=>n.textContent.trim());
 
   await page.click(chip("outcome","hot"));
   await page.click(chip("methods","streamer"));
   await page.fill("#dFlies", "Olive sculpin, size 4");
   await page.fill("#dNotes", "Fish were hard on the far bank all afternoon.");
   await page.click("#dSave");
-  await page.waitForSelector("#panel-diary .dentry");
+  await page.waitForSelector("#diary .dentry");
 
-  seen.entryText = (await page.$eval("#panel-diary .dentry", n=>n.textContent)).replace(/\s+/g," ").trim();
+  seen.entryText = (await page.$eval("#diary .dentry", n=>n.textContent)).replace(/\s+/g," ").trim();
   seen.stored = await page.evaluate(()=>{
     const j = JSON.parse(localStorage.getItem("riffle.diary.v1")||"[]");
     return {n:j.length, outcome:j[0]&&j[0].outcome, methods:j[0]&&j[0].methods,
@@ -343,10 +398,10 @@ async function diaryPass(page, seen){
   });
   // the conditions stay prefilled from the reading; what you said about the day does not
   seen.formReset = await page.$$eval(
-    "#panel-diary .dchip[aria-pressed=true]",
+    "#diary .dchip[aria-pressed=true]",
     ns=>ns.map(n=>n.dataset.f).filter(f=>!f.startsWith("cond.")).length);
   seen.formKeepsCond = await page.$$eval(
-    "#panel-diary .dchip[aria-pressed=true][data-f^='cond.']", ns=>ns.length);
+    "#diary .dchip[aria-pressed=true][data-f^='cond.']", ns=>ns.length);
 
   // one hot streamer day is a nudge; a run of them is a lean, and it caps
   seen.oneDay = await page.evaluate(()=>{ const m=buildContext().mem.tech.streamer; return m?m.pct:null; });
@@ -369,7 +424,7 @@ async function diaryPass(page, seen){
     const t = buildContext().mem.tech;
     return {streamer: t.streamer?t.streamer.pct:null, dry: t.dry?t.dry.pct:null};
   });
-  seen.readout = (await page.$$eval("#panel-diary .mrow .mname", ns=>ns.map(n=>n.textContent.trim())));
+  seen.readout = (await page.$$eval("#diary .mrow .mname", ns=>ns.map(n=>n.textContent.trim())));
 
   // the engine, with the book and without it
   seen.rank = await page.evaluate(()=>{
@@ -381,7 +436,7 @@ async function diaryPass(page, seen){
     return {moved: !!(s&&b) && s.score>b.score*1.02,
             ranked: withBook.map(p=>p.key), bareRanked: bare.map(p=>p.key)};
   });
-  seen.playsNote = await page.$$eval("#panel-plays .fromdiary", ns=>ns.map(n=>n.textContent.trim()));
+  seen.playsNote = await page.$$eval("#panel-fish .fromdiary", ns=>ns.map(n=>n.textContent.trim()));
 
   /* A hatch the calendar has finished with, that the angler says is
      still coming off. The window stretches; it never opens in a month
@@ -431,9 +486,9 @@ async function diaryPass(page, seen){
 
   // and it all survives the tab being closed
   await page.reload({waitUntil:"networkidle"});
-  await page.click("#tab-diary");
-  await page.waitForSelector("#panel-diary .dentry");
-  seen.afterReload = await page.$$eval("#panel-diary .dentry", ns=>ns.length);
+  await page.click("#tab-report");
+  await page.waitForSelector("#diary .dentry");
+  seen.afterReload = await page.$$eval("#diary .dentry", ns=>ns.length);
   // and they speak only for the water they were logged on
   seen.reloadPct = await page.evaluate(()=>{
     const here = buildContext().mem.tech.streamer;
@@ -462,32 +517,55 @@ const SCENARIOS = {
     ok(s.markers===3, "every access point is on the map", s.markers);
     ok(s.card.includes("Check before you park"), "the list carries the verify-access note");
     ok(s.spot==="Cooks Falls Access", "picking an access point re-reads the water there", s.spot);
-    ok(s.meta.includes("Beaverkill"), "the panel names the water it borrowed from");
-    ok(s.meta.includes("01420500"), "the panel names the gauge it read");
+    ok(s.meta.includes("Beaverkill"), "the dashboard names the water it borrowed from");
+    ok(s.meta.includes("01420500"), "the dashboard names the gauge it read");
     ok(!s.uncalibrated, "bands from the water's own gauge are not flagged uncalibrated");
     ok(s.plays>0 && s.hatch>0 && s.shop>0, "plays, hatch and shop list all render for a spot",
        {plays:s.plays, hatch:s.hatch, shop:s.shop});
     ok(s.nearHead==="Nearest waters to Roscoe", "the book re-sorts around the point you searched", s.nearHead);
     eq(s.nearFirst, ["Beaverkill","Willowemoc Creek","East Branch Delaware"],
        "and lists the Catskill waters around Roscoe first");
+    ok(s.nearOpen<=9, "only the near end of the book is open, so the map is not buried", s.nearOpen);
     ok(s.nearOrdered.length===27 && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
-       "every water in the book, nearest first", s.nearOrdered.slice(0,5));
-    ok(s.layout.condInWhere && s.layout.condUnderMap, "river conditions sit under the map on Where", s.layout);
+       "and one tap opens every water in the book, nearest first", s.nearOrdered.slice(0,5));
+    ok(s.nearCollapsed===s.nearOpen, "and another folds it back", {open:s.nearOpen, back:s.nearCollapsed});
+    ok(s.layout.condInFish && s.layout.condFirstInFish, "river conditions lead the Fish tab", s.layout);
     ok(s.layout.condHasGauges && s.layout.condHasBaro, "with the gauges and the barometer in them", s.layout);
-    ok(s.layout.tacticFirstInPlays && s.layout.tacticHasCall, "the wade-or-float call leads the Plays tab", s.layout);
-    ok(!s.layout.strayReading && !s.layout.gaugesInPlays && !s.layout.callInWhere,
-       "and neither half is left behind in the other place", s.layout);
-    eq(s.tabOrder, ["Where","Plays","Shop list","Hatch","On river","Diary"],
-       "Where leads the tabs and the Diary closes them");
-    ok(s.onRiverChips>0, "the condition chips live on the On river tab", s.onRiverChips);
-    eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with it");
+    ok(s.layout.condHasGaugeId && s.layout.condHasNote,
+       "and the gauge it reads and what this river is like, in the dashboard itself", s.layout);
+    ok(!s.layout.builtCard, "so there is no 'how this reading was built' card left to look up", s.layout);
+    ok(s.layout.tacticAfterCond, "the wade-or-float call follows the numbers", s.layout);
+    ok(s.layout.hatchInFish, "and what is hatching closes the same tab", s.layout);
+    ok(s.layout.nearUnderMap, "the nearest waters sit directly under the map on Plan", s.layout);
+    ok(s.layout.whenUnderTabs, "and the day you are fishing sits under the tabs", s.layout);
+    ok(!s.layout.strayReading && !s.layout.gaugesInPlan && !s.layout.callInPlan,
+       "with nothing left behind on Plan", s.layout);
+    eq(s.tabOrder, ["Plan","Fish","Shop","Report"],
+       "four tabs: Plan leads them and Report closes them");
+    ok(s.onRiverChips>0, "the condition chips live on the Report tab", s.onRiverChips);
+    eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
+    ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
     ok(!s.strayControls, "nothing is left under the dashboard");
+    eq(s.shops.names,
+       ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop","Catskill Outfitters","Sullivan Sports"],
+       "fly shops are listed tackle-first then nearest, and an unnamed one is not a shop");
+    ok(/Fly shops near Roscoe/.test(s.shops.head), "under the place you pointed at", s.shops.head);
+    eq(s.shops.links[0],
+       ["https://beaverkillangler.example/", "tel:+16074985001", "https://www.openstreetmap.org/node/11"],
+       "with its own website, its phone and its place on the map");
+    eq(s.shops.links[3], ["https://catskilloutfitters.example/", "https://www.openstreetmap.org/way/12"],
+       "a bare hostname is still a link, and a shop with no phone simply has none");
+    eq(s.shops.links[1], ["https://www.openstreetmap.org/node/15"],
+       "a website tag edited into javascript: is dropped, and the shop keeps only the map");
+    ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
+       "so every href on the tab is one the app built or vetted", s.shops.links);
+    ok(s.shops.beforeList, "the shops come before the list you are handing across the counter");
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241
     eq(s.bands, [15,49,146], "flow bands rescale by the drainage-area ratio");
     ok(!s.uncalibrated, "a scaled band is not flagged uncalibrated");
-    ok(s.meta.includes("drainage area"), "the panel says the bands were scaled");
+    ok(s.meta.includes("drainage area"), "the dashboard says the bands were scaled");
   },
   noarea: (s)=>{
     eq(s.bands, [150,500,1500], "with no drainage area the template's bands are used as-is");
