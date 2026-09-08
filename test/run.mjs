@@ -93,11 +93,20 @@ async function mock(page, scenario){
     : F.OVERPASS;
   /* One endpoint, two questions: the access query and the fly-shop
      query, told apart by what they ask for. */
-  await page.route("**://overpass**", r => {
+  await page.route("**://overpass**", async r => {
     if(scenario==="overpassdown") return r.fulfill({status:504, contentType:"text/plain", body:"gateway timeout"});
     // the query travels form-encoded, so match the tag name, not the quotes
     const asked = r.request().postData() || "";
-    return r.fulfill(json(/shop/.test(asked) ? F.SHOPS : overpass));
+    const isShop = /shop/.test(asked);
+    if(isShop){
+      shopCalls.push(r.request().url());
+      // the primary mirror is wedged; the backup has to rescue the lookup
+      if(scenario==="slowshops" && /overpass-api\.de/.test(r.request().url())){
+        await new Promise(x=>setTimeout(x, 9000));
+        return r.abort();
+      }
+    }
+    return r.fulfill(json(isShop ? F.SHOPS : overpass));
   });
   await page.route("**://api.open-meteo.com/**", r=>r.fulfill(json(F.meteo())));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
@@ -111,6 +120,7 @@ async function mock(page, scenario){
 }
 
 const XSS = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
+let shopCalls = [];        // which mirrors the shop query actually reached
 const CDN_LAG = 1500;
 
 /* Chrome and Chromium word this refusal differently and the wording is not
@@ -149,6 +159,7 @@ async function walk(browser, scenario){
   await mock(page, scenario);
 
   const seen = {};
+  shopCalls = [];
   if(scenario==="slowmap"){
     /* The reading must not wait on the map library. Measured from the
        first byte to the first play card, while the CDN sits on Leaflet. */
@@ -160,6 +171,14 @@ async function walk(browser, scenario){
   }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
+  /* The app opens on Plan and the day picker is the first thing on it, so
+     it has to be filled by the first paint — not by whatever redraw happens
+     to come along next. */
+  seen.firstPaint = await page.evaluate(()=>{
+    const w=document.getElementById("whenbar");
+    return {open:(document.querySelector('.tab[aria-selected="true"]')||{}).textContent,
+            chips: w ? w.querySelectorAll("#planChips .rchip").length : 0};
+  });
 
   /* Which tab the app opens on, before anything has been clicked. Plan is
      first because the reading is worth nothing until it knows where you
@@ -266,11 +285,18 @@ async function walk(browser, scenario){
       tacticAfterCond: after(cond, tactic) && !!fish.querySelector("#tactic .acc-call"),
       hatchInFish: !!hatch && fish.contains(hatch) && after(tactic, hatch),
       nearUnderMap: !!near && plan.contains(near) && after(map, near),
-      whenUnderTabs: !!when && after(tabs, when) && !!when.querySelector("#planChips"),
+      whenOnPlan: !!when && plan.contains(when) && !!when.querySelector("#planChips"),
+      whenFirstOnPlan: !!when && plan.firstElementChild===when,
+      whenNotAboveTabs: !when || after(tabs, when),
+      ladderOnFish: !!fish.querySelector("#ladderCard") && after(tactic, fish.querySelector("#ladderCard")),
+      ladderNotOnPlan: !plan.querySelector("#ladderCard"),
       strayReading: !!document.getElementById("reading"),
       gaugesInPlan: !!plan.querySelector(".gauges"),
       callInPlan: !!plan.querySelector(".acc-call"),
       builtCard: /How this reading was built/.test(document.body.textContent),
+      reportCond: (()=>{ const r=document.getElementById("panel-report"), c=document.getElementById("conditionsReport");
+        return !!c && r.contains(c) && r.firstElementChild.id==="reportConditions" && !!c.querySelector(".gauges"); })(),
+      oneConditionsId: document.querySelectorAll("#conditions").length===1,
     };
   });
 
@@ -286,57 +312,22 @@ async function walk(browser, scenario){
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
 
   await shopPass(page, seen);
-  await coveragePass(page, seen);
 
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
   if(scenario==="security") await securityPass(page, seen);
+  if(scenario==="outofbook") await outOfBookPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
   return seen;
 }
 
-/* What Riffle does where it has not been written for. The book is a
-   Northeast book; the gauge is national. Those two facts have to be kept
-   apart, or a Montana angler is handed a Catskill hatch calendar and a
-   run of chrome with total confidence. Driven as pure logic, on a fixed
-   June afternoon, so it does not depend on the clock or the network. */
-async function coveragePass(page, seen){
-  seen.coverage = await page.evaluate(()=>{
-    const at=(lat,lon)=>{
-      const {w:tmpl, dist} = templateFor(lat,lon);
-      const spot = spotProfile({lat,lon,name:"Test point",place:""}, tmpl, dist, null, NaN);
-      const keepSpot=state.spot, keepId=state.waterId, keepWhen=state.when;
-      state.spot=spot; state.waterId=tmpl.id;
-      state.when=new Date(new Date().getFullYear(), 5, 15, 14, 0);
-      const ctx=buildContext(), res=recommend(ctx);
-      const out={
-        template: tmpl.name, miles: Math.round(dist/1609.34),
-        inBook: inBook(ctx.w), sp: ctx.w.sp,
-        hatches: res.ah.length,
-        plays: res.picked.map(p=>p.key),
-        banner: /Outside the book/.test(coverageHTML(ctx)),
-        hatchPanel: /No hatch calendar for here/.test(hatchHTML(res, ctx)),
-        // where would it send someone off a river at 70 degrees?
-        refugeMiles: refuges(Object.assign({}, ctx, {temp:70})).map(o=>o.d),
-      };
-      state.spot=keepSpot; state.waterId=keepId; state.when=keepWhen;
-      return out;
-    };
-    return {
-      home:    at(41.94, -74.97),    // on the Beaverkill
-      smokies: at(35.68, -83.53),    // 450 mi out — close enough to have looked fine
-      montana: at(45.48, -111.53),   // nearest water is a Lake Erie steelhead trib
-      alaska:  at(60.49, -150.99),
-    };
-  });
-}
-
 /* The shop list is worth nothing at home, so it carries the counters it
    can be handed across. Those names and website tags are world-writable
    OpenStreetMap strings, which is why one of them is an attack. */
 async function shopPass(page, seen){
+  const t0=Date.now();
   await page.click("#tab-shop");
   await page.waitForFunction(()=>{
     const c=document.getElementById("shopsCard");
@@ -353,9 +344,65 @@ async function shopPass(page, seen){
       links: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.getAttribute("href"))),
       labels: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.textContent.trim())),
       miles: rows.map(r=>r.querySelector(".wd").textContent.trim()),
-      beforeList: !!card.nextElementSibling && card.nextElementSibling.classList.contains("shopcard"),
+      firstOnTab: document.getElementById("panel-shop").firstElementChild.classList.contains("hint"),
+      askFirst: /Ask the shop one question/.test(document.getElementById("panel-shop").firstElementChild.textContent),
+      beforeList: !!card.compareDocumentPosition(document.querySelector("#panel-shop .shopcard"))
+                  && (card.compareDocumentPosition(document.querySelector("#panel-shop .shopcard"))&Node.DOCUMENT_POSITION_FOLLOWING)>0,
+      guide: /hiring a local guide/i.test(document.getElementById("panel-shop").textContent),
+      photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
+      note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
+      // ranking and URL vetting are data concerns; the cap is a rendering one
+      all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
   });
+  seen.shopMs = Date.now()-t0;
+  seen.shopCalls = shopCalls.slice();
+}
+
+/* The book is 27 Northeast rivers, and the westernmost of them are Lake
+   Erie steelhead tributaries. A pin far enough west takes one of those as
+   its nearest water, which is how a Montana trout river came to be read as
+   a steelhead run with egg patterns ranked first. Distance has to switch
+   the modeled half of the app off, not quietly reassign the fishery. */
+async function outOfBookPass(page, seen){
+  seen.book = await page.evaluate(()=>{
+    const at=(lat,lon)=>{ const t=templateFor(lat,lon); return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp}; };
+    const read=(lat,lon,name)=>{
+      const t=templateFor(lat,lon);
+      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN);
+      state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
+      const ctx=buildContext();
+      return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
+              hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length};
+    };
+    const out={
+      nearest:{bozeman:at(45.677,-111.043), boise:at(43.615,-116.202)},
+      montana: read(45.677,-111.043,"Gallatin River"),
+      roscoe:  read(41.9337,-74.9143,"Beaverkill"),
+      edge:    read(40.7934,-77.86,"Spring Creek"),
+    };
+    state.spot=null; state.when=new Date();
+    return out;
+  });
+
+  // and what the angler is actually shown out there
+  seen.bookUI = await page.evaluate(()=>{
+    const t=templateFor(45.677,-111.043);
+    state.spot=spotProfile({lat:45.677,lon:-111.043,name:"Gallatin River"}, t.w, t.dist, null, NaN);
+    draw();
+    const fish=document.getElementById("panel-fish");
+    return {
+      gate: !!fish.querySelector(".gate h2") && fish.querySelector(".gate h2").textContent,
+      says: /outside the book/i.test(fish.textContent),
+      plays: fish.querySelectorAll(".play").length,
+      tactic: !!fish.querySelector("#tactic"),
+      ladder: !!fish.querySelector("#ladderCard"),
+      tempCell: (fish.querySelector(".gauges .g .val")||{}).textContent,
+      shopHead: (document.querySelector("#panel-shop .shop-intro h2")||{}).textContent,
+      eggs: /egg/i.test(fish.textContent),
+    };
+  });
+  await page.evaluate(()=>{ state.spot=null; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -428,7 +475,7 @@ async function securityPass(page, seen){
    and the diary, which is keyed to the time of year rather than the
    clock, takes over. */
 async function planPass(page, seen){
-  await page.click("#tab-fish");
+  await page.click("#tab-plan");
   await page.waitForSelector("#whenbar .pb-when");
 
   seen.plan = await page.evaluate(()=>{
@@ -476,7 +523,8 @@ async function diaryPass(page, seen){
 
   await page.click("#tab-report");
   await page.waitForSelector("#dSave");
-  seen.diaryEmpty = await page.$eval("#diary", n=>n.textContent.includes("Nothing logged yet"));
+  seen.diaryEmpty = await page.$eval("#diary", n=>n.textContent.includes("Days you save show up here"));
+  seen.noReadout = await page.$eval("#diary", n=>!/telling the plays/i.test(n.textContent));
 
   // a day with nothing said about it is not a day the engine can use
   await page.click("#dSave");
@@ -523,7 +571,6 @@ async function diaryPass(page, seen){
     const t = buildContext().mem.tech;
     return {streamer: t.streamer?t.streamer.pct:null, dry: t.dry?t.dry.pct:null};
   });
-  seen.readout = (await page.$$eval("#diary .mrow .mname", ns=>ns.map(n=>n.textContent.trim())));
 
   /* The engine, with the book and without it. Read off every play that
      scored rather than the three on the card: in a month the streamer is
@@ -647,7 +694,14 @@ const SCENARIOS = {
     ok(s.layout.tacticAfterCond, "the wade-or-float call follows the numbers", s.layout);
     ok(s.layout.hatchInFish, "and what is hatching closes the same tab", s.layout);
     ok(s.layout.nearUnderMap, "the nearest waters sit directly under the map on Plan", s.layout);
-    ok(s.layout.whenUnderTabs, "and the day you are fishing sits under the tabs", s.layout);
+    ok(s.firstPaint.open==="Plan" && s.firstPaint.chips>0,
+       "the app opens on Plan with the day picker already filled", s.firstPaint);
+    ok(s.layout.whenOnPlan && s.layout.whenFirstOnPlan && s.layout.whenNotAboveTabs,
+       "the day picker leads the Plan tab and appears nowhere else", s.layout);
+    ok(s.layout.reportCond, "river conditions lead the Report tab too", s.layout.reportCond);
+    ok(s.layout.oneConditionsId, "and the second copy carries its own id rather than duplicating one");
+    ok(s.layout.ladderOnFish && s.layout.ladderNotOnPlan,
+       "the access ladder sits on Fish, under the call it explains", s.layout);
     ok(!s.layout.strayReading && !s.layout.gaugesInPlan && !s.layout.callInPlan,
        "with nothing left behind on Plan", s.layout);
     eq(s.tabOrder, ["Plan","Fish","Shop","Report"],
@@ -656,41 +710,33 @@ const SCENARIOS = {
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
     ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
     ok(!s.strayControls, "nothing is left under the dashboard");
-    eq(s.shops.names,
+    eq(s.shops.all.map(x=>x.name),
        ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop","Catskill Outfitters","Sullivan Sports"],
-       "fly shops are listed tackle-first then nearest, and an unnamed one is not a shop");
+       "fly shops rank tackle-first then nearest, and an unnamed one is not a shop");
+    eq(s.shops.names, ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop"],
+       "but only the nearest three are listed — past that it is a directory");
+    ok(/2 more are mapped further out/.test(s.shops.note),
+       "and the ones held back are accounted for", s.shops.note);
     ok(/Fly shops near Roscoe/.test(s.shops.head), "under the place you pointed at", s.shops.head);
     eq(s.shops.links[0],
        ["https://beaverkillangler.example/", "tel:+16074985001", "https://www.openstreetmap.org/node/11"],
-       "with its own website, its phone and its place on the map");
-    eq(s.shops.links[3], ["https://catskilloutfitters.example/", "https://www.openstreetmap.org/way/12"],
-       "a bare hostname is still a link, and a shop with no phone simply has none");
-    eq(s.shops.links[1], ["https://www.openstreetmap.org/node/15"],
-       "a website tag edited into javascript: is dropped, and the shop keeps only the map");
+       "each with its own website, its phone and its place on the map");
+    eq(s.shops.labels[2], ["Map"], "a shop with neither website nor phone still has somewhere to go");
+    ok(s.shops.all[3].site==="https://catskilloutfitters.example/" && !s.shops.all[3].tel,
+       "a bare hostname is still made a link, and a shop with no phone simply has none", s.shops.all[3]);
+    ok(s.shops.all[1].site===null,
+       "a website tag edited into javascript: is dropped before it can reach an href", s.shops.all[1]);
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "so every href on the tab is one the app built or vetted", s.shops.links);
-    ok(s.shops.beforeList, "the shops come before the list you are handing across the counter");
-
-    const c = s.coverage;
-    ok(c.home.inBook && c.home.hatches>0 && !c.home.banner,
-       "on a water in the book the calendar is read as it always was", c.home);
-    ok(!c.smokies.inBook && !c.montana.inBook && !c.alaska.inBook,
-       "a point past the ceiling is outside the book", c);
-    ok(c.smokies.hatches===0 && c.montana.hatches===0 && c.alaska.hatches===0,
-       "and is shown no hatches rather than the wrong ones", c);
-    ok(c.smokies.banner && c.smokies.hatchPanel,
-       "with both the banner and the hatch panel saying why", c.smokies);
-    /* The regression that mattered: everything west of the Appalachians is
-       geometrically nearest a Lake Erie tributary, so the plays came back as
-       steelhead tactics for rivers full of resident trout. */
-    ok([c.montana, c.alaska, c.smokies].every(x=>x.sp==="trout"),
-       "an out-of-book point falls back to a trout template, never a steelhead one", c);
-    ok([c.montana, c.alaska, c.smokies].every(x=>x.plays.every(k=>!k.startsWith("gl-"))),
-       "so it is never handed a run of chrome and a swung fly", c);
-    ok(c.home.plays.length===3 && c.montana.plays.length===3,
-       "the plays still come, in and out of the book — they are technique", c);
-    ok([c.home,c.smokies,c.montana,c.alaska].every(x=>x.refugeMiles.every(d=>d<=120)),
-       "and colder water nearby is never a river most of a continent away", c);
+    ok(s.shops.firstOnTab && s.shops.askFirst,
+       "what to ask the shop leads the tab, directly under the tabs", s.shops.askFirst);
+    ok(s.shops.beforeList, "and come before the list you are handing across the counter");
+    ok(s.shops.guide, "the tab suggests a guide before it suggests a fly");
+    ok(s.shopCalls.length===1,
+       "the counters cost one query, not a near one and then a wide one", s.shopCalls.length);
+    ok(s.shopMs < 1500,
+       `the tab was already warm when opened (${s.shopMs} ms), not looked up on arrival`, s.shopMs);
+    ok(!s.shops.photo, "and no longer opens by telling you to photograph it", s.shops.photo);
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241
@@ -714,6 +760,7 @@ const SCENARIOS = {
   },
   diary: (s)=>{
     ok(s.diaryEmpty, "an empty book says so rather than showing a blank panel");
+    ok(s.noReadout, "and Report no longer explains the ranking — the play cards do that");
     ok(/how the day went/i.test(s.needsOutcome), "a day with no outcome is refused", s.needsOutcome);
     ok(s.stored.n===1 && s.stored.outcome==="hot", "the day is written to storage", s.stored);
     eq(s.stored.methods, ["streamer"], "with the method that caught");
@@ -725,7 +772,6 @@ const SCENARIOS = {
     ok(s.oneDay>0 && s.oneDay<=15, "one hot day nudges the streamer, no more than 15%", s.oneDay);
     ok(s.pcts.streamer===15, "four of them lean on it as hard as the cap allows", s.pcts);
     ok(s.pcts.dry<0, "and a blank on the dry fly reads the other way", s.pcts);
-    ok(s.readout.some(r=>/Streamer/.test(r)), "the readout names what it is moving", s.readout);
     ok(s.rank.found, "the streamer play is among those the engine scored", s.rank);
     ok(s.rank.moved, "and scores higher with the book than without it", s.rank);
     ok(s.playsNote.length>0 && /your book|day/i.test(s.playsNote.join(" ")),
@@ -795,6 +841,37 @@ const SCENARIOS = {
     ok(s.playsAt < CDN_LAG, `and in ${s.playsAt} ms, not the ${CDN_LAG} ms the CDN took`, s.playsAt);
     ok(s.mapRendered, "and the map still comes up once it lands", s.mapRendered);
     ok(s.names.length>1, "with the access flow unaffected", s.names);
+  },
+  outofbook: (s)=>{
+    ok(s.book.nearest.bozeman.sp==="steelhead" && s.book.nearest.bozeman.miles>1000,
+       "the nearest water to Montana really is a steelhead tributary 1,500 miles off", s.book.nearest);
+    ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
+    ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
+       "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
+    ok(s.book.montana.hatches===0 && s.book.montana.plays===0,
+       "no hatch chart and no plays, in the middle of May", s.book.montana);
+    ok(s.book.roscoe.out===false && s.book.roscoe.plays>0 && s.book.roscoe.hatches>0,
+       "a water in the book still reads in full", s.book.roscoe);
+    ok(s.book.edge.out===false && s.book.edge.plays>0,
+       "and so does one a few miles off it", s.book.edge);
+    ok(/Outside the book/.test(s.bookUI.gate) && s.bookUI.says,
+       "the Fish tab says so in place of the plays", s.bookUI);
+    ok(s.bookUI.plays===0 && !s.bookUI.eggs,
+       "with nothing ranked, and no egg patterns anywhere on it", s.bookUI);
+    ok(!s.bookUI.tactic && !s.bookUI.ladder,
+       "no wade call either — those thresholds are the other river's", s.bookUI);
+    ok(s.bookUI.tempCell==="\u2014",
+       "and a modeled temperature is left blank rather than shown as a reading", s.bookUI.tempCell);
+    ok(/No list for this water/.test(s.bookUI.shopHead),
+       "the shop list says why it is empty", s.bookUI.shopHead);
+  },
+  slowshops: (s)=>{
+    /* The mirrors used to be tried in turn on a 30 s timeout each, so a
+       queued first host cost a full minute before the second was asked. */
+    ok(s.shopCalls.length===2 && /kumi/.test(s.shopCalls[1]||""),
+       "a silent first mirror hands the query to the second", s.shopCalls);
+    ok(s.shops.names.length===3, "and the shops still arrive", s.shops.names);
+    ok(s.shopMs < 9000, `without waiting out the wedged host (${s.shopMs} ms)`, s.shopMs);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
