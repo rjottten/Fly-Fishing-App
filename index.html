@@ -3043,22 +3043,29 @@ const SHOP_MAX = 8;
 /* A tackle shop is tagged shop=fishing; plenty of fly shops are
    filed under the general outdoor shop instead, so those come too
    — ranked below, and labelled for what they are. */
+/* Fly shops are badly served by shop=fishing alone. The ones an angler
+   actually drives to on the West Branch — West Branch Angler, Border
+   Water, Baxter House, Cross Current — are lodges and guide services,
+   and OpenStreetMap files those as tourism=hotel, as shop=outdoor, or
+   as a named node with no shop tag whatsoever. Asking for three shop
+   values was asking OSM a question its data cannot answer, which is why
+   Hale Eddy and Starlight came back empty while the shops plainly exist.
+
+   So: two independent signals. The tag, for places mapped as shops, and
+   the NAME, for everything else. A business called "Cross Current
+   Outfitters" is findable however it is tagged, and fly shops are named
+   with remarkable consistency — angler, outfitter, tackle, trout, fly. */
+const SHOP_NAME_RE = "(fly.?(fish|shop|rod)|angler|outfitt|tackle|trout|drift.?boat)";
+
 function shopQL(lat, lon, r){
-  /* Three around: clauses, which is the form that is known to answer.
-     A single regex over a bounding box scans less and reads better, and
-     it also stopped returning the shops that are actually there — a
-     query nobody can run from the machine it was written on is not an
-     optimisation, it is a guess. The limit is high because Overpass
-     returns in its own order, not in distance order: truncating at 60
-     over a wide radius can cut off the near shop and keep a far one. */
   const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
   return `[out:json][timeout:25];
 (
   nwr${at}["shop"="fishing"];
-  nwr${at}["shop"="outdoor"];
-  nwr${at}["shop"="sports"]["sport"~"fishing",i];
+  nwr${at}["shop"~"^(outdoor|sports|hunting)$"];
+  nwr${at}["name"~"${SHOP_NAME_RE}",i];
 );
-out tags center 200;`;
+out tags center 300;`;
 }
 
 /* Only http(s) survives. An OSM website tag is a string anyone may
@@ -3077,13 +3084,23 @@ function safeTel(t){
   return /^[0-9+][0-9+()\-. ]{5,24}$/.test(raw) ? raw : null;
 }
 
+/* The same two signals, applied to what came back. The name is checked
+   before the softer tags on purpose: a hotel called the West Branch
+   Angler is a fly shop with rooms, and belongs above a general outdoor
+   shop that happens to be nearer. */
+const FLYISH = /fly\s*-?\s*(fish|shop|rod)|angler|outfitt|tackle|trout|drift\s*-?\s*boat/i;
+
 function shopKindOf(tags){
   if(!tags) return null;
-  if(tags.shop==="fishing") return {k:"fishing", label:"Fly and tackle", pri:0};
-  if(tags.shop==="outdoor") return {k:"outdoor", label:"Outdoor shop", pri:1};
-  /* The query asks for the shop key alone, so the requirement that a
-     sporting-goods shop actually sell fishing is applied here. */
-  if(tags.shop==="sports" && /fish/i.test(tags.sport||"")) return {k:"sports", label:"Sporting goods", pri:2};
+  const name = String(tags.name||"");
+  if(tags.shop==="fishing")  return {k:"fishing", label:"Fly and tackle", pri:0};
+  if(FLYISH.test(name))      return {k:"fishing", label:tags.shop ? "Fly and tackle" : "Fly shop or guide", pri:0};
+  if(tags.shop==="outdoor")  return {k:"outdoor", label:"Outdoor shop", pri:1};
+  /* A sporting-goods or hunting shop counts only where something says it
+     sells fishing — the tag, or the name, which the clause above has
+     already ruled out. */
+  if((tags.shop==="sports"||tags.shop==="hunting") && /fish/i.test(tags.sport||""))
+    return {k:"sports", label:"Sporting goods", pri:2};
   return null;
 }
 
@@ -4102,13 +4119,24 @@ function renderShopsCard(){
   const el=$("#shopsCard"); if(!el) return;
   const st=state.shops, c=shopCentre();
   const head=`<h3>Fly shops near ${esc(c.what)}</h3>`;
+
+  /* OpenStreetMap's coverage of rural fly shops is genuinely thin — a
+     lodge on a river road is often not mapped at all, whatever it is
+     called. No query fixes absent data, so the card always offers a way
+     to go and look, and never implies the list is the whole truth. */
+  const q = `fly shop near ${c.what}`;
+  const findMore = `<p class="muted" style="margin-top:10px">
+      OpenStreetMap misses plenty of river-road shops.
+      <a href="https://duckduckgo.com/?q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer">Search for more near ${esc(c.what)}</a>.
+    </p>`;
+
   if(st.status==="loading"){ el.innerHTML=head+`<p class="muted">Looking up shops…</p>`; return; }
   if(st.status==="error"){
-    el.innerHTML=head+`<p class="muted">The OpenStreetMap lookup did not answer, so there is no shop list this time. The flies below do not need it.</p>`;
+    el.innerHTML=head+`<p class="muted">The OpenStreetMap lookup did not answer, so there is no shop list this time.</p>`+findMore;
     return;
   }
   if(st.status==="empty"){
-    el.innerHTML=head+`<p class="muted">Nothing is mapped as a tackle or outdoor shop within ${Math.round(st.radius/1609.34)} miles. That means OpenStreetMap has no record of one — not that there is none. Order the list below ahead of the drive.</p>`;
+    el.innerHTML=head+`<p class="muted">OpenStreetMap has nothing mapped within ${Math.round(st.radius/1609.34)} miles that reads as a fly shop. That is a gap in the map rather than a statement about the river — this stretch may well have several.</p>`+findMore;
     return;
   }
   if(st.status!=="ok"){ el.innerHTML=head+`<p class="muted">Opening this tab looks up the counters nearest the water you are reading.</p>`; return; }
@@ -4119,7 +4147,8 @@ function renderShopsCard(){
   el.innerHTML=head
     + `<p class="muted">The ${near.length===1?"nearest":`nearest ${near.length===2?"two":"three"}`}, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
     + near.map(shopRow).join("")
-    + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} mapped further out.</p>`:"");
+    + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} mapped further out.</p>`:"")
+    + findMore;
 }
 
 /* --- shop list --------------------------------------------- */
