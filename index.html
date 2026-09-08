@@ -3091,7 +3091,11 @@ function safeUrl(u){
 }
 function safeTel(t){
   const raw=String(t||"").trim();
-  return /^[0-9+][0-9+()\-. ]{5,24}$/.test(raw) ? raw : null;
+  /* A leading parenthesis is how half of America writes a phone number,
+     and requiring a digit or a plus first silently dropped every one of
+     them. The characters allowed after are unchanged, and the href still
+     strips everything but digits and +. */
+  return /^[0-9+(][0-9+()\-. ]{5,24}$/.test(raw) ? raw : null;
 }
 
 /* The same two signals, applied to what came back. The name is checked
@@ -3112,6 +3116,34 @@ function shopKindOf(tags){
   if((tags.shop==="sports"||tags.shop==="hunting") && /fish/i.test(tags.sport||""))
     return {k:"sports", label:"Sporting goods", pri:2};
   return null;
+}
+
+/* The app's own endpoint, so the key stays on the server and the CDN can
+   cache the answer for a month — shops do not move. Coordinates are
+   rounded to two places before asking, so anglers near each other share
+   one cached answer instead of each paying for their own.
+
+   null means "this source is not available" — no key configured, or it
+   could not answer — which is the signal to fall back to the map. An
+   empty array means it answered and there is genuinely nothing. */
+let placesOff=false;        // learned once: no key here, so stop asking
+
+async function placesShops(lat, lon, radiusM){
+  if(placesOff) return null;
+  try{
+    const u=`/api/shops?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&r=${Math.round(radiusM)}`;
+    const res=await withTimeout(u, null, 9000);
+    /* A 404 means the app is being served as plain files rather than by
+       Netlify; a 200 saying configured:false means it is deployed but has
+       no key. Both are permanent for this session, so ask once. */
+    if(!res.ok){ placesOff=true; return null; }
+    const j=await res.json();
+    if(!j || j.configured===false){ placesOff=true; return null; }
+    if(j.error) return null;                       // a bad minute, not a bad deploy
+    if(!Array.isArray(j.shops)) return null;
+    // the endpoint sorts, but the tab shows the nearest three either way
+    return j.shops.slice().sort((a,b)=>(a.dist||0)-(b.dist||0));
+  }catch(e){ return null; }
 }
 
 async function flyShops(lat, lon, radiusM){
@@ -4097,17 +4129,24 @@ async function loadShops(){
   state.shops={status:"loading", list:[], radius:0, key};
   renderShopsCard();
   try{
-    /* One query, wide. Asking 40 km first and 90 km only when that came
-       back empty meant paying for two round trips in exactly the places
-       an angler is likely to be — the rural ones, where the near query
-       finds nothing. The list is ranked and cut client-side regardless. */
-    /* 25 miles is what "near" means on a river road, and a tag-only
-       query at that radius is cheap enough to answer every time. The
-       wider second pass costs a round trip only where the first found
-       nothing, which is the rural case it exists for. */
+    /* A places directory first, OpenStreetMap second.
+       OSM is a map of the landscape, and it is excellent at the things
+       this app asks it for elsewhere — launches, access, trailheads.
+       A fly shop is a business, and rural businesses are in OSM only
+       where a volunteer mapped that storefront. For the West Branch,
+       largely nobody has. So the directory answers when it is
+       configured, and the map answers when it is not.
+
+       25 miles is what "near" means on a river road; the wider pass
+       costs a round trip only where the first found nothing. */
     let radius=40000;
-    let list=await flyShops(c.lat, c.lon, radius);
-    if(!list.length){ radius=90000; list=await flyShops(c.lat, c.lon, radius); }
+    let list=await placesShops(c.lat, c.lon, radius);
+    if(list===null){                                   // no key, or the service is down
+      list=await flyShops(c.lat, c.lon, radius);
+      if(!list.length){ radius=90000; list=await flyShops(c.lat, c.lon, radius); }
+    } else if(!list.length){
+      radius=90000; list=await placesShops(c.lat, c.lon, radius) || [];
+    }
     state.shops={status:list.length?"ok":"empty", list, radius, key};
   }catch(e){
     state.shops={status:"error", list:[], radius:0, key:null};   // null key, so opening the tab tries again

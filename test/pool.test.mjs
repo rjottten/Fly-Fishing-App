@@ -121,8 +121,17 @@ console.log("\n  reputation is agreement, measured after the fact");
 
 console.log("\n  buckets");
 {
-  ok(P.bucketOf("bkill","2026-05-20")===P.bucketOf("bkill","2026-05-22"),
-     "two days in the same fortnight of the same water share a bucket");
+  /* Asserting on a chosen pair of dates tests whichever side of a
+     boundary they happened to fall. The property is what matters: a
+     bucket is fourteen days wide. */
+  const days=[...Array(28)].map((_,i)=>{
+    const d=new Date(Date.UTC(2026,4,1)); d.setUTCDate(d.getUTCDate()+i);
+    return d.toISOString().slice(0,10);
+  });
+  const adjacentShare = days.slice(1).filter((d,i)=>P.bucketOf("bkill",d)===P.bucketOf("bkill",days[i])).length;
+  ok(adjacentShare>=25, "consecutive days almost always share a bucket", adjacentShare);
+  ok(days.every((d,i)=> i+14>=days.length || P.bucketOf("bkill",d)!==P.bucketOf("bkill",days[i+14])),
+     "and two days a fortnight apart never do");
   ok(P.bucketOf("bkill","2026-05-20")!==P.bucketOf("willo","2026-05-20"),
      "two waters never do");
   ok(P.bucketOf("bkill","2026-05-20")!==P.bucketOf("bkill","2026-07-20"),
