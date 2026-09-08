@@ -2937,19 +2937,31 @@ out geom 80;`;
 }
 
 async function overpass(ql){
-  let last=null;
-  for(const host of OVERPASS){
-    try{
-      const res=await withTimeout(host, {
-        method:"POST",
-        headers:{"Content-Type":"application/x-www-form-urlencoded"},
-        body:"data="+encodeURIComponent(ql),
-      }, 30000);
-      if(!res.ok){ last=new Error("overpass "+res.status); continue; }
-      return await res.json();
-    }catch(e){ last=e; }
-  }
-  throw last || new Error("overpass unreachable");
+  const opts={method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:"data="+encodeURIComponent(ql)};
+  const ask=(host)=>withTimeout(host, opts, 12000).then(res=>{
+    if(!res.ok) throw new Error("overpass "+res.status);
+    return res.json();
+  });
+  if(OVERPASS.length<2) return ask(OVERPASS[0]);
+
+  /* The mirrors used to be tried strictly in turn, so a host sitting in
+     a queue cost its entire timeout before the other was asked at all.
+     The second is started only once the first has gone quiet for a few
+     seconds, or failed — the tail gets much shorter without routinely
+     doubling the load on a service run by volunteers. */
+  let settled=false;
+  const first=ask(OVERPASS[0]);
+  first.then(()=>{settled=true;},()=>{settled=true;});
+  const backup=new Promise((resolve,reject)=>{
+    const go=()=>ask(OVERPASS[1]).then(resolve,reject);
+    const t=setTimeout(()=>{ if(!settled) go(); }, 3500);
+    first.catch(()=>{ clearTimeout(t); go(); });
+  });
+  return Promise.any([first,backup]).catch(e=>{
+    throw (e && e.errors && e.errors[0]) || new Error("overpass unreachable");
+  });
 }
 
 /* Nearest point on a mapped waterway, and what it is called. */
@@ -3027,14 +3039,16 @@ const SHOP_MAX = 8;
    filed under the general outdoor shop instead, so those come too
    — ranked below, and labelled for what they are. */
 function shopQL(lat, lon, r){
-  const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
-  return `[out:json][timeout:25];
-(
-  nwr${at}["shop"="fishing"];
-  nwr${at}["shop"="outdoor"];
-  nwr${at}["shop"="sports"]["sport"~"fishing",i];
-);
-out tags center 60;`;
+  /* One statement rather than three: Overpass scans once for the whole
+     shop key instead of once per value. And a bounding box rather than
+     around:, which is its fast path over a wide area — the true radius
+     is applied in flyShops(), where the distance is computed anyway. */
+  const dLat = r/111320;
+  const dLon = r/(111320*Math.max(0.2, Math.cos(lat*Math.PI/180)));
+  const bbox = [lat-dLat, lon-dLon, lat+dLat, lon+dLon].map(v=>v.toFixed(5)).join(",");
+  return `[out:json][timeout:15][bbox:${bbox}];
+nwr["shop"~"^(fishing|outdoor|sports)$"];
+out tags center 80;`;
 }
 
 /* Only http(s) survives. An OSM website tag is a string anyone may
@@ -3057,7 +3071,9 @@ function shopKindOf(tags){
   if(!tags) return null;
   if(tags.shop==="fishing") return {k:"fishing", label:"Fly and tackle", pri:0};
   if(tags.shop==="outdoor") return {k:"outdoor", label:"Outdoor shop", pri:1};
-  if(tags.shop==="sports")  return {k:"sports",  label:"Sporting goods", pri:2};
+  /* The query asks for the shop key alone, so the requirement that a
+     sporting-goods shop actually sell fishing is applied here. */
+  if(tags.shop==="sports" && /fish/i.test(tags.sport||"")) return {k:"sports", label:"Sporting goods", pri:2};
   return null;
 }
 
@@ -4037,8 +4053,12 @@ async function loadShops(){
   state.shops={status:"loading", list:[], radius:0, key};
   renderShopsCard();
   try{
-    let list=await flyShops(c.lat, c.lon, 40000), radius=40000;
-    if(!list.length){ list=await flyShops(c.lat, c.lon, 90000); radius=90000; }
+    /* One query, wide. Asking 40 km first and 90 km only when that came
+       back empty meant paying for two round trips in exactly the places
+       an angler is likely to be — the rural ones, where the near query
+       finds nothing. The list is ranked and cut client-side regardless. */
+    const radius=90000;
+    const list=await flyShops(c.lat, c.lon, radius);
     state.shops={status:list.length?"ok":"empty", list, radius, key};
   }catch(e){
     state.shops={status:"error", list:[], radius:0, key:null};   // null key, so opening the tab tries again
@@ -4080,7 +4100,7 @@ function renderShopsCard(){
   const near=st.list.slice(0,3);
   const rest=st.list.length-near.length;
   el.innerHTML=head
-    + `<p class="muted">The ${near.length===1?"nearest":`nearest ${near.length===2?"two":"three"}`} within ${Math.round(st.radius/1609.34)} miles, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
+    + `<p class="muted">The ${near.length===1?"nearest":`nearest ${near.length===2?"two":"three"}`}, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
     + near.map(shopRow).join("")
     + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} mapped further out.</p>`:"");
 }
@@ -4644,6 +4664,18 @@ function draw(){
   renderShop(res,ctx);
   renderWater(ctx);
   renderDiary(ctx);
+  warmShops();
+}
+
+/* The counters are looked up from a centre the app already knows, so
+   there is no reason to wait for the tab to be opened and then make the
+   angler watch it load. Debounced, because dragging the pin redraws on
+   every frame and Overpass is run by volunteers. loadShops() is a no-op
+   once the centre has already been answered. */
+let shopWarm=null;
+function warmShops(){
+  clearTimeout(shopWarm);
+  shopWarm=setTimeout(()=>{ loadShops(); }, 1200);
 }
 
 (function init(){
