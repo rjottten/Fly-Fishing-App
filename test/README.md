@@ -44,6 +44,7 @@ how a version bump that forgets the hash gets caught.
 | `noleaflet` | with the map library blocked, address search still drives everything |
 | `notiles` | blank tiles are explained rather than left as a grey box |
 | `slowshops` | a wedged Overpass mirror hands the fly-shop query to the second one instead of costing its whole timeout first |
+| `slowbutok` | a merely slow Overpass is waited for rather than abandoned — a client deadline shorter than the query's own timeout turned a slow answer into an empty shop list |
 | `outofbook` | a Montana pin does not inherit a Lake Erie steelhead fishery: outside 250 miles the hatch chart, the plays, the wade call and any modeled number are switched off and said to be off, while the gauge, the access and the shops carry on |
 | `slowmap` | the reading renders before the map library arrives, and the map still comes up once it does |
 | `security` | an OpenStreetMap name tag full of markup renders as text everywhere — watched across the whole walk, not sampled at the end, because the render that carries it may be long gone — and the policy blocks an inline handler even from a sink nobody has found yet |
