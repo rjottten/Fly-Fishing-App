@@ -370,7 +370,7 @@ async function shopPass(page, seen){
       guide: /hiring a local guide/i.test(document.getElementById("panel-shop").textContent),
       photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
       note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
-      ql: (typeof shopQL!=="undefined") ? shopQL(41.9337,-74.9143,90000) : "",
+      ql: (typeof shopQL!=="undefined") ? shopQL(41.9337,-74.9143,40000) : "",
       findMore: !!card.querySelector('a[href*="q="]'),
       // ranking and URL vetting are data concerns; the cap is a rendering one
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
@@ -795,14 +795,22 @@ const SCENARIOS = {
        "and one named like tackle but tagged as an outdoor shop", s.shops.all.map(x=>x.name));
     ok(!s.shops.all.some(x=>/Flying Pizza/.test(x.name)),
        "a restaurant that merely starts with fly is not", s.shops.all.map(x=>x.name));
-    ok(/name"~/.test(s.shops.ql),
-       "the query asks by name as well as by tag", s.shops.ql.slice(0,120));
+    /* A name regex over a 56-mile radius is a full scan and times out,
+       which the angler sees as "the lookup did not answer". Overpass gets
+       the indexed question; the names are matched here. */
+    ok(!/name"~/.test(s.shops.ql),
+       "the query asks Overpass nothing it has to scan for", s.shops.ql);
+    ok(/\["shop"\]/.test(s.shops.ql) && /tourism/.test(s.shops.ql),
+       "it asks by indexed tag — shops, and the lodgings fly shops hide inside", s.shops.ql);
+    ok(/around:40000/.test(s.shops.ql),
+       "at the 25 miles an angler means by near, widening only if that is empty", s.shops.ql.slice(0,60));
     ok(s.shops.findMore,
        "and the card always offers a way to look past OpenStreetMap, whose rural coverage is thin");
     /* A bbox+regex rewrite of this query read better, scanned less, and
        returned no shops at all for a real town. It is the around: form. */
-    ok(/around:90000/.test(s.shops.ql) && /shop"="fishing"/.test(s.shops.ql),
-       "the query asks the way that is known to answer", s.shops.ql.slice(0,80));
+    ok(!s.shops.all.some(x=>/Bakery|Clip Joint|Riverside Motel/.test(x.name)),
+       "asking for every nearby shop does not make a bakery a fly shop",
+       s.shops.all.map(x=>x.name));
     ok(/out tags center (1\d\d|[2-9]\d\d)/.test(s.shops.ql),
        "and asks for enough of them that a wide radius cannot truncate the near one",
        s.shops.ql.slice(-40));

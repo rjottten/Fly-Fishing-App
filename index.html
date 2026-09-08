@@ -3055,17 +3055,27 @@ const SHOP_MAX = 8;
    the NAME, for everything else. A business called "Cross Current
    Outfitters" is findable however it is tagged, and fly shops are named
    with remarkable consistency — angler, outfitter, tackle, trout, fly. */
-const SHOP_NAME_RE = "(fly.?(fish|shop|rod)|angler|outfitt|tackle|trout|drift.?boat)";
 
 function shopQL(lat, lon, r){
+  /* Tag-only, because tags are indexed and `name` is not.
+     Asking Overpass to regex every name inside a 56-mile circle is a
+     full scan of ten thousand square kilometres: it exceeds the query's
+     own timeout and comes back as an error, which is what the angler saw
+     as "the OpenStreetMap lookup did not answer".
+
+     So Overpass is asked the cheap question — what shops and lodgings
+     are near here — and the name matching, which is the thing that
+     actually finds a fly shop, happens in flyShops() over a few hundred
+     objects, where it costs nothing. leisure=fishing catches the access
+     points that double as a shop. */
   const at=`(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
   return `[out:json][timeout:25];
 (
-  nwr${at}["shop"="fishing"];
-  nwr${at}["shop"~"^(outdoor|sports|hunting)$"];
-  nwr${at}["name"~"${SHOP_NAME_RE}",i];
+  nwr${at}["shop"];
+  nwr${at}["tourism"~"^(hotel|motel|guest_house|chalet|resort)$"];
+  nwr${at}["leisure"="fishing"];
 );
-out tags center 300;`;
+out tags center 600;`;
 }
 
 /* Only http(s) survives. An OSM website tag is a string anyone may
@@ -4091,8 +4101,13 @@ async function loadShops(){
        back empty meant paying for two round trips in exactly the places
        an angler is likely to be — the rural ones, where the near query
        finds nothing. The list is ranked and cut client-side regardless. */
-    const radius=90000;
-    const list=await flyShops(c.lat, c.lon, radius);
+    /* 25 miles is what "near" means on a river road, and a tag-only
+       query at that radius is cheap enough to answer every time. The
+       wider second pass costs a round trip only where the first found
+       nothing, which is the rural case it exists for. */
+    let radius=40000;
+    let list=await flyShops(c.lat, c.lon, radius);
+    if(!list.length){ radius=90000; list=await flyShops(c.lat, c.lon, radius); }
     state.shops={status:list.length?"ok":"empty", list, radius, key};
   }catch(e){
     state.shops={status:"error", list:[], radius:0, key:null};   // null key, so opening the tab tries again
