@@ -161,6 +161,26 @@ async function walk(browser, scenario){
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
 
+  /* An OSM name reaching innerHTML as markup leaves an inline handler in
+     the tree for as long as that render lives — which can be a fraction
+     of the walk. The gate card did exactly this and only the CSP stopped
+     it, so watch every insertion from here on rather than looking in the
+     two places the bug was first expected. */
+  if(scenario==="security") await page.evaluate(()=>{
+    window.__inlineHits=[];
+    const name=(n)=>{ const p=[]; let e=n;
+      while(e && e!==document.body){ p.unshift(e.id?"#"+e.id:(e.className?e.tagName+"."+String(e.className).split(" ")[0]:e.tagName)); e=e.parentElement; }
+      return p.join(" > "); };
+    new MutationObserver(ms=>{
+      for(const m of ms) for(const n of m.addedNodes){
+        if(n.nodeType!==1) continue;
+        const bad = (n.matches && n.matches("[onerror],[onload],[onclick]")) ? n
+                  : (n.querySelector && n.querySelector("[onerror],[onload],[onclick]"));
+        if(bad) window.__inlineHits.push(name(bad));
+      }
+    }).observe(document.body, {childList:true, subtree:true});
+  });
+
   await page.click("#tab-plan");
   seen.mapRendered = await page.waitForSelector(".leaflet-container",{timeout:5000}).then(()=>true,()=>false);
   seen.mapCard = (await page.$eval("#mapCard", n=>n.textContent)).replace(/\s+/g," ").trim();
@@ -303,6 +323,10 @@ async function securityPass(page, seen){
       tooltipShowsText: !!(tip && tip.textContent.includes("<img src=x")),
       cardHasImg: !!document.querySelector("#accessCard img"),
       cardShowsText: (document.querySelector("#accessCard")||{}).textContent?.includes("<img src=x") || false,
+      /* Everything the watcher below caught over the whole walk. A snapshot
+         taken here would miss it: the app re-renders onto another water
+         before this runs, and the offending card is gone by then. */
+      inlineHandlers: window.__inlineHits || [],
     };
   });
 
@@ -426,15 +450,18 @@ async function diaryPass(page, seen){
   });
   seen.readout = (await page.$$eval("#diary .mrow .mname", ns=>ns.map(n=>n.textContent.trim())));
 
-  // the engine, with the book and without it
+  /* The engine, with the book and without it. Read off every play that
+     scored rather than the three on the card: in a month the streamer is
+     not a top-three play the book still has to be moving it. */
   seen.rank = await page.evaluate(()=>{
     const ctx = buildContext();
-    const withBook = recommend(ctx).picked;
-    const bare = recommend(Object.assign({}, ctx, {mem:{days:0, rows:[], tech:{}, hatch:{}}})).picked;
-    const s = withBook.find(p=>p.key==="streamer"||p.key==="gl-streamer");
-    const b = bare.find(p=>p.key==="streamer"||p.key==="gl-streamer");
-    return {moved: !!(s&&b) && s.score>b.score*1.02,
-            ranked: withBook.map(p=>p.key), bareRanked: bare.map(p=>p.key)};
+    const withBook = recommend(ctx);
+    const bare = recommend(Object.assign({}, ctx, {mem:{days:0, rows:[], tech:{}, hatch:{}}}));
+    const find = (r)=>r.all.find(p=>p.key==="streamer"||p.key==="gl-streamer");
+    const s = find(withBook), b = find(bare);
+    return {found: !!(s&&b),
+            moved: !!(s&&b) && s.score>b.score*1.02,
+            ranked: withBook.picked.map(p=>p.key), bareRanked: bare.picked.map(p=>p.key)};
   });
   seen.playsNote = await page.$$eval("#panel-fish .fromdiary", ns=>ns.map(n=>n.textContent.trim()));
 
@@ -595,7 +622,8 @@ const SCENARIOS = {
     ok(s.pcts.streamer===15, "four of them lean on it as hard as the cap allows", s.pcts);
     ok(s.pcts.dry<0, "and a blank on the dry fly reads the other way", s.pcts);
     ok(s.readout.some(r=>/Streamer/.test(r)), "the readout names what it is moving", s.readout);
-    ok(s.rank.moved, "the streamer play scores higher with the book than without it", s.rank);
+    ok(s.rank.found, "the streamer play is among those the engine scored", s.rank);
+    ok(s.rank.moved, "and scores higher with the book than without it", s.rank);
     ok(s.playsNote.length>0 && /your book|day/i.test(s.playsNote.join(" ")),
        "and the play card says which days moved it", s.playsNote);
     ok(s.stretch, "a hatch just outside its window was found to test the stretch on");
@@ -643,6 +671,8 @@ const SCENARIOS = {
        "the map tooltip renders it as text, not as an element", s.sec);
     ok(!s.sec.cardHasImg && s.sec.cardShowsText,
        "and so does the access list", s.sec);
+    eq(s.sec.inlineHandlers, [],
+       "and at no point in the walk does it land in the tree as an element");
     ok(s.cspBlocks===0,
        "the policy blocks an inline handler even from a sink nobody has found yet", s.cspBlocks);
     ok(s.refusals.length===1 && /script-src/.test(s.refusals[0]),

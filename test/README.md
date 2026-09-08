@@ -44,7 +44,7 @@ how a version bump that forgets the hash gets caught.
 | `noleaflet` | with the map library blocked, address search still drives everything |
 | `notiles` | blank tiles are explained rather than left as a grey box |
 | `slowmap` | the reading renders before the map library arrives, and the map still comes up once it does |
-| `security` | an OpenStreetMap name tag full of markup renders as text everywhere, and the policy blocks an inline handler even from a sink nobody has found yet |
+| `security` | an OpenStreetMap name tag full of markup renders as text everywhere — watched across the whole walk, not sampled at the end, because the render that carries it may be long gone — and the policy blocks an inline handler even from a sink nobody has found yet |
 | `diary` | a day logged through the form is stored, re-ranks the plays up to the ±15% cap, stretches a hatch window it should and leaves one it should not, survives a reload, and speaks for no other water or time of year |
 | `plan` | a planned day carries today's gauge forward and lets it decay — flow lets go before water temperature, a fortnight out both are the bare seasonal model, and pressure is never carried at all |
 

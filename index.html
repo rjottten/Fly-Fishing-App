@@ -2770,7 +2770,10 @@ function recommend(ctx){
   }
   const max=picked.length?picked[0].score:1;
   picked.forEach((p,i)=>{ p.rank=i+1; p.conf=Math.round(clamp(48+ (p.score/Math.max(max,1))*47, 30, 96)); });
-  return {picked, ah, runs};
+  /* `all` is every play that scored, in order. Only three are ever shown,
+     but whether the book moved a play is a question about its score, not
+     about whether it happened to make the card this week. */
+  return {picked, all:out, ah, runs};
 }
 
 /* ============================================================
@@ -3526,7 +3529,7 @@ function gateCard(ctx){
   const refs=refuges(ctx);
   return `<div class="gate">
     <h2>${stop?"Stop — the water is too warm":"Marginal water temperature"}</h2>
-    <p>${ctx.w.name} is modeled at <b>${ctx.temp.toFixed(0)} °F</b> right now.
+    <p>${esc(ctx.w.name)} is modeled at <b>${ctx.temp.toFixed(0)} °F</b> right now.
     ${stop?"Above 68 °F released trout die hours later even when they swim away strong. Delayed mortality runs roughly 69 percent higher at 73 °F than below 66 °F. The right call is to fish somewhere colder."
           :"Fish only at first light, keep them wet, and release fast. If it climbs past 68, stop."}</p>
     ${refs.length?`<p style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Colder water nearby, modeled now</p>
