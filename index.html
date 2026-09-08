@@ -1790,7 +1790,8 @@ function buildContext(){
   const baro = resolveBaro(w, lead);
 
   const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live, baro,
-          lead, carry:{temp:kT, flow:kF}, isGL: w.sp==="steelhead"};
+          lead, carry:{temp:kT, flow:kF}, isGL: w.sp==="steelhead",
+          outOfBook: !!w.beyond, templateMiles: w.templateMiles||0, range: w.range||"near"};
   base.mem=recall(base);      // the angler's own days on this water, near this date
   base.acc=access(base);
   return base;
@@ -1873,6 +1874,7 @@ function rankOf(o){
   return o.i * o.clock * local * marq;
 }
 function activeHatches(ctx){
+  if(ctx.outOfBook) return [];        // no calendar reaches this water
   return HATCHES
     .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(hatchKeyOf(ctx.w)))
     .map(hx=>({hx, i:hatchIntensity(hx,ctx), clock:inClock(hx,ctx)}))
@@ -2739,6 +2741,10 @@ function recall(ctx){
 
 function recommend(ctx){
   const ah=activeHatches(ctx), runs=activeRuns(ctx);
+  /* Every play reads a hatch, a species or a seasonal curve, and out
+     here Riffle has none of the three. A guess would be indistinguishable
+     from a reading, which is the one thing this app must not produce. */
+  if(ctx.outOfBook) return {picked:[], ah, runs};
   let out=[];
   for(const p of PLAYS){
     let r=null;
@@ -3142,6 +3148,28 @@ async function drainAreas(sites){
 }
 
 /* --- the spot profile ---------------------------------------- */
+/* --- how far the book reaches -------------------------------
+   The 27 waters are hand-written for the Northeast, and a spot
+   borrows the nearest one's seasonal curves, hatch calendar and
+   flow character. That is sound for a neighbouring river and
+   nonsense for a distant one: the westernmost waters in the book
+   are Lake Erie steelhead tributaries, so a pin on a Montana
+   trout river was inheriting a steelhead fishery — no hatches at
+   all, and egg patterns ranked first, in May.
+
+   Spring hatch timing moves roughly a week per hundred miles, so
+   the bands below are about how wrong the calendar can be before
+   it stops being a calendar.
+------------------------------------------------------------ */
+const RANGE_NEAR = 75;    // miles: a genuine neighbour, same climate band
+const RANGE_MAX  = 250;   // miles: past this the book does not know this water
+
+function rangeOf(miles){
+  if(miles<=RANGE_NEAR) return "near";
+  if(miles<=RANGE_MAX)  return "borrowed";
+  return "beyond";
+}
+
 function templateFor(lat, lon){
   let best=WATERS[0], bd=Infinity;
   for(const w of WATERS){
@@ -3177,26 +3205,44 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
   const ownGauge = !!gauge && gauge.id===tmpl.gauge;
+  const range = rangeOf(miles);
+  const beyond = range==="beyond";
   return {
     id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
     hatchKey: tmpl.id,                       // borrow this water's hatch calendar
     name: point.name || "Selected spot",
     place: point.place || "",
     lat: point.lat, lon: point.lon,
-    type: tmpl.type, sp: tmpl.sp, size: tmpl.size,
+    range, beyond, templateMiles: miles,
+    /* Beyond the book, the template's species is an accident of which
+       of 27 Northeast rivers happens to be least far away. Inheriting
+       it is how a Montana trout river came to be read as a Lake Erie
+       steelhead run, so out here the spot claims no fishery at all. */
+    type: beyond ? "unknown" : tmpl.type,
+    sp:   beyond ? "unknown" : tmpl.sp,
+    size: tmpl.size,
     gauge: gauge ? gauge.id : tmpl.gauge,
     unit: "cfs",
     flow: bands.flow, wade: bands.wade, float: tmpl.float,
     temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
     shift: tmpl.shift, char: tmpl.char,
-    note: `Seasonal temperature, hatch timing and flow character are modeled on `
-        + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
-        + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
-                 + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
-                 : `No live gauge was found nearby, so the numbers are modeled. `)
-        + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
-           : ownGauge  ? `The flow bands are this gauge's own.`
-                       : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`),
+    note: (beyond
+        ? `This point is ${away} from the nearest water in Riffle's book, which is `
+          + `hand-written for the Northeast. Nothing seasonal travels that far, so the `
+          + `hatch chart and the plays are switched off here rather than borrowed from `
+          + `${tmpl.name}. `
+          + (gauge ? `The gauge is real: USGS ${gauge.id} — `
+                   + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
+                   : `No live gauge was found nearby either, so there are no numbers to show.`)
+        : `Seasonal temperature, hatch timing and flow character are modeled on `
+          + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
+          + (range==="borrowed" ? `That is far enough that hatch dates will run a week or two out — read the calendar as a guide, not a date. ` : "")
+          + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
+                   + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
+                   : `No live gauge was found nearby, so the numbers are modeled. `)
+          + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
+             : ownGauge  ? `The flow bands are this gauge's own.`
+                         : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
     spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
   };
 }
@@ -3397,7 +3443,18 @@ function conditionsHTML(ctx){
   /* Say where each number came from — but only when it is not simply
      the gauge, which the pill above has already said. */
   const word={live:"read live", carried:"carried forward from today's gauge", you:"your own read", model:"modeled"};
-  const prov = ctx.tempSource==="live" && ctx.flowSource==="live" ? ""
+  /* A modeled number is the seasonal curve of the template water. Inside
+     the book that is a neighbouring river; outside it, it is a river a
+     thousand miles away, so the cell shows nothing rather than a figure
+     that looks measured. A live gauge is a live gauge anywhere. */
+  const noTemp = ctx.outOfBook && ctx.tempSource==="model";
+  const noFlow = ctx.outOfBook && ctx.flowSource==="model";
+  const prov = ctx.outOfBook
+    ? (noTemp && noFlow ? "No gauge was found near this point, and this water is outside the book, so there is nothing here to model from."
+       : noTemp ? "Flow is a live gauge reading. Water temperature has no gauge here and cannot be modeled outside the book."
+       : noFlow ? "Water temperature is a live gauge reading. Flow has no gauge here and cannot be modeled outside the book."
+       : "Both numbers are live gauge readings — those hold anywhere.")
+    : ctx.tempSource==="live" && ctx.flowSource==="live" ? ""
     : `Water temperature ${word[ctx.tempSource]}, flow ${word[ctx.flowSource]}.`;
   return `<section class="reading" id="conditions">
     <div class="rd-head">
@@ -3411,15 +3468,15 @@ function conditionsHTML(ctx){
       </div>
     </div>
     <div class="gauges">
-      <div class="g ${tempClass(ctx.temp,ctx.isGL)}">
+      <div class="g ${noTemp?"":tempClass(ctx.temp,ctx.isGL)}">
         <div class="lab">Water</div>
-        <div class="val">${ctx.temp.toFixed(0)}°</div>
-        <div class="note">${tempNote(ctx.temp,ctx.isGL)}</div>
+        <div class="val">${noTemp?"\u2014":ctx.temp.toFixed(0)+"\u00b0"}</div>
+        <div class="note">${noTemp?"No gauge here":tempNote(ctx.temp,ctx.isGL)}</div>
       </div>
-      <div class="g ${ctx.fs.k==="blown"?"bad":ctx.fs.k==="normal"?"good":ctx.fs.k==="high"?"warn":""}">
+      <div class="g ${noFlow?"":ctx.fs.k==="blown"?"bad":ctx.fs.k==="normal"?"good":ctx.fs.k==="high"?"warn":""}">
         <div class="lab">Flow</div>
-        <div class="val">${ctx.cfs>=1000?(ctx.cfs/1000).toFixed(1)+"k":ctx.cfs}</div>
-        <div class="note">${ctx.fs.label} · ${esc(w.unit.split(" ")[0])}</div>
+        <div class="val">${noFlow?"\u2014":ctx.cfs>=1000?(ctx.cfs/1000).toFixed(1)+"k":ctx.cfs}</div>
+        <div class="note">${noFlow?"No gauge here":`${ctx.fs.label} · ${esc(w.unit.split(" ")[0])}`}</div>
       </div>
       <div class="g">
         <div class="lab">Clarity</div>
@@ -3522,7 +3579,34 @@ function refuges(ctx){
     .filter(o=>o.t<=63)
     .sort((a,b)=>a.d-b.d).slice(0,3);
 }
+/* What Riffle can and cannot say about a water outside its book.
+   The measured things still stand: a USGS gauge is a USGS gauge, a
+   thermometer is a thermometer, and OpenStreetMap maps the whole
+   country. Only the modeled things go. */
+function outOfBookCard(ctx){
+  const liveTemp = ctx.tempSource==="live" || ctx.tempSource==="carried";
+  const t=ctx.temp;
+  const thermal = !liveTemp
+    ? `No gauge here is reporting water temperature, and outside the book there is no curve to model one from — carry a thermometer.`
+    : t>=68
+      ? `At <b>${t.toFixed(0)} °F</b> the water is too warm for trout wherever you are standing; that number needs no calendar.`
+      : `The gauge reads <b>${t.toFixed(0)} °F</b>. Trout stress above 65 and should not be fished above 68, on any river.`;
+  return `<div class="gate">
+    <h2>Outside the book</h2>
+    <p>Riffle's 27 waters are hand-written for the Northeast, and the nearest of them
+       is <b>${ctx.templateMiles} miles</b> from here. Hatch dates, seasonal water
+       temperature, flow character and wade thresholds are all that water's, not this
+       one's — so there are no plays, no hatch chart and no wade call here. A guess
+       would look exactly like a reading.</p>
+    <p><b>What still holds:</b> a USGS gauge is a USGS gauge, and the access points and
+       fly shops come from OpenStreetMap, which maps the whole country. ${thermal}</p>
+    <p>Pick a water from the book on <b>Plan</b> for the full reading, or use this one
+       for the gauge, the access and the shops.</p>
+  </div>`;
+}
+
 function gateCard(ctx){
+  if(ctx.outOfBook) return outOfBookCard(ctx);
   if(ctx.isGL){
     if(ctx.temp<=65) return "";
     return `<div class="gate"><h2>Too warm for steelhead</h2>
@@ -3573,8 +3657,8 @@ function renderFish(res, ctx){
   const el=$("#panel-fish");
   el.innerHTML=`
   ${conditionsHTML(ctx)}
-  ${tacticHTML(ctx)}
-  ${ladderHTML(ctx)}
+  ${ctx.outOfBook?"":tacticHTML(ctx)}
+  ${ctx.outOfBook?"":ladderHTML(ctx)}
   ${gateCard(ctx)}
   <div class="plays">
     ${res.picked.map(p=>`
@@ -4059,9 +4143,13 @@ function renderShop(res, ctx){
 
   $("#panel-shop").innerHTML=`
     <div class="shop-intro">
-      <h2>Take a photo of this</h2>
-      <p>Everything the three plays need, in one list. Sizes and colours are specific on purpose — hand this to the shop and you are out the door in five minutes.
-      ${esc(ctx.w.name)}, ${ctx.d.toLocaleDateString(undefined,{month:"long",day:"numeric"})}, water ${ctx.temp.toFixed(0)} °F, ${ctx.fs.label.toLowerCase()} flow, ${ctx.clarity.label.toLowerCase()}.</p>
+      <h2>${ctx.outOfBook?"No list for this water":"Take a photo of this"}</h2>
+      ${ctx.outOfBook
+        ? `<p>The list is built from the plays, and outside the book there are none — see <b>Fish</b> for why.
+           The shops above are still real, and the people behind those counters know this water far better than
+           any calendar would. Ask them what is coming off.</p>`
+        : `<p>Everything the three plays need, in one list. Sizes and colours are specific on purpose — hand this to the shop and you are out the door in five minutes.
+      ${esc(ctx.w.name)}, ${ctx.d.toLocaleDateString(undefined,{month:"long",day:"numeric"})}, water ${ctx.temp.toFixed(0)} °F, ${ctx.fs.label.toLowerCase()} flow, ${ctx.clarity.label.toLowerCase()}.</p>`}
     </div>
 
     <div class="wcard" id="shopsCard"></div>

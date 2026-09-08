@@ -302,6 +302,7 @@ async function walk(browser, scenario){
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
   if(scenario==="security") await securityPass(page, seen);
+  if(scenario==="outofbook") await outOfBookPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
@@ -334,6 +335,52 @@ async function shopPass(page, seen){
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
   });
+}
+
+/* The book is 27 Northeast rivers, and the westernmost of them are Lake
+   Erie steelhead tributaries. A pin far enough west takes one of those as
+   its nearest water, which is how a Montana trout river came to be read as
+   a steelhead run with egg patterns ranked first. Distance has to switch
+   the modeled half of the app off, not quietly reassign the fishery. */
+async function outOfBookPass(page, seen){
+  seen.book = await page.evaluate(()=>{
+    const at=(lat,lon)=>{ const t=templateFor(lat,lon); return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp}; };
+    const read=(lat,lon,name)=>{
+      const t=templateFor(lat,lon);
+      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN);
+      state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
+      const ctx=buildContext();
+      return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
+              hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length};
+    };
+    const out={
+      nearest:{bozeman:at(45.677,-111.043), boise:at(43.615,-116.202)},
+      montana: read(45.677,-111.043,"Gallatin River"),
+      roscoe:  read(41.9337,-74.9143,"Beaverkill"),
+      edge:    read(40.7934,-77.86,"Spring Creek"),
+    };
+    state.spot=null; state.when=new Date();
+    return out;
+  });
+
+  // and what the angler is actually shown out there
+  seen.bookUI = await page.evaluate(()=>{
+    const t=templateFor(45.677,-111.043);
+    state.spot=spotProfile({lat:45.677,lon:-111.043,name:"Gallatin River"}, t.w, t.dist, null, NaN);
+    draw();
+    const fish=document.getElementById("panel-fish");
+    return {
+      gate: !!fish.querySelector(".gate h2") && fish.querySelector(".gate h2").textContent,
+      says: /outside the book/i.test(fish.textContent),
+      plays: fish.querySelectorAll(".play").length,
+      tactic: !!fish.querySelector("#tactic"),
+      ladder: !!fish.querySelector("#ladderCard"),
+      tempCell: (fish.querySelector(".gauges .g .val")||{}).textContent,
+      shopHead: (document.querySelector("#panel-shop .shop-intro h2")||{}).textContent,
+      eggs: /egg/i.test(fish.textContent),
+    };
+  });
+  await page.evaluate(()=>{ state.spot=null; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -762,6 +809,29 @@ const SCENARIOS = {
     ok(s.playsAt < CDN_LAG, `and in ${s.playsAt} ms, not the ${CDN_LAG} ms the CDN took`, s.playsAt);
     ok(s.mapRendered, "and the map still comes up once it lands", s.mapRendered);
     ok(s.names.length>1, "with the access flow unaffected", s.names);
+  },
+  outofbook: (s)=>{
+    ok(s.book.nearest.bozeman.sp==="steelhead" && s.book.nearest.bozeman.miles>1000,
+       "the nearest water to Montana really is a steelhead tributary 1,500 miles off", s.book.nearest);
+    ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
+    ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
+       "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
+    ok(s.book.montana.hatches===0 && s.book.montana.plays===0,
+       "no hatch chart and no plays, in the middle of May", s.book.montana);
+    ok(s.book.roscoe.out===false && s.book.roscoe.plays>0 && s.book.roscoe.hatches>0,
+       "a water in the book still reads in full", s.book.roscoe);
+    ok(s.book.edge.out===false && s.book.edge.plays>0,
+       "and so does one a few miles off it", s.book.edge);
+    ok(/Outside the book/.test(s.bookUI.gate) && s.bookUI.says,
+       "the Fish tab says so in place of the plays", s.bookUI);
+    ok(s.bookUI.plays===0 && !s.bookUI.eggs,
+       "with nothing ranked, and no egg patterns anywhere on it", s.bookUI);
+    ok(!s.bookUI.tactic && !s.bookUI.ladder,
+       "no wade call either — those thresholds are the other river's", s.bookUI);
+    ok(s.bookUI.tempCell==="\u2014",
+       "and a modeled temperature is left blank rather than shown as a reading", s.bookUI.tempCell);
+    ok(/No list for this water/.test(s.bookUI.shopHead),
+       "the shop list says why it is empty", s.bookUI.shopHead);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");

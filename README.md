@@ -60,6 +60,22 @@ curves of the nearest of these 27 hand-written waters and rescales the flow
 bands to the gauge it finds. So your home pool does not have to be on this list
 for the app to read it; the list is what it reasons *from*.
 
+How far that reaches is measured, not assumed. Spring hatch timing moves about a
+week per hundred miles, so:
+
+| distance to the nearest water in the book | what you get |
+| --- | --- |
+| under 75 miles | the full reading |
+| 75–250 miles | the full reading, with the hatch calendar flagged as a guide rather than a date |
+| over 250 miles | **outside the book** — no plays, no hatch chart, no wade call, and no modeled numbers |
+
+Past 250 miles the app says so rather than guessing. It still gives you the live
+USGS gauge, the public access and the fly shops, because a gauge is a gauge and
+OpenStreetMap maps the whole country — but the modeled half goes quiet. The
+alternative is worse than useless: the westernmost waters in the book are Lake
+Erie steelhead tributaries, so without the limit a pin on a Montana trout river
+inherited a steelhead fishery and was told to drift egg patterns in May.
+
 <details>
 <summary><b>The 27 waters in the book</b></summary>
 
