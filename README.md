@@ -60,6 +60,13 @@ curves of the nearest of these 27 hand-written waters and rescales the flow
 bands to the gauge it finds. So your home pool does not have to be on this list
 for the app to read it; the list is what it reasons *from*.
 
+**Outside the Northeast it says so.** Those curves and hatch windows travel
+about 150 miles and no further, so past that Riffle tells you where you are,
+reads your local USGS gauge — which is as good in Montana as it is in the
+Catskills — and shows **no hatches at all** rather than a Catskill calendar
+that would be wrong. The plays still come; read them as technique rather than
+as a match-the-hatch. Continental coverage is the next thing being built.
+
 <details>
 <summary><b>The 27 waters in the book</b></summary>
 

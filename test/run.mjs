@@ -286,6 +286,7 @@ async function walk(browser, scenario){
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
 
   await shopPass(page, seen);
+  await coveragePass(page, seen);
 
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
@@ -294,6 +295,42 @@ async function walk(browser, scenario){
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
   return seen;
+}
+
+/* What Riffle does where it has not been written for. The book is a
+   Northeast book; the gauge is national. Those two facts have to be kept
+   apart, or a Montana angler is handed a Catskill hatch calendar and a
+   run of chrome with total confidence. Driven as pure logic, on a fixed
+   June afternoon, so it does not depend on the clock or the network. */
+async function coveragePass(page, seen){
+  seen.coverage = await page.evaluate(()=>{
+    const at=(lat,lon)=>{
+      const {w:tmpl, dist} = templateFor(lat,lon);
+      const spot = spotProfile({lat,lon,name:"Test point",place:""}, tmpl, dist, null, NaN);
+      const keepSpot=state.spot, keepId=state.waterId, keepWhen=state.when;
+      state.spot=spot; state.waterId=tmpl.id;
+      state.when=new Date(new Date().getFullYear(), 5, 15, 14, 0);
+      const ctx=buildContext(), res=recommend(ctx);
+      const out={
+        template: tmpl.name, miles: Math.round(dist/1609.34),
+        inBook: inBook(ctx.w), sp: ctx.w.sp,
+        hatches: res.ah.length,
+        plays: res.picked.map(p=>p.key),
+        banner: /Outside the book/.test(coverageHTML(ctx)),
+        hatchPanel: /No hatch calendar for here/.test(hatchHTML(res, ctx)),
+        // where would it send someone off a river at 70 degrees?
+        refugeMiles: refuges(Object.assign({}, ctx, {temp:70})).map(o=>o.d),
+      };
+      state.spot=keepSpot; state.waterId=keepId; state.when=keepWhen;
+      return out;
+    };
+    return {
+      home:    at(41.94, -74.97),    // on the Beaverkill
+      smokies: at(35.68, -83.53),    // 450 mi out — close enough to have looked fine
+      montana: at(45.48, -111.53),   // nearest water is a Lake Erie steelhead trib
+      alaska:  at(60.49, -150.99),
+    };
+  });
 }
 
 /* The shop list is worth nothing at home, so it carries the counters it
@@ -633,6 +670,27 @@ const SCENARIOS = {
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "so every href on the tab is one the app built or vetted", s.shops.links);
     ok(s.shops.beforeList, "the shops come before the list you are handing across the counter");
+
+    const c = s.coverage;
+    ok(c.home.inBook && c.home.hatches>0 && !c.home.banner,
+       "on a water in the book the calendar is read as it always was", c.home);
+    ok(!c.smokies.inBook && !c.montana.inBook && !c.alaska.inBook,
+       "a point past the ceiling is outside the book", c);
+    ok(c.smokies.hatches===0 && c.montana.hatches===0 && c.alaska.hatches===0,
+       "and is shown no hatches rather than the wrong ones", c);
+    ok(c.smokies.banner && c.smokies.hatchPanel,
+       "with both the banner and the hatch panel saying why", c.smokies);
+    /* The regression that mattered: everything west of the Appalachians is
+       geometrically nearest a Lake Erie tributary, so the plays came back as
+       steelhead tactics for rivers full of resident trout. */
+    ok([c.montana, c.alaska, c.smokies].every(x=>x.sp==="trout"),
+       "an out-of-book point falls back to a trout template, never a steelhead one", c);
+    ok([c.montana, c.alaska, c.smokies].every(x=>x.plays.every(k=>!k.startsWith("gl-"))),
+       "so it is never handed a run of chrome and a swung fly", c);
+    ok(c.home.plays.length===3 && c.montana.plays.length===3,
+       "the plays still come, in and out of the book — they are technique", c);
+    ok([c.home,c.smokies,c.montana,c.alaska].every(x=>x.refugeMiles.every(d=>d<=120)),
+       "and colder water nearby is never a river most of a continent away", c);
   },
   scaled: (s)=>{
     // Little Beaver Kill drains 23.4 mi² against the Beaverkill's 241

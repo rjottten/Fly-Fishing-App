@@ -433,6 +433,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .gate h2{font-family:Fraunces,Georgia,serif;font-size:21px;margin:0 0 6px;font-weight:600;color:var(--accent-ink);letter-spacing:-.01em}
 .gate p{margin:0 0 11px;font-size:13.5px;color:var(--ink2);line-height:1.55}
 .gate p:last-child{margin-bottom:0}
+/* The warm-water gate is a warning and reads like one. Being outside the
+   book is not a warning — it is Riffle saying what it does not know. */
+.gate.outside{border-color:var(--line);box-shadow:var(--shadow)}
+.gate.outside h2{color:var(--ink);font-size:19px}
 .refuge{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
 .refuge:last-child{border-bottom:0}
 .refuge .rn{flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.25}
@@ -1827,6 +1831,11 @@ function resolveBaro(w, lead){
 }
 
 /* --- which hatches are on ---------------------------------- */
+/* A curated water is always in the book. A synthesized spot is in it
+   only while the template it borrowed from is close enough to mean
+   something — see BOOK_MAX_MI. */
+function inBook(w){ return !w.spot || w.spot.inBook; }
+
 function shiftOf(hx, ctx){ return hx.waters==="all" ? ctx.w.shift : 0; }
 function hatchIntensity(hx, ctx){
   const sh=shiftOf(hx,ctx);
@@ -1875,6 +1884,7 @@ function rankOf(o){
   return o.i * o.clock * local * marq;
 }
 function activeHatches(ctx){
+  if(!inBook(ctx.w)) return [];        // no calendar has been written for here
   return HATCHES
     .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(hatchKeyOf(ctx.w)))
     .map(hx=>({hx, i:hatchIntensity(hx,ctx), clock:inClock(hx,ctx)}))
@@ -1883,6 +1893,7 @@ function activeHatches(ctx){
     .sort((a,b)=> b.rank - a.rank);
 }
 function activeRuns(ctx){
+  if(!inBook(ctx.w)) return [];
   if(!ctx.isGL) return [];
   return RUNS.filter(r => r.waters==="gl" || r.waters.includes(hatchKeyOf(ctx.w)))
     .map(r=>{
@@ -3144,13 +3155,43 @@ async function drainAreas(sites){
 }
 
 /* --- the spot profile ---------------------------------------- */
+/* --- how far the book may be carried ------------------------
+   Every reading for a dropped pin borrows a curated water's
+   seasonal curves and its hatch calendar. Those travel: the
+   Beaverkill's shape is a fair guess for a freestone an hour
+   away. They do not travel indefinitely. Past this distance the
+   gauge is still real — USGS reads the same everywhere — but a
+   Catskill hatch calendar in the southern Appalachians is not a
+   guess, it is a wrong answer stated confidently, so beyond the
+   ceiling Riffle says where it is and shows no bugs at all.
+
+   27 waters cover the Northeast densely enough that a point
+   inside it is rarely more than an hour from one.
+------------------------------------------------------------ */
+const BOOK_MAX_MI = 150;      // how far a template's calendar may be borrowed
+const REFUGE_MAX_MI = 120;    // ...and how far "colder water nearby" may point
+
 function templateFor(lat, lon){
-  let best=WATERS[0], bd=Infinity;
-  for(const w of WATERS){
-    const d=metres(lat,lon,w.lat,w.lon);
-    if(d<bd){ bd=d; best=w; }
-  }
-  return {w:best, dist:bd};
+  const nearestOf=(list)=>{
+    let best=null, bd=Infinity;
+    for(const w of list){
+      const d=metres(lat,lon,w.lat,w.lon);
+      if(d<bd){ bd=d; best=w; }
+    }
+    return {w:best, dist:bd};
+  };
+  const near=nearestOf(WATERS);
+  if(near.dist/1609.34 <= BOOK_MAX_MI) return near;
+
+  /* Out past the ceiling the template is only a generic coldwater shape,
+     and the shape must not be a steelhead one. Everything west of the
+     Appalachians is geometrically nearest a Lake Erie tributary, which
+     would hand a Montana angler a run of chrome and a swung-fly rig for
+     a river full of resident trout. Fall back to the nearest trout water
+     instead: still the wrong curves, which the banner says, but at least
+     the right kind of fishing. */
+  const trout=nearestOf(WATERS.filter(w=>w.sp==="trout"));
+  return trout.w ? trout : near;
 }
 
 /* Flow scales roughly with the area that drains into the gauge,
@@ -3179,6 +3220,7 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
   const ownGauge = !!gauge && gauge.id===tmpl.gauge;
+  const inBook = miles <= BOOK_MAX_MI;
   return {
     id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
     hatchKey: tmpl.id,                       // borrow this water's hatch calendar
@@ -3191,15 +3233,19 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
     flow: bands.flow, wade: bands.wade, float: tmpl.float,
     temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
     shift: tmpl.shift, char: tmpl.char,
-    note: `Seasonal temperature, hatch timing and flow character are modeled on `
-        + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
+    note: (inBook
+          ? `Seasonal temperature, hatch timing and flow character are modeled on `
+          + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
+          : `You are ${away} from ${tmpl.name}, the nearest water Riffle has been written for. `
+          + `That is too far to carry its seasonal curves or its hatch calendar, so the modeled `
+          + `numbers here are a rough shape only and no hatches are shown. `)
         + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
                  + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
                  : `No live gauge was found nearby, so the numbers are modeled. `)
         + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
            : ownGauge  ? `The flow bands are this gauge's own.`
                        : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`),
-    spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
+    spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated, inBook},
   };
 }
 
@@ -3512,11 +3558,14 @@ function flyItem(f){
   </div>`;
 }
 
+/* Colder water worth driving to. "Nearby" has to mean it: the book is
+   a Northeast book, and a cold tailwater 900 miles away is not an
+   answer to a warm afternoon. */
 function refuges(ctx){
   return WATERS
     .filter(w=>w.sp==="trout" && w.id!==ctx.w.id && (w.type==="tailwater"||w.type==="limestone"))
     .map(w=>({w, t:modelTemp(w,ctx.d), d:haversine(ctx.w.lat,ctx.w.lon,w.lat,w.lon)}))
-    .filter(o=>o.t<=63)
+    .filter(o=>o.t<=63 && o.d<=REFUGE_MAX_MI)
     .sort((a,b)=>a.d-b.d).slice(0,3);
 }
 function gateCard(ctx){
@@ -3546,9 +3595,30 @@ function gateCard(ctx){
    are asked on the bank: what is the river doing, can I get in
    it, what do I tie on, and what is coming off the water.
 ------------------------------------------------------------ */
+/* Said once, above everything it qualifies. The gauge below it is real;
+   the calendar and the curves are not, out here. */
+function coverageHTML(ctx){
+  if(inBook(ctx.w)) return "";
+  const sp=ctx.w.spot;
+  return `<div class="gate outside">
+    <h2>Outside the book</h2>
+    <p>Riffle has been written for the Northeast, and you are
+    <b>${esc(sp.away)}</b> from ${esc(sp.template.name)}, the nearest water it knows.
+    ${sp.gauge
+      ? `The flow and water temperature below are <b>read live from USGS ${esc(sp.gauge.id)}</b> and are as good here as anywhere.`
+      : `No gauge was found near this point, so every number below is modeled.`}</p>
+    <p>What does <b>not</b> travel this far is the rest of it: the seasonal curves are
+    ${esc(sp.template.name)}'s, the flow bands are scaled from a river in another
+    watershed, and no hatch calendar has been written for this water — so Riffle shows
+    none rather than showing you the wrong ones. Read the plays as technique, not as
+    a match-the-hatch.</p>
+  </div>`;
+}
+
 function renderFish(res, ctx){
   const el=$("#panel-fish");
   el.innerHTML=`
+  ${coverageHTML(ctx)}
   ${conditionsHTML(ctx)}
   ${tacticHTML(ctx)}
   ${gateCard(ctx)}
@@ -4076,6 +4146,16 @@ function renderShop(res, ctx){
 
 /* --- what is hatching, at the foot of Fish ------------------- */
 function hatchHTML(res, ctx){
+  if(!inBook(ctx.w)){
+    const sp=ctx.w.spot;
+    return `<div class="shop-intro" id="hatchIntro">
+      <h2>No hatch calendar for here</h2>
+      <p>The 26 hatches Riffle tracks are Northeast ones, keyed to a Catskill baseline and
+      shifted per water. ${esc(sp.template.name)} is <b>${esc(sp.away)}</b> from this point —
+      far enough that its calendar would be a wrong answer rather than a rough one.
+      Ask the nearest shop what is coming off; that beats any model, including this one.</p>
+    </div>`;
+  }
   const now=res.ah.filter(o=>o.i>0.28);
   const soon=HATCHES.filter(hx=>{
     if(ctx.w.sp!=="trout") return false;
@@ -4409,7 +4489,10 @@ function renderWater(ctx){
       <p>${ctx.w.spot
           ? `Reading <b>${esc(ctx.w.name)}</b>, picked off the map. Tap a water below to read that one instead.`
           : from
-          ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
+          ? (()=>{ const mi=haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon);
+                   return mi<=BOOK_MAX_MI
+                     ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${mi} miles</b> from ${esc(from.what)}.`
+                     : `The nearest water in the book is <b>${mi} miles</b> from ${esc(from.what)}. Riffle is a Northeast book, so it has not opened on one. Drop a pin where you are fishing and it will still read your local gauge \u2014 it just will not have a hatch calendar for it.`; })()
           : `Location is off, so Riffle opened on <b>${esc(ctx.w.name)}</b>. Search above, tap the map, or pick from the list.`}</p>
       <div class="wlist">
         ${shownList.map(({w,d})=>`
@@ -4520,7 +4603,11 @@ function locate(explicit){
         const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
         if(d<bd){bd=d;best=w;}
       }
-      if(best){ state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best); }
+      /* Opening on the nearest water is only a kindness while there is a
+         near one. Somewhere the book does not cover, silently naming a
+         river 1,500 miles away as "yours" is worse than opening on the
+         default and letting the distances on Plan say so. */
+      if(best && bd<=BOOK_MAX_MI){ state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best); }
     }
     draw();
     if(explicit){
