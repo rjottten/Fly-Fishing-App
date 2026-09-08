@@ -93,11 +93,20 @@ async function mock(page, scenario){
     : F.OVERPASS;
   /* One endpoint, two questions: the access query and the fly-shop
      query, told apart by what they ask for. */
-  await page.route("**://overpass**", r => {
+  await page.route("**://overpass**", async r => {
     if(scenario==="overpassdown") return r.fulfill({status:504, contentType:"text/plain", body:"gateway timeout"});
     // the query travels form-encoded, so match the tag name, not the quotes
     const asked = r.request().postData() || "";
-    return r.fulfill(json(/shop/.test(asked) ? F.SHOPS : overpass));
+    const isShop = /shop/.test(asked);
+    if(isShop){
+      shopCalls.push(r.request().url());
+      // the primary mirror is wedged; the backup has to rescue the lookup
+      if(scenario==="slowshops" && /overpass-api\.de/.test(r.request().url())){
+        await new Promise(x=>setTimeout(x, 9000));
+        return r.abort();
+      }
+    }
+    return r.fulfill(json(isShop ? F.SHOPS : overpass));
   });
   await page.route("**://api.open-meteo.com/**", r=>r.fulfill(json(F.meteo())));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
@@ -111,6 +120,7 @@ async function mock(page, scenario){
 }
 
 const XSS = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
+let shopCalls = [];        // which mirrors the shop query actually reached
 const CDN_LAG = 1500;
 
 /* Chrome and Chromium word this refusal differently and the wording is not
@@ -149,6 +159,7 @@ async function walk(browser, scenario){
   await mock(page, scenario);
 
   const seen = {};
+  shopCalls = [];
   if(scenario==="slowmap"){
     /* The reading must not wait on the map library. Measured from the
        first byte to the first play card, while the CDN sits on Leaflet. */
@@ -316,6 +327,7 @@ async function walk(browser, scenario){
    can be handed across. Those names and website tags are world-writable
    OpenStreetMap strings, which is why one of them is an attack. */
 async function shopPass(page, seen){
+  const t0=Date.now();
   await page.click("#tab-shop");
   await page.waitForFunction(()=>{
     const c=document.getElementById("shopsCard");
@@ -343,6 +355,8 @@ async function shopPass(page, seen){
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
   });
+  seen.shopMs = Date.now()-t0;
+  seen.shopCalls = shopCalls.slice();
 }
 
 /* The book is 27 Northeast rivers, and the westernmost of them are Lake
@@ -718,6 +732,10 @@ const SCENARIOS = {
        "what to ask the shop leads the tab, directly under the tabs", s.shops.askFirst);
     ok(s.shops.beforeList, "and come before the list you are handing across the counter");
     ok(s.shops.guide, "the tab suggests a guide before it suggests a fly");
+    ok(s.shopCalls.length===1,
+       "the counters cost one query, not a near one and then a wide one", s.shopCalls.length);
+    ok(s.shopMs < 1500,
+       `the tab was already warm when opened (${s.shopMs} ms), not looked up on arrival`, s.shopMs);
     ok(!s.shops.photo, "and no longer opens by telling you to photograph it", s.shops.photo);
   },
   scaled: (s)=>{
@@ -846,6 +864,14 @@ const SCENARIOS = {
        "and a modeled temperature is left blank rather than shown as a reading", s.bookUI.tempCell);
     ok(/No list for this water/.test(s.bookUI.shopHead),
        "the shop list says why it is empty", s.bookUI.shopHead);
+  },
+  slowshops: (s)=>{
+    /* The mirrors used to be tried in turn on a 30 s timeout each, so a
+       queued first host cost a full minute before the second was asked. */
+    ok(s.shopCalls.length===2 && /kumi/.test(s.shopCalls[1]||""),
+       "a silent first mirror hands the query to the second", s.shopCalls);
+    ok(s.shops.names.length===3, "and the shops still arrive", s.shops.names);
+    ok(s.shopMs < 9000, `without waiting out the wedged host (${s.shopMs} ms)`, s.shopMs);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
