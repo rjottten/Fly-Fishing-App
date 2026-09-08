@@ -88,6 +88,27 @@ button{font:inherit;color:inherit;cursor:pointer}
   border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink3);flex:none;
 }
 .srcpill.live{border-color:var(--verd);color:var(--verd);background:var(--verd-soft)}
+
+/* the strip above the tabs — which water, and which day */
+.plan{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  margin-top:16px;box-shadow:var(--shadow);overflow:hidden;
+}
+.pb-id{padding:13px 16px 11px}
+.pb-id h2{
+  font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;margin:0;
+  line-height:1.15;letter-spacing:-.015em;text-wrap:balance;
+}
+.pb-when{padding:12px 16px 13px;border-top:1px solid var(--line-soft);background:var(--sunk)}
+.pb-when .dlab{margin-bottom:7px}
+.pb-fields{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.pb-fields .dinput.date{flex:none;padding:6px 9px}
+.pb-fields .dbtn{padding:6px 12px;font-size:12px}
+.pb-lead{margin:9px 0 0;font-size:12px;color:var(--ink3);line-height:1.5}
+.pb-lead b{color:var(--ink2);font-weight:600}
+.srcpill.carried{border-color:var(--sulphur);color:var(--sulphur);background:var(--sulphur-soft)}
+.reading.tactic{margin-top:16px}
+.reading.tactic .access{border-top:0}
 .gauges{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-soft)}
 .g{padding:11px 8px 12px;border-right:1px solid var(--line-soft);text-align:center}
 .g:last-child{border-right:0}
@@ -1117,7 +1138,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </header>
 
 <div class="wrap">
-  <section class="reading" id="reading"></section>
+  <section class="plan" id="planbar"></section>
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
     <button class="tab" role="tab" id="tab-where" aria-controls="panel-where" aria-selected="false">Where</button>
     <button class="tab" role="tab" id="tab-plays" aria-controls="panel-plays" aria-selected="true">Plays</button>
@@ -1464,6 +1485,7 @@ const state = {
   access:{status:"idle", list:[], radius:8000, chosen:null},
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plays", checked:new Set(),
+  plan:null,                                   // {date,hour} — a day being read ahead of time
   diary:[],                                    // the angler's logged days — see section 3b
   diaryOK:true,                                // false when the browser refuses to store them
   dform:null,                                  // the half-written entry, kept across redraws
@@ -1487,6 +1509,37 @@ const BARO_STATES = {
 };
 const HPA_IN = 0.02953;               // hPa \u2192 inches of mercury
 const BARO_STEP = 0.7;                // hPa over 3 h that counts as a real move
+
+/* --- planning a day ahead -----------------------------------
+   A gauge reading is not a forecast. The gap between the gauge
+   and the model for today is closer to one: a river running warm
+   or high this afternoon is still likely to be running warm or
+   high tomorrow. So that anomaly is carried forward and allowed
+   to decay — quickly for flow, which a single storm resets, and
+   slowly for water temperature, which has a season's mass behind
+   it. A week out there is nothing of the gauge left in the number
+   and the reading is the seasonal curve plus whatever the diary
+   knows about that week on that water. Pressure is not carried at
+   all: nobody reads a barometer three days early.
+------------------------------------------------------------ */
+const LEAD_MAX  = 21;      // days ahead the planner will read
+const TAU_FLOW  = 3.5;     // e-folding of a flow anomaly, in days
+const TAU_TEMP  = 5.5;     // ...and of a water-temperature one
+const CARRY_MIN = 0.15;    // below this the gauge is not worth claiming
+const carryOf = (lead,tau)=> lead<=0 ? 1 : Math.exp(-lead/tau);
+
+function plannedWhen(){
+  if(!state.plan) return new Date();
+  const [y,m,d]=state.plan.date.split("-").map(Number);
+  const h=Math.floor(state.plan.hour), mi=Math.round((state.plan.hour-h)*60);
+  return new Date(y, m-1, d, h, mi);
+}
+/* Whole days between today and the day being read. */
+function leadDays(when){
+  const a=new Date(); a.setHours(0,0,0,0);
+  const b=new Date(when.getFullYear(), when.getMonth(), when.getDate());
+  return Math.max(0, Math.round((b-a)/86400000));
+}
 
 function water(){ return state.spot || WATERS.find(w=>w.id===state.waterId) || WATERS[0]; }
 
@@ -1667,23 +1720,39 @@ function buildContext(){
   const day=doy(d);
   const live=state.live && state.live.gauge===w.gauge ? state.live : null;
 
-  const temp = live && live.tempF!=null ? live.tempF : modelTemp(w,d);
-  const tempSource = live && live.tempF!=null ? "live" : "model";
+  const now=new Date(), lead=leadDays(d);
+  const kT=carryOf(lead,TAU_TEMP), kF=carryOf(lead,TAU_FLOW);
 
+  /* Temperature anomalies are additive — a river three degrees warm
+     than its curve stays about three degrees warm. */
+  let temp, tempSource;
+  if(live && live.tempF!=null && kT>=CARRY_MIN){
+    temp = Math.round((modelTemp(w,d) + (live.tempF - modelTemp(w,now))*kT)*10)/10;
+    tempSource = lead===0 ? "live" : "carried";
+  } else { temp = modelTemp(w,d); tempSource = "model"; }
+
+  /* Flow anomalies are multiplicative — twice the seasonal number
+     is twice the seasonal number whatever month it is. */
+  const mid=(w.flow.ideal[0]+w.flow.ideal[1])/2;
   let flowIx, cfs=null, flowSource="model";
-  if(live && live.cfs!=null){ cfs=live.cfs; flowIx=cfs/((w.flow.ideal[0]+w.flow.ideal[1])/2); flowSource="live"; }
-  else { flowIx=modelFlow(w,d); cfs=Math.round(((w.flow.ideal[0]+w.flow.ideal[1])/2)*flowIx); }
+  if(live && live.cfs!=null && kF>=CARRY_MIN){
+    const modelNow=modelFlow(w,now);
+    const ratio = modelNow>0.01 ? clamp((live.cfs/mid)/modelNow, 0.1, 10) : 1;
+    flowIx = modelFlow(w,d)*Math.pow(ratio,kF);
+    flowSource = lead===0 ? "live" : "carried";
+  } else { flowIx=modelFlow(w,d); }
+  cfs = Math.round(mid*flowIx);
 
   let fs = flowStateFromIndex(flowIx);
-  if(state.ov.flow){ fs=FLOW_STATES.find(f=>f.k===state.ov.flow); flowSource="you"; cfs=Math.round(((w.flow.ideal[0]+w.flow.ideal[1])/2)*fs.ratio); }
+  if(state.ov.flow){ fs=FLOW_STATES.find(f=>f.k===state.ov.flow); flowSource="you"; cfs=Math.round(mid*fs.ratio); }
 
   let clarity = state.ov.clarity ? CLARITY[state.ov.clarity] : modelClarity(fs,w);
   const sky = state.ov.sky || "partly";
   const lw = lightWindow(h,sun);
-  const baro = resolveBaro(w);
+  const baro = resolveBaro(w, lead);
 
   const base={w, d, day, h, sun, temp, tempSource, cfs, flowIx, fs, flowSource, clarity, sky, lw, live, baro,
-          isGL: w.sp==="steelhead"};
+          lead, carry:{temp:kT, flow:kF}, isGL: w.sp==="steelhead"};
   base.mem=recall(base);      // the angler's own days on this water, near this date
   base.acc=access(base);
   return base;
@@ -1691,9 +1760,10 @@ function buildContext(){
 
 /* Pressure is never modeled from the calendar \u2014 it isn't seasonal.
    Live reading first, then the angler's tap, then an honest blank. */
-function resolveBaro(w){
+function resolveBaro(w, lead){
   const b = state.baro;
-  const fresh = b && Math.abs(b.lat-w.lat)<0.5 && Math.abs(b.lon-w.lon)<0.5;
+  // today's glass says nothing about Saturday's, so a planned day gets none of it
+  const fresh = !lead && b && Math.abs(b.lat-w.lat)<0.5 && Math.abs(b.lon-w.lon)<0.5;
 
   if(state.ov.baro){
     const st=BARO_STATES[state.ov.baro];
@@ -1709,6 +1779,9 @@ function resolveBaro(w){
     if(st.k==="steady" && low)  line="Flat but low \u2014 unsettled air sitting over the river. Fish are usually willing.";
     return Object.assign({}, st, {source:"live", hPa:b.hPa, hist:b.hist, delta:d, srcLabel:"Live", chipLabel:"live"});
   }
+  if(lead) return Object.assign({}, BARO_STATES.steady, {source:"ahead", hPa:null, hist:null, delta:null,
+    srcLabel:"Not yet", chipLabel:"too far out to read",
+    line:`Pressure is the one thing that cannot be carried ${lead===1?"even a day":`${lead} days`} forward — it is weather, not season. Riffle assumes flat until the day gets close, which nudges nothing. Check a forecast the night before, then tap it on <b>On river</b>.`});
   return Object.assign({}, BARO_STATES.steady, {source:"assumed", hPa:null, hist:null, delta:null,
     srcLabel:"Assumed", chipLabel:"not measured here", line:"No pressure reading here. Riffle assumes flat, which nudges nothing. If the glass is moving, tap it below and the plays re-rank."});
 }
@@ -3052,24 +3125,130 @@ function accFlipTxt(ctx){
   return `${src}Wading thresholds here: <b>${a.wd.full}</b> full river · <b>${a.wd.good}</b> most of it · <b>${a.wd.limited}</b> ${a.canFloat?"boat wins":"edges only"} · <b>${a.wd.max}</b> ${u} is the ceiling. Today is <b>${a.flip.gap} ${u}</b> below the next step up.`;
 }
 
-function renderReading(ctx){
+/* --- the dashboard, in two halves ---------------------------
+   Conditions and tactics answer different questions and are read
+   at different moments, so they live where each is wanted: the
+   river's numbers sit under the map on Where, where you are
+   deciding which water to drive to, and the go/wade/float call
+   sits at the top of Plays, where you are deciding what to do
+   once you are standing in it. The strip above the tabs carries
+   only what both need — which water, and which day.
+------------------------------------------------------------ */
+
+/* Quick ways to say "the day I am actually going". */
+function planShortcuts(){
+  const now=new Date(), out=[{label:"Now", iso:null}];
+  const at=(n)=>{ const d=new Date(now); d.setDate(d.getDate()+n); return d; };
+  const DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  out.push({label:"Tomorrow", iso:isoLocal(at(1))});
+  for(let n=2;n<=8 && out.length<5;n++){
+    const d=at(n);
+    if(d.getDay()===6 || d.getDay()===0) out.push({label:DAY[d.getDay()], iso:isoLocal(d)});
+  }
+  if(out.length<5) out.push({label:"In a week", iso:isoLocal(at(7))});
+  return out;
+}
+
+function leadLine(ctx){
+  const mem = ctx.mem.days
+    ? ` Your book has <b>${ctx.mem.days} day${ctx.mem.days===1?"":"s"}</b> on this water within three weeks of that date, and they are already in the ranking.`
+    : "";
+  if(!ctx.lead){
+    return `Reading <b>right now</b>, from the gauge where there is one.${mem}`;
+  }
+  const pct=Math.round(ctx.carry.flow*100);
+  const gauge = ctx.live
+    ? (ctx.carry.flow>=CARRY_MIN
+        ? `Today's gauge still accounts for about <b>${pct}%</b> of the flow number that far out; the rest is this water's seasonal curve.`
+        : `That is too far out for today's gauge to mean anything, so the flow and temperature are this water's seasonal curve alone.`)
+    : `There is no live gauge here anyway — these numbers are modeled from the date and this water's seasonal character.`;
+  return `<b>${ctx.lead} day${ctx.lead===1?"":"s"} out.</b> ${gauge}${mem} Come back the morning of and it will have hardened up.`;
+}
+
+function renderPlanBar(ctx){
   const w=ctx.w;
-  const liveFlow = ctx.flowSource==="live", liveTemp = ctx.tempSource==="live";
-  const anyLive = liveFlow||liveTemp;
+  const live = ctx.flowSource==="live" || ctx.tempSource==="live";
+  const carried = ctx.flowSource==="carried" || ctx.tempSource==="carried";
+  const pill = live?["live","Live gauge"] : carried?["carried","Gauge, carried forward"] : ["","Modeled"];
+  const dateStr=ctx.d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+  const timeStr=ctx.d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  const maxDate=(()=>{ const d=new Date(); d.setDate(d.getDate()+LEAD_MAX); return isoLocal(d); })();
+  const cur=state.plan ? state.plan.date : null;
+  const hh=state.plan ? state.plan.hour : ctx.d.getHours()+ctx.d.getMinutes()/60;
+
+  $("#planbar").innerHTML=`
+    <div class="pb-id">
+      <h2>${esc(w.name)}</h2>
+      <div class="rd-sub">
+        <span>${esc(w.place)}</span><span class="dot"></span>
+        <span>${dateStr}, ${timeStr}</span><span class="dot"></span>
+        <span>${ctx.lw.label}</span>
+        <span class="srcpill ${pill[0]}">${pill[1]}</span>
+      </div>
+    </div>
+    <div class="pb-when">
+      <div class="dlab">Which day are you fishing?</div>
+      <div class="rchips" id="planChips">
+        ${planShortcuts().map(o=>`
+          <button type="button" class="rchip${o.iso?"":" auto"}" data-iso="${o.iso||""}"
+            aria-pressed="${o.iso ? cur===o.iso : !state.plan}">${esc(o.label)}</button>`).join("")}
+      </div>
+      <div class="pb-fields">
+        <input class="dinput date" type="date" id="planDate" value="${esc(cur||isoLocal(new Date()))}"
+               min="${esc(isoLocal(new Date()))}" max="${esc(maxDate)}" aria-label="Day you plan to fish">
+        <input class="dinput date" type="time" id="planTime"
+               value="${String(Math.floor(hh)).padStart(2,"0")}:${String(Math.round((hh%1)*60)).padStart(2,"0")}"
+               aria-label="Time of day">
+        ${state.plan?`<button type="button" class="dbtn ghost" id="planNow">Back to now</button>`:""}
+      </div>
+      <p class="pb-lead">${leadLine(ctx)}</p>
+    </div>`;
+  wirePlan();
+}
+
+function wirePlan(){
+  document.querySelectorAll("#planChips .rchip").forEach(b=>b.addEventListener("click",()=>{
+    const iso=b.dataset.iso;
+    if(!iso){ state.plan=null; }
+    else {
+      const now=new Date();
+      state.plan={date:iso, hour: state.plan ? state.plan.hour : now.getHours()+now.getMinutes()/60};
+    }
+    draw();
+  }));
+  const dateEl=$("#planDate"), timeEl=$("#planTime"), nowBtn=$("#planNow");
+  const commit=()=>{
+    const iso=dateEl.value, t=(timeEl.value||"09:00").split(":").map(Number);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+    const hour=clamp((t[0]||0)+(t[1]||0)/60, 0, 23.99);
+    state.plan = (iso===isoLocal(new Date()) && !state.plan) ? null : {date:iso, hour};
+    draw();
+  };
+  if(dateEl) dateEl.addEventListener("change", commit);
+  if(timeEl) timeEl.addEventListener("change", commit);
+  if(nowBtn) nowBtn.addEventListener("click",()=>{ state.plan=null; draw(); });
+}
+
+/* --- section one: the river's numbers, under the map --------- */
+function renderConditions(ctx){
+  const el=$("#conditions"); if(!el) return;
+  const w=ctx.w;
   const tmin=ctx.isGL?30:32, tmax=ctx.isGL?70:76;
   const pos=clamp((ctx.temp-tmin)/(tmax-tmin),0,1)*100;
   const sun=ctx.sun;
-  const dateStr=ctx.d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
-  const timeStr=ctx.d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
-  $("#reading").innerHTML=`
+  /* Say where each number came from — but only when it is not simply
+     the gauge, which the pill above has already said. */
+  const word={live:"read live", carried:"carried forward from today's gauge", you:"your own read", model:"modeled"};
+  const prov = ctx.tempSource==="live" && ctx.flowSource==="live" ? ""
+    : `Water temperature ${word[ctx.tempSource]}, flow ${word[ctx.flowSource]}. `;
+  el.innerHTML=`
     <div class="rd-head">
       <div class="rd-water">
-        <h2>${esc(w.name)}</h2>
+        <h2>River conditions</h2>
         <div class="rd-sub">
-          <span>${esc(w.place)}</span><span class="dot"></span>
-          <span>${dateStr}, ${timeStr}</span><span class="dot"></span>
-          <span>${ctx.lw.label}</span>
-          <span class="srcpill ${anyLive?"live":""}">${anyLive?"Live gauge":"Modeled"}</span>
+          <span>${esc(w.name)}</span><span class="dot"></span>
+          <span>${ctx.lead?`${ctx.lead} day${ctx.lead===1?"":"s"} out`:"right now"}</span><span class="dot"></span>
+          <span>gauge ${esc(w.gauge)}</span>
         </div>
       </div>
     </div>
@@ -3096,10 +3275,20 @@ function renderReading(ctx){
       </div>
     </div>
     ${baroBand(ctx)}
+    <div class="thermal">
+      <div class="tl"><span>${tmin}°</span><span>Trout comfort ${ctx.isGL?"— steelhead scale":""}</span><span>${tmax}°</span></div>
+      <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
+      <div class="cap">${esc(prov)}${esc(w.note)}</div>
+    </div>`;
+}
+
+/* --- section two: the call, at the top of the plays ---------- */
+function tacticHTML(ctx){
+  return `<section class="reading tactic" id="tactic">
     <div class="access">
       <div class="acc-top">
         <span class="acc-call ${ctx.acc.tone}">${esc(ctx.acc.call)}</span>
-        <span class="acc-eyebrow">Wade or float</span>
+        <span class="acc-eyebrow">Wade or float · ${esc(ctx.w.name)}</span>
       </div>
       <div class="acc-line">${esc(ctx.acc.line)}</div>
       <div class="ladder">
@@ -3116,11 +3305,7 @@ function renderReading(ctx){
       </dl>
       <div class="acc-flip">${accFlipTxt(ctx)}</div>
     </div>
-    <div class="thermal">
-      <div class="tl"><span>${tmin}°</span><span>Trout comfort ${ctx.isGL?"— steelhead scale":""}</span><span>${tmax}°</span></div>
-      <div class="track"><span class="needle" style="left:calc(${pos}% - 1.5px)"></span></div>
-      <div class="cap">${esc(w.note)}</div>
-    </div>`;
+  </section>`;
 }
 
 function baroTrace(hist){
@@ -3202,6 +3387,7 @@ function gateCard(ctx){
 function renderPlays(res, ctx){
   const el=$("#panel-plays");
   el.innerHTML=`
+  ${tacticHTML(ctx)}
   ${gateCard(ctx)}
   <div class="plays">
     ${res.picked.map(p=>`
@@ -3740,6 +3926,7 @@ function whereShell(){
       <div id="map" role="application" aria-label="Map. Tap to choose where you are fishing."></div>
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
+    <section class="reading" id="conditions"></section>
     <div class="wcard" id="accessCard"></div>
     <div id="waterMeta"></div>`;
   wireWhere();
@@ -3823,9 +4010,12 @@ async function setPin(lat, lon, label){
   state.pin={lat, lon, label:label||null};
   drawPin();
   renderAccessCard();
+  draw();                       // the book re-sorts around the new point immediately
   if(!label){
     reverseGeocode(lat,lon).then(name=>{
-      if(name && state.pin && state.pin.lat===lat && state.pin.lon===lon){ state.pin.label=name; renderAccessCard(); }
+      if(name && state.pin && state.pin.lat===lat && state.pin.lon===lon){
+        state.pin.label=name; renderAccessCard(); draw();
+      }
     });
   }
   await loadAccess(lat, lon);
@@ -3934,11 +4124,21 @@ function renderWater(ctx){
   whereShell();
   if(state.tab==="where") initMap();
   renderAccessCard();
+  renderConditions(ctx);
 
   const g=state.geo;
   const sp=ctx.w.spot;
-  const list=WATERS.map(w=>({w, d:g?haversine(g.lat,g.lon,w.lat,w.lon):null}))
-    .sort((a,b)=> g ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
+  /* The book re-sorts around wherever the angler last pointed — a
+     searched address, a dropped pin, an access point they picked —
+     and only falls back to the device location when they have
+     pointed nowhere at all. Asking "what else is near here?" about
+     a place you are not standing in is most of the point of Where. */
+  const short=(t)=>String(t||"").split(",")[0].trim();      // a heading wants the town, not the postal address
+  const from = state.pin ? {lat:state.pin.lat, lon:state.pin.lon, what:short(state.pin.label)||"your pin"}
+             : g        ? {lat:g.lat, lon:g.lon, what:"your location"}
+             : null;
+  const list=WATERS.map(w=>({w, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
+    .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
 
   $("#waterMeta").innerHTML=`
     <div class="wcard">
@@ -3946,7 +4146,7 @@ function renderWater(ctx){
       <p>${sp
           ? `You picked <b>${esc(ctx.w.name)}</b>${ctx.w.place?" — "+esc(ctx.w.place):""}. `
             + `Seasonal curves come from <b>${esc(sp.template.name)}</b> — ${sp.templateMiles<1?"you are on it":esc(sp.away)}.`
-          : (g?`Your location put you <b>${haversine(g.lat,g.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
+          : (from?`${state.pin?"Your pin is":"Your location is"} <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(ctx.w.name)}, the nearest water in the book.`
               :`Location is off, so Riffle opened on ${esc(ctx.w.name)}. Search above, tap the map, or pick from the list.`)}</p>
       <p><b>Gauge ${esc(ctx.w.gauge)}</b> · ideal ${ctx.w.flow.ideal[0]}–${ctx.w.flow.ideal[1]} ${esc(ctx.w.unit)} · blown above ${ctx.w.flow.blown}.
       ${ctx.flowSource==="live"?"Reading live.":"No live reading here — flow and temperature are modeled from the date and this water's seasonal character."}</p>
@@ -3970,7 +4170,7 @@ function renderWater(ctx){
       </div>
     </div>
     <div class="wcard">
-      <h3>${g?"Nearest waters in the book":"Waters in the book"}</h3>
+      <h3>${from?`Nearest waters to ${esc(from.what)}`:"Waters in the book"}</h3>
       <div class="wlist">
         ${list.map(({w,d})=>`
           <button class="wbtn" data-w="${w.id}" aria-current="${!sp&&w.id===ctx.w.id}">
@@ -4072,10 +4272,10 @@ function showTab(name){
 
 let tick=null;
 function draw(){
-  state.when=new Date();
+  state.when=plannedWhen();
   const ctx=buildContext();
   const res=recommend(ctx);
-  renderReading(ctx);
+  renderPlanBar(ctx);
   renderControls(ctx);
   renderPlays(res,ctx);
   renderShop(res,ctx);

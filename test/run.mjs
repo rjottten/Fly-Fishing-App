@@ -120,6 +120,13 @@ async function walk(browser, scenario){
   await page.waitForSelector(".wbtn.apt", {timeout:12000});
   if(scenario==="notiles") await page.waitForTimeout(4000);
 
+  // the book re-sorts around the searched point, not the device location
+  seen.nearHead = await page.$eval("#waterMeta .wcard:last-child h3", n=>n.textContent.trim());
+  seen.nearFirst = await page.$$eval("#waterMeta .wcard:last-child .wbtn .wn",
+    ns=>ns.slice(0,3).map(n=>n.childNodes[0].textContent.trim()));
+  seen.nearOrdered = await page.$$eval("#waterMeta .wcard:last-child .wbtn .wd",
+    ns=>ns.map(n=>parseInt(n.textContent,10)));
+
   seen.names = await page.$$eval(".wbtn.apt .wn", ns=>ns.map(n=>n.childNodes[0].textContent.trim()));
   seen.kinds = await page.$$eval(".wbtn.apt .akind", ns=>ns.map(n=>n.textContent.trim()));
   seen.markers = await page.evaluate(()=>document.querySelectorAll(".acc-i").length);
@@ -130,7 +137,7 @@ async function walk(browser, scenario){
   await page.waitForFunction(()=>document.querySelector("#waterMeta")
     && document.querySelector("#waterMeta").textContent.includes("Seasonal curves"), {timeout:8000});
 
-  seen.spot  = await page.$eval("#reading .rd-water h2", n=>n.textContent.trim());
+  seen.spot  = await page.$eval("#planbar .pb-id h2", n=>n.textContent.trim());
   const meta = (await page.$eval("#waterMeta", n=>n.textContent)).replace(/\s+/g," ");
   seen.meta  = meta;
   seen.bands = (meta.match(/ideal ([\d]+)[–-]([\d]+) cfs · blown above (\d+)/)||[]).slice(1).map(Number);
@@ -142,8 +149,27 @@ async function walk(browser, scenario){
   // a water from the book must clear the synthesized spot
   await page.click('#waterMeta .wbtn[data-w="penns"]');
   await page.waitForTimeout(400);
-  seen.afterBook = await page.$eval("#reading .rd-water h2", n=>n.textContent.trim());
+  seen.afterBook = await page.$eval("#planbar .pb-id h2", n=>n.textContent.trim());
   seen.spotCleared = await page.evaluate(()=>state.spot===null);
+
+  // conditions under the map on Where; the call at the top of Plays
+  seen.layout = await page.evaluate(()=>{
+    const where=document.getElementById("panel-where");
+    const cond=document.getElementById("conditions");
+    const plays=document.getElementById("panel-plays");
+    const map=document.getElementById("mapCard");
+    return {
+      condInWhere: !!cond && where.contains(cond),
+      condUnderMap: !!cond && !!map && (map.compareDocumentPosition(cond)&Node.DOCUMENT_POSITION_FOLLOWING)>0,
+      condHasGauges: !!cond && !!cond.querySelector(".gauges"),
+      condHasBaro: !!cond && !!cond.querySelector(".baro"),
+      tacticFirstInPlays: plays.firstElementChild && plays.firstElementChild.id==="tactic",
+      tacticHasCall: !!plays.querySelector("#tactic .acc-call"),
+      strayReading: !!document.getElementById("reading"),
+      gaugesInPlays: !!plays.querySelector(".gauges"),
+      callInWhere: !!where.querySelector(".acc-call"),
+    };
+  });
 
   seen.tabOrder = await page.$$eval(".tab", ts=>ts.map(t=>t.textContent.trim()));
   await page.click("#tab-onriver");
@@ -152,10 +178,56 @@ async function walk(browser, scenario){
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
 
   if(scenario==="diary") await diaryPass(page, seen);
+  if(scenario==="plan")  await planPass(page, seen);
 
   seen.errors = errors; seen.violations = violations;
   await page.close();
   return seen;
+}
+
+/* Planning a day. The gauge is not a forecast, so the further out
+   the planned day sits the less of it survives into the reading —
+   and the diary, which is keyed to the time of year rather than the
+   clock, takes over. */
+async function planPass(page, seen){
+  await page.click("#tab-plays");
+  await page.waitForSelector("#planbar .pb-when");
+
+  seen.plan = await page.evaluate(()=>{
+    const iso=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const at=(n)=>{ const d=new Date(); d.setDate(d.getDate()+n); return d; };
+    const read=()=>{ const c=buildContext(); return {
+      lead:c.lead, temp:c.temp, cfs:c.cfs, tempSrc:c.tempSource, flowSrc:c.flowSource,
+      carryFlow:+c.carry.flow.toFixed(3), baro:c.baro.source, day:c.day}; };
+
+    state.plan=null; state.when=plannedWhen();
+    const now=read();
+    const out={now};
+    for(const n of [1,3,10,16]){
+      state.plan={date:iso(at(n)), hour:10};
+      state.when=plannedWhen();
+      out["d"+n]=read();
+    }
+    // the model alone, for the same planned day, with the gauge taken away
+    const keep=state.live; state.live=null;
+    state.plan={date:iso(at(16)), hour:10};
+    state.when=plannedWhen();
+    out.bare=read();
+    state.live=keep;
+    state.plan=null; state.when=plannedWhen();
+    return out;
+  });
+
+  // the picker itself, driven the way a person drives it
+  await page.click("#planChips .rchip:not(.auto)");        // "Tomorrow"
+  await page.waitForSelector("#planNow");
+  seen.planUI = {
+    lead: await page.evaluate(()=>buildContext().lead),
+    lead1: await page.$eval("#planbar .pb-lead", n=>n.textContent.replace(/\s+/g," ").trim()),
+    date: await page.$eval("#planDate", n=>n.value),
+  };
+  await page.click("#planNow");
+  seen.planUI.backToNow = await page.evaluate(()=>({lead:buildContext().lead, plan:state.plan}));
 }
 
 /* The diary is the one thing the angler types rather than taps, and
@@ -303,6 +375,16 @@ const SCENARIOS = {
     ok(!s.uncalibrated, "bands from the water's own gauge are not flagged uncalibrated");
     ok(s.plays>0 && s.hatch>0 && s.shop>0, "plays, hatch and shop list all render for a spot",
        {plays:s.plays, hatch:s.hatch, shop:s.shop});
+    ok(s.nearHead==="Nearest waters to Roscoe", "the book re-sorts around the point you searched", s.nearHead);
+    eq(s.nearFirst, ["Beaverkill","Willowemoc Creek","East Branch Delaware"],
+       "and lists the Catskill waters around Roscoe first");
+    ok(s.nearOrdered.length===27 && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
+       "every water in the book, nearest first", s.nearOrdered.slice(0,5));
+    ok(s.layout.condInWhere && s.layout.condUnderMap, "river conditions sit under the map on Where", s.layout);
+    ok(s.layout.condHasGauges && s.layout.condHasBaro, "with the gauges and the barometer in them", s.layout);
+    ok(s.layout.tacticFirstInPlays && s.layout.tacticHasCall, "the wade-or-float call leads the Plays tab", s.layout);
+    ok(!s.layout.strayReading && !s.layout.gaugesInPlays && !s.layout.callInWhere,
+       "and neither half is left behind in the other place", s.layout);
     eq(s.tabOrder, ["Where","Plays","Shop list","Hatch","On river","Diary"],
        "Where leads the tabs and the Diary closes them");
     ok(s.onRiverChips>0, "the condition chips live on the On river tab", s.onRiverChips);
@@ -356,6 +438,32 @@ const SCENARIOS = {
     ok(s.reloadPct.penns>=12, "and still lean the plays hard on the next visit", s.reloadPct);
     ok(s.reloadPct.elsewhere===null, "on the water they were logged on, and no other", s.reloadPct);
     ok(s.outOfRange===0, "a day on another water in another season speaks for neither", s.outOfRange);
+  },
+  plan: (s)=>{
+    const p=s.plan;
+    ok(p.now.lead===0 && p.now.flowSrc==="live" && p.now.tempSrc==="live",
+       "with no plan set the reading is today's, straight off the gauge", p.now);
+    ok(p.d1.lead===1 && p.d3.lead===3 && p.d10.lead===10, "the planner reads the day you point it at", p);
+    ok(p.d1.carryFlow>p.d3.carryFlow && p.d3.carryFlow>p.d10.carryFlow,
+       "the gauge counts for less the further out the day is", p);
+    ok(p.d1.flowSrc==="carried" && p.d3.flowSrc==="carried",
+       "a day or three out, today's reading is carried forward", p);
+    ok(p.d10.flowSrc==="model" && p.d10.tempSrc==="carried",
+       "flow lets go of the gauge first — one storm resets a river", p);
+    ok(p.d16.flowSrc==="model" && p.d16.tempSrc==="model",
+       "and a fortnight out nothing of the gauge is left in either number", p);
+    ok(p.d16.cfs===p.bare.cfs && p.d16.temp===p.bare.temp,
+       "which is exactly what the model gives with no gauge at all", {far:p.d16, bare:p.bare});
+    ok(p.d1.cfs!==p.now.cfs || p.d1.temp!==p.now.temp,
+       "a planned day is not just today's numbers relabelled", p);
+    ok(p.now.baro!=="ahead" && p.d1.baro==="ahead" && p.d10.baro==="ahead",
+       "and pressure is never carried forward at all — it is weather, not season", p);
+    ok(p.d3.day===p.now.day+3, "the hatch calendar reads the planned date, not today", p);
+    ok(s.planUI.lead===1 && /^\d{4}-\d{2}-\d{2}$/.test(s.planUI.date),
+       "the shortcut chips set the day", s.planUI);
+    ok(/1 day out/.test(s.planUI.lead1), "and the bar says how far out it is reading", s.planUI.lead1);
+    ok(s.planUI.backToNow.lead===0 && s.planUI.backToNow.plan===null,
+       "and there is a way back to now", s.planUI.backToNow);
   },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");

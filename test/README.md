@@ -37,8 +37,15 @@ how a version bump that forgets the hash gets caught.
 | `overpassdown` | an Overpass outage is stated plainly and the pin is still readable |
 | `noleaflet` | with the map library blocked, address search still drives everything |
 | `notiles` | blank tiles are explained rather than left as a grey box |
+| `diary` | a day logged through the form is stored, re-ranks the plays up to the ±15% cap, stretches a hatch window it should and leaves one it should not, survives a reload, and speaks for no other water or time of year |
+| `plan` | a planned day carries today's gauge forward and lets it decay — flow lets go before water temperature, a fortnight out both are the bare seasonal model, and pressure is never carried at all |
 
-The last four are the ones worth keeping. Every step of the Where flow depends
+`diary` and `plan` are the two that test arithmetic rather than plumbing: both
+feed the ranking, and both are bounded on purpose, so a regression in either
+would show up as plays that quietly stop moving — or start moving too much —
+rather than as anything that looks broken.
+
+Of the rest, the last four are the ones worth keeping. Every step of the Where flow depends
 on a service that will eventually be down, and the app is supposed to degrade
 rather than fail — that is only true for as long as something checks it.
 
