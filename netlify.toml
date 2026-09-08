@@ -22,7 +22,11 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), camera=(), microphone=(), interest-cohort=()"
+    # geolocation is (self): "Use my location" and "Near me" are the page's
+    # own features, so denying it outright broke them on the deploy while
+    # they kept working locally. Nothing else here is used, so nothing else
+    # is allowed, and no third-party frame inherits any of it.
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), interest-cohort=()"
     # Scripts and styles are inline in index.html, plus Leaflet from cdnjs.
     # The page reaches out to: Google Fonts, USGS (gauges), Open-Meteo
     # (pressure), Nominatim (geocoding), Overpass (access points), and

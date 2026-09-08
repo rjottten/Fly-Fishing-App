@@ -54,11 +54,27 @@ function ok(cond, label, detail){
 }
 const eq = (a,b,label)=>ok(JSON.stringify(a)===JSON.stringify(b), label, a);
 
-/* ---------- the harness ---------- */
-const csp = readFileSync(TOML,"utf8").match(/Content-Security-Policy = "([^"]+)"/)[1];
+/* ---------- the harness ----------
+   Every header the deploy sets on "/*" is served here too, not just the
+   CSP. A header that quietly turns off a browser feature the app uses
+   looks fine locally and is broken in production, which is exactly the
+   kind of thing only the real policy catches.                          */
+function deployHeaders(){
+  const toml = readFileSync(TOML,"utf8");
+  const block = toml.split(/\[\[headers\]\]/).find(b=>/for\s*=\s*"\/\*"/.test(b));
+  if(!block) throw new Error('netlify.toml has no [[headers]] block for "/*"');
+  const out = {};
+  for(const line of block.split("\n")){
+    const m = line.match(/^\s{4}([A-Za-z-]+)\s*=\s*"(.*)"\s*$/);
+    if(m) out[m[1]] = m[2];
+  }
+  return out;
+}
+const headers = deployHeaders();
+const csp = headers["Content-Security-Policy"];
 
 const server = http.createServer((_req,res)=>{
-  res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Content-Security-Policy":csp});
+  res.writeHead(200, Object.assign({"Content-Type":"text/html; charset=utf-8"}, headers));
   res.end(readFileSync(INDEX));
 });
 
@@ -308,12 +324,44 @@ console.log("\n  subresource integrity");
      {want, got});
 }
 
+/* The deploy's Permissions-Policy can switch off a browser feature the app
+   depends on. "Use my location" is the one that matters, so it is proven
+   against the real header rather than assumed. */
+async function geolocationWorks(browser){
+  const ctx = await browser.newContext({
+    permissions:["geolocation"], geolocation:{latitude:41.945, longitude:-74.972},
+  });
+  const page = await ctx.newPage();
+  const blocked = [];
+  page.on("console", m=>{ if(/permissions policy/i.test(m.text())) blocked.push(m.text()); });
+  await mock(page, "happy");
+  await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"domcontentloaded"});
+  const got = await page.evaluate(()=>new Promise(res=>
+    navigator.geolocation.getCurrentPosition(
+      p=>res({ok:true, lat:Math.round(p.coords.latitude)}),
+      e=>res({ok:false, code:e.code, message:e.message}))));
+  await ctx.close();
+  return {got, blocked};
+}
+
 const picked = process.argv.slice(2).filter(a=>SCENARIOS[a]);
 const names = picked.length ? picked : Object.keys(SCENARIOS);
 
 await new Promise(r=>server.listen(PORT,r));
 const browser = await chromium.launch({executablePath:chromePath(), args:["--no-sandbox"]});
 try{
+  console.log("\n  deploy headers");
+  {
+    const pp = headers["Permissions-Policy"] || "";
+    ok(/geolocation=\(self\)/.test(pp),
+       "the deploy lets the page use geolocation for itself", pp);
+    ok(/camera=\(\)/.test(pp) && /microphone=\(\)/.test(pp),
+       "and still denies what the app never asks for", pp);
+    const {got, blocked} = await geolocationWorks(browser);
+    ok(got.ok, "\"Use my location\" resolves behind the real headers", got);
+    ok(blocked.length===0, "no Permissions-Policy violation is logged", blocked);
+  }
+
   for(const name of names){
     console.log(`\n  ${name}`);
     const seen = await walk(browser, name);

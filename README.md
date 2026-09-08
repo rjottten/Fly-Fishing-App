@@ -110,10 +110,10 @@ Content-Security-Policy, with the upstream services mocked:
 cd test && npm install && npm test
 ```
 
-It covers the access flow, the river log end to end — filing a report, the
-thermometer reading reaching Fish, the play it moves, pooling somebody else's
-log — and, deliberately, the four ways the access flow can degrade: Overpass
-down, no drainage area, no map library, no tiles. See
+It covers the deploy's own headers, the access flow, the river log end to end
+— filing a report, the thermometer reading reaching Fish, the play it moves,
+pooling somebody else's log — and, deliberately, the four ways the access flow
+can degrade: Overpass down, no drainage area, no map library, no tiles. See
 [test/README.md](test/README.md).
 
 ## Deploying to Netlify
@@ -126,10 +126,15 @@ no build step, so Netlify publishes the repository root as-is:
   bookmarked or mistyped URL still lands on the app instead of a 404.
 - **Caching** — `index.html` is served `must-revalidate` so a new deploy is
   picked up on the next load rather than from a stale cache.
-- **Headers** — `nosniff`, a strict referrer policy, a locked-down permissions
-  policy, and a Content-Security-Policy that allows only what the page actually
-  uses: its own inline styles and script, Leaflet from cdnjs, Google Fonts,
-  OpenStreetMap tiles, and the USGS, Open-Meteo, Nominatim and Overpass APIs.
+- **Headers** — `nosniff`, a strict referrer policy, a permissions policy that
+  grants the page geolocation for itself and nothing else, and a
+  Content-Security-Policy that allows only what the page actually uses: its own
+  inline styles and script, Leaflet from cdnjs, Google Fonts, OpenStreetMap
+  tiles, and the USGS, Open-Meteo, Nominatim and Overpass APIs.
+
+The tests serve all of these headers, not just the CSP — a policy that turns
+off a browser feature the app uses reads fine in the file and only breaks once
+deployed.
 
 Point a Netlify site at this repository (or run `netlify deploy --prod` from the
 root) and the config is applied automatically. If you add an external script,
