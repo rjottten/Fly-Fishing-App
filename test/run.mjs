@@ -371,6 +371,7 @@ async function shopPass(page, seen){
       photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
       note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
       ql: (typeof shopQL!=="undefined") ? shopQL(41.9337,-74.9143,90000) : "",
+      findMore: !!card.querySelector('a[href*="q="]'),
       // ranking and URL vetting are data concerns; the cap is a rendering one
       all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
@@ -755,28 +756,49 @@ const SCENARIOS = {
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
     ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
     ok(!s.strayControls, "nothing is left under the dashboard");
-    eq(s.shops.all.map(x=>x.name),
-       ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop","Catskill Outfitters","Sullivan Sports"],
-       "fly shops rank tackle-first then nearest, and an unnamed one is not a shop");
-    eq(s.shops.names, ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop"],
-       "but only the nearest three are listed — past that it is a directory");
-    ok(/2 more are mapped further out/.test(s.shops.note),
+    ok(s.shops.all.length===8 && !s.shops.all.some(x=>!x.name),
+       "every shop that reads as a fly shop is ranked, and an unnamed one is not a shop",
+       s.shops.all.map(x=>x.name));
+    ok(s.shops.names.length===3 && s.shops.names[0]==="Beaverkill Angler",
+       "the nearest three are listed, nearest first — past that it is a directory", s.shops.names);
+    ok(/5 more are mapped further out/.test(s.shops.note),
        "and the ones held back are accounted for", s.shops.note);
     ok(/Fly shops near Roscoe/.test(s.shops.head), "under the place you pointed at", s.shops.head);
     eq(s.shops.links[0],
        ["https://beaverkillangler.example/", "tel:+16074985001", "https://www.openstreetmap.org/node/11"],
        "each with its own website, its phone and its place on the map");
-    eq(s.shops.labels[2], ["Map"], "a shop with neither website nor phone still has somewhere to go");
-    ok(s.shops.all[3].site==="https://catskilloutfitters.example/" && !s.shops.all[3].tel,
-       "a bare hostname is still made a link, and a shop with no phone simply has none", s.shops.all[3]);
-    ok(s.shops.all[1].site===null,
-       "a website tag edited into javascript: is dropped before it can reach an href", s.shops.all[1]);
+    const by=(n)=>s.shops.all.find(x=>x.name===n)||{};
+    ok(by("Willowemoc Fly Shop").site===null && by("Willowemoc Fly Shop").tel===null,
+       "a shop with neither website nor phone still gets a map link and nothing invented",
+       by("Willowemoc Fly Shop"));
+    ok(by("Catskill Outfitters").site==="https://catskilloutfitters.example/" && !by("Catskill Outfitters").tel,
+       "a bare hostname is still made a link, and a shop with no phone simply has none",
+       by("Catskill Outfitters"));
+    ok(by("Cross Current Outfitters").site==="https://crosscurrentoutfitters.example/",
+       "including on a guide service OSM knows only by name", by("Cross Current Outfitters"));
+    ok(by("Poisoned Tackle").site===null,
+       "a website tag edited into javascript: is dropped before it can reach an href", by("Poisoned Tackle"));
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "so every href on the tab is one the app built or vetted", s.shops.links);
     ok(s.shops.firstOnTab && s.shops.askFirst,
        "what to ask the shop leads the tab, directly under the tabs", s.shops.askFirst);
     ok(s.shops.beforeList, "and come before the list you are handing across the counter");
     ok(s.shops.guide, "the tab suggests a guide before it suggests a fly");
+    /* The list came back empty for Hale Eddy and for Starlight while the
+       shops plainly existed, because shop=fishing is not how OSM files a
+       lodge or a guide service. The name is the second signal. */
+    ok(s.shops.all.some(x=>x.name==="West Branch Angler"),
+       "a fly shop mapped as a hotel is still a fly shop", s.shops.all.map(x=>x.name));
+    ok(s.shops.all.some(x=>x.name==="Cross Current Outfitters"),
+       "and so is a guide service with no shop tag at all", s.shops.all.map(x=>x.name));
+    ok(s.shops.all.some(x=>x.name==="Border Water Tackle"),
+       "and one named like tackle but tagged as an outdoor shop", s.shops.all.map(x=>x.name));
+    ok(!s.shops.all.some(x=>/Flying Pizza/.test(x.name)),
+       "a restaurant that merely starts with fly is not", s.shops.all.map(x=>x.name));
+    ok(/name"~/.test(s.shops.ql),
+       "the query asks by name as well as by tag", s.shops.ql.slice(0,120));
+    ok(s.shops.findMore,
+       "and the card always offers a way to look past OpenStreetMap, whose rural coverage is thin");
     /* A bbox+regex rewrite of this query read better, scanned less, and
        returned no shops at all for a real town. It is the around: form. */
     ok(/around:90000/.test(s.shops.ql) && /shop"="fishing"/.test(s.shops.ql),

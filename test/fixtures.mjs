@@ -23,7 +23,24 @@ export const OVERPASS = {elements:[
    Four must survive and two must not: the unnamed outdoor shop is a
    map note rather than a counter, and the shop whose website tag has
    been edited into a javascript: URL must render with no link at all. */
+/* How these places are really tagged in OpenStreetMap, which is the
+   thing that broke the shop list: the fly shops an angler drives to on
+   the West Branch are lodges and guide services, and OSM files them as
+   tourism=hotel, as shop=outdoor, or as a named node with no shop tag
+   at all. Asking only for shop=fishing found none of them. */
 export const SHOPS = {elements:[
+  // a lodge that is unmistakably a fly shop, tagged as a hotel
+  {type:"node", id:21, lat:42.0150, lon:-75.3800, tags:{tourism:"hotel", name:"West Branch Angler",
+    website:"https://westbranchangler.example", phone:"+1 607-467-5525"}},
+  // a guide service with no shop tag whatsoever — the Starlight case
+  {type:"node", id:22, lat:41.9100, lon:-75.3400, tags:{name:"Cross Current Outfitters",
+    website:"crosscurrentoutfitters.example"}},
+  // a general outdoor shop, named like nothing in particular
+  {type:"node", id:23, lat:42.0500, lon:-75.4200, tags:{shop:"outdoor", name:"Deposit Hardware & Supply"}},
+  // named like a fly shop, mapped as a way
+  {type:"way",  id:24, center:{lat:41.9500, lon:-75.2000}, tags:{shop:"outdoor", name:"Border Water Tackle"}},
+  // not a fly shop, and must not be mistaken for one
+  {type:"node", id:25, lat:42.0200, lon:-75.3900, tags:{amenity:"restaurant", name:"Flying Pizza"}},
   {type:"node", id:11, lat:41.9330, lon:-74.9150, tags:{shop:"fishing", name:"Beaverkill Angler",
     website:"https://beaverkillangler.example", phone:"+1 607-498-5001",
     "addr:housenumber":"12", "addr:street":"Stewart Ave", "addr:city":"Roscoe"}},
