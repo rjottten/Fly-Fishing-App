@@ -154,12 +154,27 @@ async function walk(browser, scenario){
        first byte to the first play card, while the CDN sits on Leaflet. */
     const t0 = Date.now();
     await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"commit"});
-    await page.waitForSelector("#panel-fish .play", {timeout:15000});
+    await page.waitForSelector("#panel-fish .play", {state:"attached", timeout:15000});
     seen.playsAt = Date.now()-t0;
     seen.leafletYet = await page.evaluate(()=>typeof L!=="undefined");
   }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
+
+  /* Which tab the app opens on, before anything has been clicked. Plan is
+     first because the reading is worth nothing until it knows where you
+     are, and the map has to come up on its own for that to be true. */
+  seen.opensOn = await page.evaluate(()=>({
+    tab: (()=>{ const t=[...document.querySelectorAll(".tab")].find(x=>x.getAttribute("aria-selected")==="true");
+                return t ? t.textContent.trim() : null; })(),
+    panels: [...document.querySelectorAll(".panel")].filter(p=>!p.hidden).map(p=>p.id),
+    stateTab: state.tab,
+    mapBox: !!document.querySelector("#map"),
+    searchBox: !!document.querySelector("#findQ"),
+    playsBuilt: document.querySelectorAll("#panel-fish .play").length,
+  }));
+  seen.mapWithoutClick = await page.waitForSelector(".leaflet-container", {timeout:6000})
+    .then(()=>true, ()=>false);
 
   /* An OSM name reaching innerHTML as markup leaves an inline handler in
      the tree for as long as that render lives — which can be a fraction
@@ -560,6 +575,14 @@ async function diaryPass(page, seen){
 const SCENARIOS = {
   happy: (s)=>{
     ok(s.leaflet, "Leaflet loads from the CDN");
+    ok(s.opensOn.tab==="Plan" && s.opensOn.stateTab==="plan",
+       "the app opens on Plan", s.opensOn);
+    eq(s.opensOn.panels, ["panel-plan"], "with only that panel shown");
+    ok(s.opensOn.searchBox && s.opensOn.mapBox,
+       "and the search box and map are there without a tab being clicked", s.opensOn);
+    ok(s.mapWithoutClick, "the map comes up on its own", s.mapWithoutClick);
+    ok(s.opensOn.playsBuilt>0,
+       "and the plays are built behind it, ready for the tab", s.opensOn.playsBuilt);
     ok(s.mapRendered, "the map renders");
     eq(s.names, ["Cooks Falls Access","Riverside Trail","Beaverkill Lot","Read the pin itself"],
        "access is listed best-first, private lot and waterless lot excluded");

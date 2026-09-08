@@ -1167,8 +1167,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="wrap">
   <section class="plan" id="planbar"></section>
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
-    <button class="tab" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="false">Plan</button>
-    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="true">Fish</button>
+    <button class="tab" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="true">Plan</button>
+    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="false">Fish</button>
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop</button>
     <button class="tab" role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false">Report</button>
   </nav>
@@ -1178,8 +1178,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
        masthead. -->
   <section class="plan when" id="whenbar"></section>
 
-  <div class="panel" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden></div>
-  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish"></div>
+  <div class="panel" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan"></div>
+  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish" hidden></div>
   <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
   <!-- Report is the two halves of writing the river down: what you can see
        from where you are standing, and what the day came to. -->
@@ -1194,10 +1194,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </p>
 </div>
 
-<!-- Deferred: the app opens on Plays and does not touch Leaflet until the
-     angler taps Where, so 150 KB of map library should not stand between
-     them and the first reading. initMap() waits on this tag if it is still
-     in flight. -->
+<!-- Deferred: nothing on the opening tab waits for this. The Plan panel —
+     the search box, the access list, the book of waters — is rendered from
+     the app's own script, and the map fills its box when the library lands,
+     so 150 KB from a CDN never stands between the angler and a reading.
+     initMap() waits on this tag if it is still in flight. -->
 <script id="leaflet" defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 "use strict";
@@ -1523,7 +1524,7 @@ const state = {
   shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
   nearAll:false,                               // whether the whole book is open under the map
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
-  tab:"fish", checked:new Set(),
+  tab:"plan", checked:new Set(),
   plan:null,                                   // {date,hour} — a day being read ahead of time
   diary:[],                                    // the angler's logged days — see section 3b
   diaryOK:true,                                // false when the browser refuses to store them
@@ -4552,6 +4553,7 @@ function draw(){
   state.diaryOK = diaryUsable();
   state.diary   = diaryLoad();     // the book is open before the first reading is taken
   draw();
+  if(state.tab==="plan") whereShown();   // the opening tab carries the map
   locate(false);
   refreshLive(water());
   tick=setInterval(()=>{ if(!document.hidden) draw(); }, 10*60*1000);

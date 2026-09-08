@@ -14,9 +14,9 @@ as well as it does on a desktop.
 
 ## Start here
 
-1. Open **Plan** and say where you are fishing — type a town, tap the map, or
-   use your location. Riffle lists the public access mapped around that point
-   and the waters nearest to it.
+1. It opens on **Plan**, asking where you are fishing. Type a town, tap the
+   map, or use your location. Riffle lists the public access mapped around
+   that point and the waters nearest to it.
 2. Go to **Fish**. Top of the tab is what the river is doing; under it, whether
    to wade or float; under that, three ranked plays with the flies, sizes and
    rig for each.
