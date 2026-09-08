@@ -1182,6 +1182,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <!-- Report is the two halves of writing the river down: what you can see
        from where you are standing, and what the day came to. -->
   <div class="panel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden>
+    <!-- What the river is doing, at the top of the tab where you write down
+         what it did. You are correcting and recording the same reading. -->
+    <div id="reportConditions"></div>
     <div id="onriver"></div>
     <div id="diary"></div>
   </div>
@@ -3435,7 +3438,7 @@ function gaugeMetaHTML(ctx){
   </div>`;
 }
 
-function conditionsHTML(ctx){
+function conditionsHTML(ctx, id){
   const w=ctx.w;
   const tmin=ctx.isGL?30:32, tmax=ctx.isGL?70:76;
   const pos=clamp((ctx.temp-tmin)/(tmax-tmin),0,1)*100;
@@ -3456,7 +3459,7 @@ function conditionsHTML(ctx){
        : "Both numbers are live gauge readings — those hold anywhere.")
     : ctx.tempSource==="live" && ctx.flowSource==="live" ? ""
     : `Water temperature ${word[ctx.tempSource]}, flow ${word[ctx.flowSource]}.`;
-  return `<section class="reading" id="conditions">
+  return `<section class="reading" id="${id||"conditions"}">
     <div class="rd-head">
       <div class="rd-water">
         <h2>River conditions</h2>
@@ -3711,6 +3714,7 @@ function renderFish(res, ctx){
 }
 
 function renderControls(ctx){
+  $("#reportConditions").innerHTML=conditionsHTML(ctx, "conditionsReport");
   $("#onriver").innerHTML=renderRefine(ctx);
   wireRefine();
 }
@@ -3800,7 +3804,7 @@ function renderDiary(ctx){
   const refocus = typing && el.contains(typing) && typing.classList.contains("dchip")
     ? {f:typing.dataset.f, v:typing.dataset.v} : null;
   if(!state.dform) state.dform=freshForm(ctx);
-  const f=state.dform, w=ctx.w, mem=ctx.mem;
+  const f=state.dform, w=ctx.w;
 
   const chips=(key, opts, sel, multi, cls)=>`<div class="rchips">${opts.map(o=>
     `<button type="button" class="dchip${cls?" "+cls+o[0]:""}" data-f="${esc(key)}" data-v="${esc(o[0])}"
@@ -3871,40 +3875,12 @@ function renderDiary(ctx){
   </div>`;
 
   /* --- what the book is doing to today's plays --- */
-  const rows=Object.values(mem.tech).sort((a,b)=>b.mult-a.mult);
-  const bar=(pct)=>{
-    const w=Math.round(Math.abs(pct)/(MEM_MAX*100)*36);
-    return `<div class="mbar"><u></u><i class="${pct<0?"dn":""}" style="left:${pct<0?37-w:37}px;width:${Math.max(w,pct?2:0)}px"></i></div>`;
-  };
-  const hatchRows=Object.values(mem.hatch)
-    .map(h=>({h, hx:HATCHES.find(x=>x.id===h.id)})).filter(o=>o.hx)
-    .sort((a,b)=>b.h.seen-a.h.seen);
 
-  const readout=`
-  <div class="dcard">
-    <div class="dhead"><h2>What your book is telling the plays</h2>
-      <span class="dh-src">${mem.days?`${mem.days} day${mem.days===1?"":"s"} in range`:"nothing in range"}</span></div>
-    ${!state.diary.length
-      ? `<p class="dempty">Nothing logged yet. One day is enough to start moving the ranking; four or five on the same water at the same point in the season and the book starts to outweigh the model.</p>`
-      : !mem.days
-      ? `<p class="dempty">You have ${state.diary.length} day${state.diary.length===1?"":"s"} written down, but none of them are on <b>${esc(w.name)}</b> within ${MEM_DAYS} days of today's date, so nothing is being nudged. A logged day only speaks for the water it was logged on and the fortnight around it.</p>`
-      : `<p class="dintro">A day counts more the closer it sits to today on the calendar, the more recent the season, and the better the river matched what you wrote down. Nothing here may move a play more than ${Math.round(MEM_MAX*100)} percent.</p>
-        ${rows.length ? rows.map(m=>`
-          <div class="mrow">
-            <div class="mname">${esc(m.label)}<span>${m.days} day${m.days===1?"":"s"} · read as ${esc(m.verdict)}</span></div>
-            ${bar(m.pct)}
-            <div class="mdelta ${m.pct>0?"up":m.pct<0?"dn":""}">${m.pct>0?"+":""}${m.pct}%</div>
-          </div>`).join("")
-        : `<p class="dempty">Those days are logged, but none of them name a method, so there is nothing to rank up or down. Tap the methods on an entry below and it starts counting.</p>`}
-        ${hatchRows.length?`
-          <div class="dfield" style="margin-top:13px">
-            <div class="dlab">Bugs you have seen here at this time of year</div>
-            ${hatchRows.map(o=>`
-            <div class="mrow">
-              <div class="mname">${esc(o.hx.name)}<span>hatch panel weighted +${Math.round((o.h.mult-1)*100)}%${o.h.seen>0.35?", and the window stretches for it":""}</span></div>
-            </div>`).join("")}
-          </div>`:""}`}
-  </div>`;
+  /* The readout that explained what the diary was doing to the ranking
+     lived here. The plays already say which days moved them and by how
+     much, on the card where it matters, so this was the same account
+     given twice — and it was given on the tab for writing the day down,
+     which is not where you are reading tactics. */
 
   /* --- the days themselves --- */
   const entry=(e)=>{
@@ -3946,7 +3922,7 @@ function renderDiary(ctx){
     </div>
   </div>`;
 
-  el.innerHTML = form + readout + list;
+  el.innerHTML = form + list;
   wireDiary(ctx);
   if(refocus){
     const back=el.querySelector(`.dchip[data-f="${refocus.f}"][data-v="${refocus.v}"]`);
@@ -4141,9 +4117,26 @@ function renderShop(res, ctx){
       </div>
     </li>`;
 
+  /* The shops come first, directly under the tabs: who is nearby and who
+     to ask is the question you open this tab with, and the list of flies
+     is what you take in once you know where you are going. */
   $("#panel-shop").innerHTML=`
+    <div class="hint">
+      <span>⚑</span>
+      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play on <b>Fish</b>, believe them and tap the matching chip on the Report tab.</span>
+    </div>
+
+    <div class="wcard" id="shopsCard"></div>
+
+    <div class="wcard">
+      <h3>Before you buy a fly</h3>
+      <p>Consider hiring a local guide who knows the river, the correct tactics, and
+         patterns. A day on the oars with someone who fished this water last week beats
+         any amount of modelling — and beats a fly box bought on a guess.</p>
+    </div>
+
     <div class="shop-intro">
-      <h2>${ctx.outOfBook?"No list for this water":"Take a photo of this"}</h2>
+      <h2>${ctx.outOfBook?"No list for this water":"What the plays call for"}</h2>
       ${ctx.outOfBook
         ? `<p>The list is built from the plays, and outside the book there are none — see <b>Fish</b> for why.
            The shops above are still real, and the people behind those counters know this water far better than
@@ -4151,8 +4144,6 @@ function renderShop(res, ctx){
         : `<p>Everything the three plays need, in one list. Sizes and colours are specific on purpose — hand this to the shop and you are out the door in five minutes.
       ${esc(ctx.w.name)}, ${ctx.d.toLocaleDateString(undefined,{month:"long",day:"numeric"})}, water ${ctx.temp.toFixed(0)} °F, ${ctx.fs.label.toLowerCase()} flow, ${ctx.clarity.label.toLowerCase()}.</p>`}
     </div>
-
-    <div class="wcard" id="shopsCard"></div>
 
     <div class="shopcard">
       <h3>Flies — ${flies.length} patterns</h3>
@@ -4173,10 +4164,7 @@ function renderShop(res, ctx){
       ${group("weight").map(t=>item(t.name,t.spec,t.forr,"", t.key)).join("")}
     </ul></div>`:""}
 
-    <div class="hint">
-      <span>⚑</span>
-      <span><b>Ask the shop one question:</b> “What came off the water here in the last two days?” A three-day-old report beats any model — including this one. If their answer contradicts a play above, believe them and tap the matching chip on the Report tab.</span>
-    </div>`;
+    `;
 
   renderShopsCard();
   /* Move the pin while the tab is open and the counters follow it;
