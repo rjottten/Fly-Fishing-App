@@ -22,9 +22,17 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), camera=(), microphone=(), interest-cohort=()"
-    # Scripts and styles are inline in index.html, plus Leaflet from cdnjs.
+    # geolocation=(self): the "Use my location" button is the app's own
+    # feature. An empty allowlist here disables it for this document too,
+    # which silently broke the button on the deployed site.
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), interest-cohort=()"
+    # The app's own script is allowed by the hash of that exact script and
+    # nothing else, so an injection through the world-writable OSM data the
+    # app reads cannot execute. `npm run seal` in test/ regenerates it and
+    # `npm test` fails if it has drifted. style-src keeps 'unsafe-inline'
+    # because the page styles elements by attribute, which no hash covers.
+    # Styles are inline in index.html, plus Leaflet from cdnjs.
     # The page reaches out to: Google Fonts, USGS (gauges), Open-Meteo
     # (pressure), Nominatim (geocoding), Overpass (access points), and
     # openstreetmap.org for map tiles.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://waterservices.usgs.gov https://api.open-meteo.com https://nominatim.openstreetmap.org https://overpass-api.de https://overpass.kumi.systems; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-AnCXbSKqltnjNewkeEKdvlbAHIgjKIe+7b70ESv/cG0=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://waterservices.usgs.gov https://api.open-meteo.com https://nominatim.openstreetmap.org https://overpass-api.de https://overpass.kumi.systems; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"

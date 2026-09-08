@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import http from "node:http";
 import * as F from "./fixtures.mjs";
+import { scriptHash, policyHash } from "./seal.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
@@ -56,9 +57,11 @@ const eq = (a,b,label)=>ok(JSON.stringify(a)===JSON.stringify(b), label, a);
 
 /* ---------- the harness ---------- */
 const csp = readFileSync(TOML,"utf8").match(/Content-Security-Policy = "([^"]+)"/)[1];
+const perms = readFileSync(TOML,"utf8").match(/Permissions-Policy = "([^"]+)"/)[1];
 
 const server = http.createServer((_req,res)=>{
-  res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Content-Security-Policy":csp});
+  res.writeHead(200, {"Content-Type":"text/html; charset=utf-8",
+    "Content-Security-Policy":csp, "Permissions-Policy":perms});
   res.end(readFileSync(INDEX));
 });
 
@@ -67,9 +70,12 @@ const rdbOf = (rows)=>({status:200, contentType:"text/plain", body:F.rdb(rows)})
 
 async function mock(page, scenario){
   const leaflet = readFileSync(LEAFLET);
-  await page.route("**://cdnjs.cloudflare.com/**", r =>
-    scenario==="noleaflet" ? r.abort()
-      : r.fulfill({status:200, contentType:"application/javascript", body:leaflet}));
+  await page.route("**://cdnjs.cloudflare.com/**", async r => {
+    if(scenario==="noleaflet") return r.abort();
+    // a slow riverbank connection to the CDN
+    if(scenario==="slowmap") await new Promise(x=>setTimeout(x, CDN_LAG));
+    r.fulfill({status:200, contentType:"application/javascript", body:leaflet});
+  });
 
   for(const pat of ["**://tile.openstreetmap.org/**", "**://*.tile.openstreetmap.org/**"]){
     await page.route(pat, r =>
@@ -79,9 +85,15 @@ async function mock(page, scenario){
   await page.route("**://fonts.googleapis.com/**", r=>r.fulfill({status:200, contentType:"text/css", body:""}));
   await page.route("**://nominatim.openstreetmap.org/search**",  r=>r.fulfill(json(F.GEOCODE)));
   await page.route("**://nominatim.openstreetmap.org/reverse**", r=>r.fulfill(json(F.REVERSE)));
+  /* Anyone may edit an OpenStreetMap node's name. The security scenario
+     serves one that has been edited into an attack. */
+  const overpass = scenario==="security"
+    ? (()=>{ const p=JSON.parse(JSON.stringify(F.OVERPASS));
+             p.elements[0].tags.name = XSS; return p; })()
+    : F.OVERPASS;
   await page.route("**://overpass**", r =>
     scenario==="overpassdown" ? r.fulfill({status:504, contentType:"text/plain", body:"gateway timeout"})
-      : r.fulfill(json(F.OVERPASS)));
+      : r.fulfill(json(overpass)));
   await page.route("**://api.open-meteo.com/**", r=>r.fulfill(json(F.meteo())));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
 
@@ -93,21 +105,54 @@ async function mock(page, scenario){
   });
 }
 
+const XSS = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
+const CDN_LAG = 1500;
+
+/* Chrome and Chromium word this refusal differently and the wording is not
+   API, so match on what it says rather than how it says it. Both known
+   phrasings are pinned below, because a matcher that quietly stops matching
+   would turn the security scenario green by accident. */
+const isHandlerRefusal = (t)=>
+  /inline event handler/i.test(t) && /Content Security Policy|script-src/i.test(t);
+
+const REFUSAL_WORDINGS = [
+  // Chromium, as shipped in the Playwright browser pool
+  `Refused to execute inline event handler because it violates the following Content Security Policy directive: "script-src 'self' 'sha256-x' https://cdnjs.cloudflare.com".`,
+  // Google Chrome, as shipped on the GitHub runner image
+  `Executing inline event handler violates the following Content Security Policy directive 'script-src 'self' 'sha256-x' https://cdnjs.cloudflare.com'. The action has been blocked.`,
+];
+
 /* Walks the app the way a person does: open Where, search an address,
    read the access list, pick the top entry. Returns what it saw. */
 async function walk(browser, scenario){
-  const page = await browser.newPage();
-  const errors = [], violations = [];
+  // the security scenario needs a real geolocation to prove the header allows one
+  const ctx = await browser.newContext(scenario==="security"
+    ? {permissions:["geolocation"], geolocation:{latitude:41.9337, longitude:-74.9143}}
+    : {});
+  const page = await ctx.newPage();
+  const errors = [], violations = [], refusals = [];
   page.on("pageerror", e => errors.push("pageerror: " + e.message));
   page.on("console", m => {
     const t = m.text();
-    if(/Content Security Policy|Refused to/i.test(t)) violations.push(t);
+    // the security scenario fires a handler at the policy on purpose; the
+    // refusal it earns is the evidence, not a defect
+    if(scenario==="security" && isHandlerRefusal(t)) refusals.push(t);
+    else if(/Content Security Policy|Refused to/i.test(t)) violations.push(t);
     // a mocked 504 is the point of the overpassdown scenario, not a defect
     else if(m.type()==="error" && !/favicon|ERR_|504/.test(t)) errors.push("console: " + t);
   });
   await mock(page, scenario);
 
   const seen = {};
+  if(scenario==="slowmap"){
+    /* The reading must not wait on the map library. Measured from the
+       first byte to the first play card, while the CDN sits on Leaflet. */
+    const t0 = Date.now();
+    await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"commit"});
+    await page.waitForSelector("#panel-plays .play", {timeout:15000});
+    seen.playsAt = Date.now()-t0;
+    seen.leafletYet = await page.evaluate(()=>typeof L!=="undefined");
+  }
   await page.goto(`http://127.0.0.1:${PORT}/`, {waitUntil:"networkidle"});
   seen.leaflet = await page.evaluate(()=>typeof L!=="undefined");
 
@@ -179,10 +224,49 @@ async function walk(browser, scenario){
 
   if(scenario==="diary") await diaryPass(page, seen);
   if(scenario==="plan")  await planPass(page, seen);
+  if(scenario==="security") await securityPass(page, seen);
 
-  seen.errors = errors; seen.violations = violations;
-  await page.close();
+  seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
+  await page.close(); await ctx.close();
   return seen;
+}
+
+/* Two things this app cannot check by reading its own source: that the
+   data it renders is text rather than markup, and that the headers the
+   deploy actually sends let its own features work. Both are only true
+   for as long as something drives a browser and looks. */
+async function securityPass(page, seen){
+  // the marker tooltips are built lazily, on open
+  await page.evaluate(()=>{ accLayer.eachLayer(l=>{ if(l.openTooltip) l.openTooltip(); }); });
+  await page.waitForTimeout(400);
+
+  seen.sec = await page.evaluate(()=>{
+    const tip=document.querySelector(".leaflet-tooltip");
+    return {
+      fired: window.__xss||0,
+      tooltipHasImg: !!(tip && tip.querySelector("img")),
+      tooltipShowsText: !!(tip && tip.textContent.includes("<img src=x")),
+      cardHasImg: !!document.querySelector("#accessCard img"),
+      cardShowsText: (document.querySelector("#accessCard")||{}).textContent?.includes("<img src=x") || false,
+    };
+  });
+
+  /* Defence in depth: even a sink nobody has found yet must not be able
+     to run a handler, because script-src no longer allows inline script. */
+  seen.cspBlocks = await page.evaluate(()=>{
+    window.__depth = 0;
+    const d=document.createElement("div");
+    d.innerHTML = `<img src=x onerror="window.__depth=1">`;
+    document.body.appendChild(d);
+    return new Promise(r=>setTimeout(()=>{ d.remove(); r(window.__depth); }, 400));
+  });
+
+  // and the app's own geolocation must survive the Permissions-Policy
+  seen.geo = await page.evaluate(()=>new Promise(res=>{
+    if(!navigator.geolocation) return res("no api");
+    navigator.geolocation.getCurrentPosition(
+      p=>res("allowed"), e=>res("blocked:"+e.code), {timeout:5000});
+  }));
 }
 
 /* Planning a day. The gauge is not a forecast, so the further out
@@ -475,6 +559,25 @@ const SCENARIOS = {
     ok(s.planUI.backToNow.lead===0 && s.planUI.backToNow.plan===null,
        "and there is a way back to now", s.planUI.backToNow);
   },
+  security: (s)=>{
+    ok(s.sec.fired===0, "an OSM name tag full of markup does not execute", s.sec);
+    ok(!s.sec.tooltipHasImg && s.sec.tooltipShowsText,
+       "the map tooltip renders it as text, not as an element", s.sec);
+    ok(!s.sec.cardHasImg && s.sec.cardShowsText,
+       "and so does the access list", s.sec);
+    ok(s.cspBlocks===0,
+       "the policy blocks an inline handler even from a sink nobody has found yet", s.cspBlocks);
+    ok(s.refusals.length===1 && /script-src/.test(s.refusals[0]),
+       "and says so — the block came from the policy, not from luck", s.refusals);
+    ok(s.geo==="allowed", "the app's own geolocation still works under the deployed headers", s.geo);
+    ok(s.names.length>1 && s.plays>0, "and a poisoned access point does not break the app", s.names);
+  },
+  slowmap: (s)=>{
+    ok(!s.leafletYet, "the plays render before the map library has even arrived", s.leafletYet);
+    ok(s.playsAt < CDN_LAG, `and in ${s.playsAt} ms, not the ${CDN_LAG} ms the CDN took`, s.playsAt);
+    ok(s.mapRendered, "and the map still comes up once it lands", s.mapRendered);
+    ok(s.names.length>1, "with the access flow unaffected", s.names);
+  },
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
     ok(s.mapNote.includes("blocked"), "blank tiles are explained", s.mapNote);
@@ -489,6 +592,26 @@ console.log("\n  subresource integrity");
   const got  = "sha512-" + createHash("sha512").update(readFileSync(LEAFLET)).digest("base64");
   ok(want===got, `the pinned Leaflet hash matches leaflet ${JSON.parse(readFileSync(resolve(HERE,"node_modules/leaflet/package.json"),"utf8")).version}`,
      {want, got});
+}
+
+console.log("\n  content security policy");
+{
+  ok(REFUSAL_WORDINGS.every(isHandlerRefusal),
+     "the refusal matcher recognises both browsers' wording of a blocked handler");
+  ok(!isHandlerRefusal(`Refused to load the image 'x' because it violates the following Content Security Policy directive: "img-src 'self'".`),
+     "and does not swallow an unrelated policy violation");
+  const want = scriptHash(), have = policyHash();
+  ok(want===have,
+     "the sealed script hash matches index.html — run 'npm run seal' if this fails",
+     {policy:have, actual:want});
+  ok(!/script-src[^;]*'unsafe-inline'/.test(csp),
+     "script-src does not allow arbitrary inline script", csp.match(/script-src[^;]*/)?.[0]);
+  for(const d of ["base-uri 'self'","form-action 'none'","frame-ancestors 'none'","object-src 'none'"]){
+    ok(csp.includes(d), `policy keeps ${d}`);
+  }
+  const pp = readFileSync(TOML,"utf8").match(/Permissions-Policy = "([^"]+)"/)[1];
+  ok(/geolocation=\(self\)/.test(pp), "the app's own geolocation is not disabled by policy", pp);
+  ok(/camera=\(\)/.test(pp) && /microphone=\(\)/.test(pp), "camera and microphone stay off", pp);
 }
 
 const picked = process.argv.slice(2).filter(a=>SCENARIOS[a]);
