@@ -109,6 +109,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .pb-lead{margin:9px 0 0;font-size:12px;color:var(--ink3);line-height:1.5}
 .pb-lead b{color:var(--ink2);font-weight:600}
 .srcpill.carried{border-color:var(--sulphur);color:var(--sulphur);background:var(--sulphur-soft)}
+/* The day picker lives on Plan, so every other tab needs to say when it is
+   reading for — otherwise a planned day looks like a wrong one. */
+.srcpill.plan{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
 .reading.tactic{margin-top:16px}
 .reading.tactic .access{border-top:0}
 .gauges{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-soft)}
@@ -1172,11 +1175,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop</button>
     <button class="tab" role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false">Report</button>
   </nav>
-
-  <!-- Which day you are fishing sits under the tabs, not above them: it
-       re-reads every panel, so it belongs to all four rather than to the
-       masthead. -->
-  <section class="plan when" id="whenbar"></section>
 
   <div class="panel" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan"></div>
   <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish" hidden></div>
@@ -3311,10 +3309,15 @@ function renderPlanBar(ctx){
         <span>${dateStr}, ${timeStr}</span><span class="dot"></span>
         <span>${ctx.lw.label}</span>
         <span class="srcpill ${pill[0]}">${pill[1]}</span>
+        ${ctx.lead?`<span class="srcpill plan">Planned · ${ctx.lead} day${ctx.lead===1?"":"s"} out</span>`:""}
       </div>
     </div>`;
 
-  $("#whenbar").innerHTML=`
+  /* The picker lives on Plan now, and that panel is built on first use —
+     so there is nothing to write into until whereShell() has run. */
+  const when=$("#whenbar");
+  if(!when) return;
+  when.innerHTML=`
     <div class="pb-when">
       <div class="dlab">Which day are you fishing?</div>
       <div class="rchips" id="planChips">
@@ -3541,6 +3544,26 @@ function gateCard(ctx){
   </div>`;
 }
 
+/* The thresholds behind the call above it: the same ladder, with the
+   numbers named. It reads on Fish, where you are deciding whether to
+   get in the water, rather than on Plan where you are still driving. */
+function ladderHTML(ctx){
+  const rows=[
+    ["Up to "+ctx.w.wade.full,   "Full river wadable"],
+    ["Up to "+ctx.w.wade.good,   "Most of it wadable \u2014 choose crossings"],
+    ["Up to "+ctx.w.wade.limited, ctx.acc.canFloat?"Boat is the better tool":"Bank and inside-bend water only"],
+    ["Up to "+ctx.w.wade.max,     ctx.acc.canFloat?"Boat only":"Top of safe wading"],
+    ["Above "+ctx.w.wade.max,    "Blown \u2014 do not wade"],
+  ];
+  return `<div class="wcard" id="ladderCard">
+    <h3>Access ladder \u2014 ${esc(ctx.w.name)}</h3>
+    <p>${esc(FLOAT_TXT[ctx.w.float])} Today's reading is <b>${ctx.cfs} ${esc(ctx.w.unit.split(" ")[0])}</b>${ctx.flowSource==="live"?" (live)":" (modeled)"}.</p>
+    <div class="wlist">
+      ${rows.map(([a,b])=>`<div class="refuge"><span class="rn">${esc(b)}</span><span class="wd">${esc(a)}</span></div>`).join("")}
+    </div>
+  </div>`;
+}
+
 /* --- the Fish tab -------------------------------------------
    Read top to bottom it answers the questions in the order they
    are asked on the bank: what is the river doing, can I get in
@@ -3551,6 +3574,7 @@ function renderFish(res, ctx){
   el.innerHTML=`
   ${conditionsHTML(ctx)}
   ${tacticHTML(ctx)}
+  ${ladderHTML(ctx)}
   ${gateCard(ctx)}
   <div class="plays">
     ${res.picked.map(p=>`
@@ -3991,9 +4015,14 @@ function renderShopsCard(){
     return;
   }
   if(st.status!=="ok"){ el.innerHTML=head+`<p class="muted">Opening this tab looks up the counters nearest the water you are reading.</p>`; return; }
+  /* Three is the number you would actually ring round before a drive.
+     Past that it is a directory, and the flies below are the point. */
+  const near=st.list.slice(0,3);
+  const rest=st.list.length-near.length;
   el.innerHTML=head
-    + `<p class="muted">Nearest first, within ${Math.round(st.radius/1609.34)} miles, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
-    + st.list.map(shopRow).join("");
+    + `<p class="muted">The ${near.length===1?"nearest":`nearest ${near.length===2?"two":"three"}`} within ${Math.round(st.radius/1609.34)} miles, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
+    + near.map(shopRow).join("")
+    + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} mapped further out.</p>`:"");
 }
 
 /* --- shop list --------------------------------------------- */
@@ -4145,6 +4174,9 @@ let whereMap=null, pinMarker=null, accLayer=null, whereBuilt=false, mapDead=fals
 function whereShell(){
   if(whereBuilt) return;
   $("#panel-plan").innerHTML=`
+    <!-- Which day, then which water. Picking the day is the first decision
+         of a trip, and it re-reads every other panel. -->
+    <section class="plan when" id="whenbar"></section>
     <div class="wcard">
       <h3>Where are you fishing?</h3>
       <p>Search an address, a town or a water — or tap the map to drop a pin. Riffle then looks up the
@@ -4162,8 +4194,7 @@ function whereShell(){
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
     <div id="nearWaters"></div>
-    <div class="wcard" id="accessCard"></div>
-    <div id="waterMeta"></div>`;
+    <div class="wcard" id="accessCard"></div>`;
   wireWhere();
   whereBuilt=true;
 }
@@ -4425,19 +4456,6 @@ function renderWater(ctx){
   if(more) more.addEventListener("click",()=>{ state.nearAll=true; draw(); });
   if(less) less.addEventListener("click",()=>{ state.nearAll=false; draw(); });
 
-  $("#waterMeta").innerHTML=`
-    <div class="wcard">
-      <h3>Access ladder — ${esc(ctx.w.name)}</h3>
-      <p>${esc(FLOAT_TXT[ctx.w.float])} Today's reading is <b>${ctx.cfs} ${esc(ctx.w.unit.split(" ")[0])}</b>${ctx.flowSource==="live"?" (live)":" (modeled)"}.</p>
-      <div class="wlist">
-        ${[["Up to "+ctx.w.wade.full,"Full river wadable"],
-           ["Up to "+ctx.w.wade.good,"Most of it wadable — choose crossings"],
-           ["Up to "+ctx.w.wade.limited, ctx.acc.canFloat?"Boat is the better tool":"Bank and inside-bend water only"],
-           ["Up to "+ctx.w.wade.max, ctx.acc.canFloat?"Boat only":"Top of safe wading"],
-           ["Above "+ctx.w.wade.max,"Blown — do not wade"]]
-          .map(([a,b])=>`<div class="refuge"><span class="rn">${esc(b)}</span><span class="wd">${esc(a)}</span></div>`).join("")}
-      </div>
-    </div>`;
   document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
     state.waterId=b.dataset.w; state.spot=null; state.access.chosen=null;
     state.live=null; state.baro=null; draw();
@@ -4538,6 +4556,10 @@ function showTab(name){
 let tick=null;
 function draw(){
   state.when=plannedWhen();
+  /* The day picker lives inside the Plan panel now, and the app opens on
+     Plan — so the panel has to exist before renderPlanBar writes into it.
+     whereShell() is idempotent; after the first call this costs nothing. */
+  whereShell();
   const ctx=buildContext();
   const res=recommend(ctx);
   renderPlanBar(ctx);
