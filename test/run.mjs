@@ -108,6 +108,20 @@ async function mock(page, scenario){
 const XSS = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 const CDN_LAG = 1500;
 
+/* Chrome and Chromium word this refusal differently and the wording is not
+   API, so match on what it says rather than how it says it. Both known
+   phrasings are pinned below, because a matcher that quietly stops matching
+   would turn the security scenario green by accident. */
+const isHandlerRefusal = (t)=>
+  /inline event handler/i.test(t) && /Content Security Policy|script-src/i.test(t);
+
+const REFUSAL_WORDINGS = [
+  // Chromium, as shipped in the Playwright browser pool
+  `Refused to execute inline event handler because it violates the following Content Security Policy directive: "script-src 'self' 'sha256-x' https://cdnjs.cloudflare.com".`,
+  // Google Chrome, as shipped on the GitHub runner image
+  `Executing inline event handler violates the following Content Security Policy directive 'script-src 'self' 'sha256-x' https://cdnjs.cloudflare.com'. The action has been blocked.`,
+];
+
 /* Walks the app the way a person does: open Where, search an address,
    read the access list, pick the top entry. Returns what it saw. */
 async function walk(browser, scenario){
@@ -122,7 +136,7 @@ async function walk(browser, scenario){
     const t = m.text();
     // the security scenario fires a handler at the policy on purpose; the
     // refusal it earns is the evidence, not a defect
-    if(scenario==="security" && /Refused to execute inline event handler/.test(t)) refusals.push(t);
+    if(scenario==="security" && isHandlerRefusal(t)) refusals.push(t);
     else if(/Content Security Policy|Refused to/i.test(t)) violations.push(t);
     // a mocked 504 is the point of the overpassdown scenario, not a defect
     else if(m.type()==="error" && !/favicon|ERR_|504/.test(t)) errors.push("console: " + t);
@@ -582,6 +596,10 @@ console.log("\n  subresource integrity");
 
 console.log("\n  content security policy");
 {
+  ok(REFUSAL_WORDINGS.every(isHandlerRefusal),
+     "the refusal matcher recognises both browsers' wording of a blocked handler");
+  ok(!isHandlerRefusal(`Refused to load the image 'x' because it violates the following Content Security Policy directive: "img-src 'self'".`),
+     "and does not swallow an unrelated policy violation");
   const want = scriptHash(), have = policyHash();
   ok(want===have,
      "the sealed script hash matches index.html — run 'npm run seal' if this fails",
