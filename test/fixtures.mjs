@@ -41,6 +41,10 @@ export const SHOPS = {elements:[
   {type:"way",  id:24, center:{lat:41.9500, lon:-75.2000}, tags:{shop:"outdoor", name:"Border Water Tackle"}},
   // not a fly shop, and must not be mistaken for one
   {type:"node", id:25, lat:42.0200, lon:-75.3900, tags:{amenity:"restaurant", name:"Flying Pizza"}},
+  // the query now asks for every shop nearby, so the ordinary ones must fall out here
+  {type:"node", id:26, lat:42.0210, lon:-75.3910, tags:{shop:"bakery", name:"Hale Eddy Bakery"}},
+  {type:"node", id:27, lat:42.0220, lon:-75.3920, tags:{shop:"hairdresser", name:"Clip Joint"}},
+  {type:"node", id:28, lat:42.0230, lon:-75.3930, tags:{tourism:"motel", name:"Riverside Motel"}},
   {type:"node", id:11, lat:41.9330, lon:-74.9150, tags:{shop:"fishing", name:"Beaverkill Angler",
     website:"https://beaverkillangler.example", phone:"+1 607-498-5001",
     "addr:housenumber":"12", "addr:street":"Stewart Ave", "addr:city":"Roscoe"}},
