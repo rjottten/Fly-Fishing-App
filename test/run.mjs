@@ -251,7 +251,11 @@ async function walk(browser, scenario){
       tacticAfterCond: after(cond, tactic) && !!fish.querySelector("#tactic .acc-call"),
       hatchInFish: !!hatch && fish.contains(hatch) && after(tactic, hatch),
       nearUnderMap: !!near && plan.contains(near) && after(map, near),
-      whenUnderTabs: !!when && after(tabs, when) && !!when.querySelector("#planChips"),
+      whenOnPlan: !!when && plan.contains(when) && !!when.querySelector("#planChips"),
+      whenFirstOnPlan: !!when && plan.firstElementChild===when,
+      whenNotAboveTabs: !when || after(tabs, when),
+      ladderOnFish: !!fish.querySelector("#ladderCard") && after(tactic, fish.querySelector("#ladderCard")),
+      ladderNotOnPlan: !plan.querySelector("#ladderCard"),
       strayReading: !!document.getElementById("reading"),
       gaugesInPlan: !!plan.querySelector(".gauges"),
       callInPlan: !!plan.querySelector(".acc-call"),
@@ -302,6 +306,9 @@ async function shopPass(page, seen){
       labels: rows.map(r=>[...r.querySelectorAll(".shoplinks a")].map(a=>a.textContent.trim())),
       miles: rows.map(r=>r.querySelector(".wd").textContent.trim()),
       beforeList: !!card.nextElementSibling && card.nextElementSibling.classList.contains("shopcard"),
+      note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
+      // ranking and URL vetting are data concerns; the cap is a rendering one
+      all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
     };
   });
 }
@@ -376,7 +383,7 @@ async function securityPass(page, seen){
    and the diary, which is keyed to the time of year rather than the
    clock, takes over. */
 async function planPass(page, seen){
-  await page.click("#tab-fish");
+  await page.click("#tab-plan");
   await page.waitForSelector("#whenbar .pb-when");
 
   seen.plan = await page.evaluate(()=>{
@@ -587,7 +594,10 @@ const SCENARIOS = {
     ok(s.layout.tacticAfterCond, "the wade-or-float call follows the numbers", s.layout);
     ok(s.layout.hatchInFish, "and what is hatching closes the same tab", s.layout);
     ok(s.layout.nearUnderMap, "the nearest waters sit directly under the map on Plan", s.layout);
-    ok(s.layout.whenUnderTabs, "and the day you are fishing sits under the tabs", s.layout);
+    ok(s.layout.whenOnPlan && s.layout.whenFirstOnPlan && s.layout.whenNotAboveTabs,
+       "the day picker leads the Plan tab and appears nowhere else", s.layout);
+    ok(s.layout.ladderOnFish && s.layout.ladderNotOnPlan,
+       "the access ladder sits on Fish, under the call it explains", s.layout);
     ok(!s.layout.strayReading && !s.layout.gaugesInPlan && !s.layout.callInPlan,
        "with nothing left behind on Plan", s.layout);
     eq(s.tabOrder, ["Plan","Fish","Shop","Report"],
@@ -596,17 +606,22 @@ const SCENARIOS = {
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
     ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
     ok(!s.strayControls, "nothing is left under the dashboard");
-    eq(s.shops.names,
+    eq(s.shops.all.map(x=>x.name),
        ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop","Catskill Outfitters","Sullivan Sports"],
-       "fly shops are listed tackle-first then nearest, and an unnamed one is not a shop");
+       "fly shops rank tackle-first then nearest, and an unnamed one is not a shop");
+    eq(s.shops.names, ["Beaverkill Angler","Poisoned Tackle","Willowemoc Fly Shop"],
+       "but only the nearest three are listed — past that it is a directory");
+    ok(/2 more are mapped further out/.test(s.shops.note),
+       "and the ones held back are accounted for", s.shops.note);
     ok(/Fly shops near Roscoe/.test(s.shops.head), "under the place you pointed at", s.shops.head);
     eq(s.shops.links[0],
        ["https://beaverkillangler.example/", "tel:+16074985001", "https://www.openstreetmap.org/node/11"],
-       "with its own website, its phone and its place on the map");
-    eq(s.shops.links[3], ["https://catskilloutfitters.example/", "https://www.openstreetmap.org/way/12"],
-       "a bare hostname is still a link, and a shop with no phone simply has none");
-    eq(s.shops.links[1], ["https://www.openstreetmap.org/node/15"],
-       "a website tag edited into javascript: is dropped, and the shop keeps only the map");
+       "each with its own website, its phone and its place on the map");
+    eq(s.shops.labels[2], ["Map"], "a shop with neither website nor phone still has somewhere to go");
+    ok(s.shops.all[3].site==="https://catskilloutfitters.example/" && !s.shops.all[3].tel,
+       "a bare hostname is still made a link, and a shop with no phone simply has none", s.shops.all[3]);
+    ok(s.shops.all[1].site===null,
+       "a website tag edited into javascript: is dropped before it can reach an href", s.shops.all[1]);
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "so every href on the tab is one the app built or vetted", s.shops.links);
     ok(s.shops.beforeList, "the shops come before the list you are handing across the counter");
