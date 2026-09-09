@@ -116,7 +116,16 @@ async function mock(page, scenario){
     const asked = r.request().postData() || "";
     const isShop = /shop/.test(asked);
     if(isShop){
-      shopCalls.push(r.request().url());
+      /* Record what the query was ABOUT, not just that one happened. The
+         walk deliberately moves the centre — search a town, then pick an
+         access point on it — and each centre is a query the app is right
+         to make. What must never happen is the same centre asked twice,
+         a near pass and then a wide one. Only the around() clause can
+         tell those apart. */
+      const m = /around:(\d+),(-?[\d.]+),(-?[\d.]+)/.exec(decodeURIComponent(asked));
+      shopCalls.push({url:r.request().url(),
+                      centre: m ? `${(+m[2]).toFixed(2)},${(+m[3]).toFixed(2)}` : "?",
+                      radius: m ? +m[1] : 0});
       // the primary mirror is wedged; the backup has to rescue the lookup
       if(scenario==="slowshops" && /overpass-api\.de/.test(r.request().url())){
         await new Promise(x=>setTimeout(x, 9000));
@@ -1058,8 +1067,17 @@ const SCENARIOS = {
     ok(/out tags center (1\d\d|[2-9]\d\d)/.test(s.shops.ql),
        "and asks for enough of them that a wide radius cannot truncate the near one",
        s.shops.ql.slice(-40));
-    ok(s.shopCalls.length===1,
-       "the counters cost one query, not a near one and then a wide one", s.shopCalls.length);
+    /* One query per centre. Counting queries outright made this a race:
+       the walk moves the centre twice and a 1200 ms debounce swallowed
+       the first only when the runner was quick, so the same code passed
+       locally and failed in CI. What the check is for is radius
+       escalation — a near pass answered, then widened anyway. */
+    const byCentre = s.shopCalls.reduce((m,c)=>((m[c.centre]=(m[c.centre]||0)+1), m), {});
+    const askedTwice = Object.entries(byCentre).filter(([,n])=>n>1);
+    eq(askedTwice, [],
+       "no centre is asked twice — a near query is never followed by a wide one");
+    ok(s.shopCalls.every(c=>c.radius<=40000),
+       "and the near radius is what an angler means by near", s.shopCalls.map(c=>c.radius));
     ok(s.shopMs < 1500,
        `the tab was already warm when opened (${s.shopMs} ms), not looked up on arrival`, s.shopMs);
     ok(!s.shops.photo, "and no longer opens by telling you to photograph it", s.shops.photo);
@@ -1248,8 +1266,8 @@ const SCENARIOS = {
   slowshops: (s)=>{
     /* The mirrors used to be tried in turn on a 30 s timeout each, so a
        queued first host cost a full minute before the second was asked. */
-    ok(s.shopCalls.length===2 && /kumi/.test(s.shopCalls[1]||""),
-       "a silent first mirror hands the query to the second", s.shopCalls);
+    ok(s.shopCalls.length===2 && /kumi/.test((s.shopCalls[1]||{}).url||""),
+       "a silent first mirror hands the query to the second", s.shopCalls.map(c=>c.url));
     ok(s.shops.names.length===3, "and the shops still arrive", s.shops.names);
     ok(s.shopMs < 9000, `without waiting out the wedged host (${s.shopMs} ms)`, s.shopMs);
   },
