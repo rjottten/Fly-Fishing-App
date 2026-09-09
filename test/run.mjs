@@ -595,7 +595,9 @@ async function michiganPass(page, seen){
             tmpl:w.spot.template.name, tmplSp:w.spot.template.sp,
             latGap:w.latGap, shift:w.shift, beyond:!!w.beyond, out:ctx.outOfBook,
             hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length,
-            saysGauge:/USGS \d/.test(w.note||""), saysShift:/day/.test(w.note||"")};
+            saysGauge:/USGS \d/.test(w.note||""),
+            saysOwnCalendar:/this river's own/.test(w.note||""),
+            namesElsewhere:/Catskill|Beaverkill|baseline/i.test(w.note||"")};
   });
   // and in May, when the calendar has to be doing real work
   seen.miMay = await page.evaluate(()=>{
@@ -614,6 +616,32 @@ async function michiganPass(page, seen){
     const w=water(), ctx=buildContext();
     return {sp:w.sp, name:w.name, tmplSp:w.spot.template.sp, isGL:ctx.isGL,
             plays:recommend(ctx).picked.map(p=>p.key)};
+  });
+  /* Each river's chart is its own. The same insect has to carry different
+     dates on the Pere Marquette than on the Letort, and nothing an angler
+     reads may describe one river as an offset from another. */
+  await page.evaluate(()=>{ state.rivers.sp=null; });
+  await page.click("#riverCard .rvbtn");
+  await page.waitForFunction(()=>water().sp==="trout", {timeout:10000}).catch(()=>{});
+  seen.miHatch = await page.evaluate(()=>{
+    const readAt=()=>{
+      state.when=new Date(2026,4,20,14,0);
+      const ctx=buildContext(), res=recommend(ctx);
+      const wrap=document.createElement("div");
+      wrap.innerHTML=hatchHTML(res,ctx);
+      const wins={};
+      for(const hx of HATCHES) wins[hx.id]=hx.win[0]+shiftOf(hx,ctx);
+      return {river:ctx.w.name, text:wrap.textContent.replace(/\s+/g," ").trim(),
+              intro:(wrap.querySelector("#hatchIntro p")||{}).textContent||"",
+              dated:[...wrap.querySelectorAll(".hwin")].map(n=>n.textContent.trim()),
+              wins};
+    };
+    const keep=state.when, keepSpot=state.spot, keepId=state.waterId;
+    const pm=readAt();
+    state.spot=null; state.waterId="letort";
+    const letort=readAt();
+    state.when=keep; state.spot=keepSpot; state.waterId=keepId;
+    return {pm, letort};
   });
   await page.evaluate(()=>{ state.spot=null; state.pin=null; state.rivers={status:"idle",list:[],key:null}; draw(); });
 }
@@ -1289,11 +1317,13 @@ const SCENARIOS = {
     ok(s.miPick.gauge && /^\d{8}$/.test(String(s.miPick.gauge)),
        "with a real USGS gauge found for it at runtime", s.miPick.gauge);
     ok(s.miPick.latGap<=1.6, "matched to a river at nearly its own latitude", s.miPick);
-    ok(s.miPick.shift>=7 && s.miPick.shift<=12, "with the calendar moved for that latitude", s.miPick);
+    ok(s.miPick.shift>=7 && s.miPick.shift<=12,
+       "and its calendar resolved for that latitude, a good week later than Catskill water", s.miPick);
     ok(!s.miPick.beyond && !s.miPick.out,
        "and it is a reading, not a gate — this is the case that used to fail", s.miPick);
-    ok(s.miPick.saysGauge && s.miPick.saysShift,
-       "the card says which gauge it read and how far it moved the calendar", s.miPick);
+    ok(s.miPick.saysGauge, "the card says which gauge it actually read", s.miPick);
+    ok(s.miPick.saysOwnCalendar && !s.miPick.namesElsewhere,
+       "and calls the hatch calendar this river's own, naming no other river", s.miPick);
 
     ok(s.miMay.hatches>0 && s.miMay.plays.length===3,
        "in May it has a hatch chart and three ranked plays", s.miMay);
@@ -1303,6 +1333,22 @@ const SCENARIOS = {
        "and one tap re-reads the same river as a steelhead run", s.miGL);
     ok(s.miGL.plays.every(k=>k.startsWith("gl-")),
        "which is a different set of plays entirely", s.miGL.plays);
+
+    // --- each river's chart is its own ---
+    const h=s.miHatch;
+    ok(/Pere Marquette/.test(h.pm.intro), "the hatch panel names the river whose chart it is", h.pm.intro);
+    ok(!/Catskill|Beaverkill|baseline|shifted/i.test(h.pm.text),
+       "and describes it in no terms but its own", h.pm.intro);
+    ok(!/Catskill|Beaverkill|baseline|shifted/i.test(h.letort.text),
+       "on any river, including one in the book", h.letort.intro);
+    ok(h.pm.dated.length>0 && h.pm.dated.every(t=>/[A-Z][a-z]{2} \d+ . [A-Z][a-z]{2} \d+/.test(t)),
+       "every insect on now carries this river's own window", h.pm.dated.slice(0,3));
+    const moved=Object.keys(h.pm.wins).filter(k=>h.pm.wins[k]!==h.letort.wins[k]);
+    ok(moved.length>=15,
+       "and the same insects sit on different dates on a different river", moved.length);
+    ok(h.pm.wins["hendrickson"]>h.letort.wins["hendrickson"],
+       "Michigan's Hendricksons run later than Pennsylvania's, which is the point",
+       {pm:h.pm.wins["hendrickson"], letort:h.letort.wins["hendrickson"]});
 
     ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
     ok(s.errors.length===0, "no console or page errors", s.errors);

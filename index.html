@@ -303,6 +303,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hrow:last-child{border-bottom:0}
 .hname{flex:1;min-width:0;font-size:13.5px;font-weight:600;line-height:1.25}
 .hlat{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink3);font-style:italic;font-weight:400}
+.hwin{display:block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink2);font-weight:400;margin-top:2px}
 .hspec{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink2);white-space:nowrap;flex:none}
 .hmeter{flex:none;width:64px;height:6px;border-radius:3px;background:var(--raised);overflow:hidden}
 .hmeter i{display:block;height:100%;border-radius:3px;background:var(--accent)}
@@ -1214,7 +1215,10 @@ const DOY = (m, d) => { const t=[0,31,59,90,120,151,181,212,243,273,304,334]; re
    temps  : typical daily-MEAN water temp °F, Jan..Dec (modeled)
    swing  : diurnal amplitude °F (peak ~15:00, min ~06:00)
    flowIx : typical flow as a multiple of the ideal mid-band, Jan..Dec
-   shift  : hatch-phase offset in days vs. the Catskill baseline
+   shift  : this water's hatch calendar, as days from the reference
+            latitude the HATCHES table is written at (41.95 N). An
+            origin for the arithmetic, not a river anything defers to
+            — every water resolves its own dates from it.
    size   : 1 small stream · 2 medium · 3 big water
 ------------------------------------------------------------ */
 const TAIL_FLOW = [1.00,1.02,1.20,1.22,1.12,1.00,.92,.86,.86,.95,1.00,1.00];
@@ -1623,7 +1627,9 @@ const RIVERS = [
 ].map(([name, place, lat, lon, sp])=>({name, place, lat, lon, sp:SP_OF[sp]}));
 
 /* --- hatches -------------------------------------------------
-   win   : [startDOY, peakDOY, endDOY]  (Catskill baseline)
+   win   : [startDOY, peakDOY, endDOY] at the reference latitude of
+           41.95 N. No water reads these numbers directly: each one
+           resolves its own window from its latitude and water type.
    hrs   : emergence clock window, or 'dusk' | 'dawn' | 'allday'
    temp  : [min,max] water temp °F that triggers it
    waters: 'all' or a list of water ids
@@ -3778,10 +3784,13 @@ async function drainAreas(sites){
 
    Two things travel, and they travel differently.
 
-   The CALENDAR travels on latitude. The shift field on each water
-   is the number of days that river runs behind or ahead of the
-   Beaverkill, and all 20 trout entries were written by hand, river
-   by river, with no formula in mind. Fitted afterwards they come to
+   The CALENDAR travels on latitude. Each water resolves its own
+   hatch dates from its latitude and type — no river is described as
+   an offset from another one, and nothing an angler reads mentions
+   anywhere but the river they are standing in. The shift field is
+   the arithmetic behind that, measured from the latitude the hatch
+   windows were recorded at; all 20 trout entries were written by
+   hand, river by river, with no formula in mind. Fitted afterwards they come to
    4.86 days per degree of latitude, +5.1 for a tailwater and −2.1
    for a limestoner — R² 0.96, mean error one day. Hopkins' bio-
    climatic law puts the latitude term at 4 days per degree, which
@@ -3796,8 +3805,11 @@ async function drainAreas(sites){
    shift carries the calendar the whole way.
 ------------------------------------------------------------ */
 
-/* Days a hatch runs behind the Beaverkill at 41.95° N. Fitted to the
-   27, then held to them by test. */
+/* Where a river's hatch calendar sits, in days, relative to the latitude
+   the HATCHES windows are written at. 41.95 N is where those numbers were
+   recorded, so it is the zero of this scale and nothing more — no river is
+   the standard the others are described against. Fitted to the 27 written
+   waters, then held to them by test. */
 const PHENOLOGY_REF_LAT = 41.95;
 const PHENOLOGY = {perDegLat: 4.86, tailwater: 5.14, limestone: -2.12, base: -0.36};
 
@@ -3919,11 +3931,10 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
           + (gauge ? `The gauge is real: USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
                    : `No live gauge was found nearby either, so there are no numbers to show.`)
-        : `Seasonal temperature and flow character are modeled on ${tmpl.name} — the closest `
-          + `match in the book by latitude and river type, ${Math.abs(dLat)<0.15 ? "at the same latitude"
+        : `Water temperature and flow character are modeled on ${tmpl.name} — the closest match `
+          + `in the book by latitude and water type, ${Math.abs(dLat)<0.15 ? "at the same latitude"
               : `${Math.abs(dLat).toFixed(1)}° of latitude ${dLat>0?"south":"north"} of here`}. `
-          + `Hatch dates are moved ${shift===0?"not at all":`${Math.abs(shift)} day${Math.abs(shift)===1?"":"s"} ${shift>0?"later":"earlier"}`} `
-          + `for this latitude and river type. `
+          + `The hatch calendar is this river's own, resolved for its latitude and water type. `
           + (range==="far" ? `That is a long stretch for a borrowed thermal curve — carry a thermometer. ` : "")
           + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
@@ -4912,15 +4923,22 @@ function hatchHTML(res, ctx){
   const soon=HATCHES.filter(hx=>{
     if(ctx.w.sp!=="trout") return false;
     if(hx.waters!=="all"&&!hx.waters.includes(hatchKeyOf(ctx.w))) return false;
-    const s=hx.win[0]+ctx.w.shift;
+    const s=hx.win[0]+shiftOf(hx,ctx);
     return s>ctx.day && s<=ctx.day+28;
-  }).sort((a,b)=>a.win[0]-b.win[0]);
+  }).sort((a,b)=>(a.win[0]+shiftOf(a,ctx))-(b.win[0]+shiftOf(b,ctx)));
+
+  /* Every date on this panel is this river's, resolved for its own latitude
+     and water type. Nothing here is expressed relative to anywhere else — an
+     angler on the Pere Marquette is owed the Pere Marquette's dates, not an
+     offset from a river in another state. */
+  const sh=(hx)=>shiftOf(hx,ctx);
+  const win=(hx)=>`${dayLabel(hx.win[0]+sh(hx))} \u2013 ${dayLabel(hx.win[2]+sh(hx))}`;
 
   const row=(hx,i,dim)=>`
     <div class="hrow">
       <span class="swatch" style="background:${esc(hx.hex)};margin-top:0"></span>
-      <span class="hname">${esc(hx.name)} <span class="hlat">${esc(hx.latin)}</span></span>
-      <span class="hspec">${sizeStr(hx.size)}</span>
+      <span class="hname">${esc(hx.name)} <span class="hlat">${esc(hx.latin)}</span>
+        <span class="hwin">${win(hx)} \u00b7 ${sizeStr(hx.size)}</span></span>
       <span class="hmeter ${dim?"dim":""}"><i style="width:${Math.round(clamp(i,0,1)*100)}%"></i></span>
     </div>`;
 
@@ -4937,7 +4955,9 @@ function hatchHTML(res, ctx){
   return `
     <div class="shop-intro" id="hatchIntro">
       <h2>What is on the water</h2>
-      <p>Windows are shifted ${ctx.w.shift===0?"to the Catskill baseline":`${Math.abs(ctx.w.shift)} days ${ctx.w.shift>0?"later":"earlier"} than the Catskill baseline`} for ${esc(ctx.w.name)}, and damped when the modeled water temperature sits outside each insect's trigger range.</p>
+      <p>${esc(ctx.w.name)}'s own calendar \u2014 these dates are set by this river's latitude and
+         water type, and damped when the modeled water temperature sits outside each insect's
+         trigger range. A logged sighting here moves them.</p>
     </div>
     ${runsBlock}
     ${now.length?`<div class="hbar">
@@ -4949,7 +4969,7 @@ function hatchHTML(res, ctx){
       ${soon.map(hx=>`<div class="hrow">
         <span class="swatch" style="background:${esc(hx.hex)};margin-top:0"></span>
         <span class="hname">${esc(hx.name)} <span class="hlat">${esc(hx.latin)}</span></span>
-        <span class="hspec">${dayLabel(hx.win[0]+ctx.w.shift)}</span>
+        <span class="hspec">${dayLabel(hx.win[0]+sh(hx))}</span>
       </div>`).join("")}
     </div>`:""}`;
 }
