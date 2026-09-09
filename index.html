@@ -5308,9 +5308,12 @@ function milesOf(m){
 function renderRiverCard(){
   const el=$("#riverCard"); if(!el) return;
   const st=state.rivers||{status:"idle"};
-  const where = state.pin ? (state.pin.label ? String(state.pin.label).split(",")[0].trim()
-                                             : `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`) : null;
-  if(!state.pin || st.status==="idle"){ el.innerHTML=""; return; }
+  const at = state.pin || state.geo;
+  const where = !at ? null
+    : state.pin && state.pin.label ? String(state.pin.label).split(",")[0].trim()
+    : state.pin ? `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`
+    : "you";
+  if(!at || st.status==="idle"){ el.innerHTML=""; return; }
   const head=`<h3>Trout and steelhead near ${esc(where)}</h3>`;
   const wrap=(inner)=>{ el.innerHTML=`<div class="wcard">${head}${inner}</div>`; };
 
@@ -5342,7 +5345,7 @@ function renderRiverCard(){
       <p class="muted">${esc(state.spot.name)} is both, at different times of the year. Riffle is reading it as
         <b>${state.spot.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b> — it will not guess which you mean.</p>`:""}
     ${st.status==="loading"?`<p class="muted">Also asking USGS what is gauged out here…</p>`:""}
-    ${!anyHatchLives(state.pin.lat, state.pin.lon)?`<p class="muted">Riffle will read any of these — the gauge, the
+    ${!anyHatchLives(at.lat, at.lon)?`<p class="muted">Riffle will read any of these — the gauge, the
        wading call and the shops all work out here. What it will not print is a hatch chart: no insect it carries has
        a range that reaches this far.</p>`:""}`);
 
@@ -5529,12 +5532,17 @@ function locate(explicit){
         state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best);
       }
     }
+    /* The rivers around you are the water picker now, so it has to be
+       populated before the first paint — but NOT by dropping a pin. A pin
+       costs an Overpass access lookup and a second shop query on load, and
+       the named-river list needs no network at all. So the card takes its
+       centre from the location and the pin stays the angler's own act. */
+    loadRivers(state.geo.lat, state.geo.lon);
     draw();
-    /* The rivers around you are the water picker now, and that card is
-       drawn around a pin — so locating drops one either way. Only an
-       explicit tap moves the angler to Plan to look at it. */
-    if(explicit) showTab("plan");
-    setPin(state.geo.lat, state.geo.lon, explicit ? "Your location" : null);
+    if(explicit){
+      showTab("plan");
+      setPin(state.geo.lat, state.geo.lon, "Your location");
+    }
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
 }
 

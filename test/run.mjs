@@ -220,6 +220,18 @@ async function walk(browser, scenario){
   /* The app opens on Plan and the day picker is the first thing on it, so
      it has to be filled by the first paint — not by whatever redraw happens
      to come along next. */
+  /* The book list is gone, so the river card IS the water picker. If it
+     only ever drew around a pin, a browser that has just been told where
+     it is would show no picker at all until the angler searched. It takes
+     its centre from the location too — and it must do that without a pin,
+     because a pin costs an access lookup and a second shop query on load. */
+  if(GEO){
+    seen.pickerOnLoad = await page.evaluate(()=>({
+      rows: document.querySelectorAll("#riverCard .rvbtn").length,
+      pin: !!state.pin,
+      head: (document.querySelector("#riverCard h3")||{}).textContent||"",
+    }));
+  }
   seen.firstPaint = await page.evaluate(()=>{
     const w=document.getElementById("whenbar");
     return {open:(document.querySelector('.tab[aria-selected="true"]')||{}).textContent,
@@ -1138,6 +1150,17 @@ const SCENARIOS = {
        "and there is a way back to now", s.planUI.backToNow);
   },
   security: (s)=>{
+    /* This scenario is one of the two that run with a real geolocation, so
+       it is where the picker-on-load property can be checked. The book list
+       is gone and the river card IS the water picker: if it only ever drew
+       around a pin, a browser that has just been told where it is would show
+       no picker at all until the angler searched. And it has to fill without
+       a pin, because a pin costs an access lookup and a second shop query on
+       load — which is exactly what CI caught. */
+    ok(s.pickerOnLoad.rows>0 && !s.pickerOnLoad.pin,
+       "the river picker fills from your location on first paint, with no pin dropped",
+       s.pickerOnLoad);
+
     ok(s.sec.fired===0, "an OSM name tag full of markup does not execute", s.sec);
     ok(!s.sec.tooltipHasImg && s.sec.tooltipShowsText,
        "the map tooltip renders it as text, not as an element", s.sec);
