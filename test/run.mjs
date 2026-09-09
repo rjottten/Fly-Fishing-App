@@ -145,6 +145,14 @@ async function mock(page, scenario){
     scenario==="noelevation" ? r.fulfill(json({}))
       : r.fulfill(json({elevation:[F.ELEV_M]})));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
+  /* Canada's gauges. Two collections, both GeoJSON; realtime is matched
+     first because the stations pattern would otherwise swallow it. */
+  await page.route("**://api.weather.gc.ca/collections/hydrometric-stations/**", r =>
+    scenario==="canadadown" ? r.fulfill({status:503, contentType:"text/plain", body:"unavailable"})
+      : r.fulfill(json(F.ECCC_STATIONS)));
+  await page.route("**://api.weather.gc.ca/collections/hydrometric-realtime/**", r =>
+    scenario==="canadadown" ? r.fulfill({status:503, contentType:"text/plain", body:"unavailable"})
+      : r.fulfill(json(F.ECCC_REALTIME)));
 
   await page.route("**://waterservices.usgs.gov/nwis/site/**", r => {
     const bbox = r.request().url().includes("bBox=");
@@ -156,6 +164,7 @@ async function mock(page, scenario){
 }
 
 const XSS = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
+const F_ECCC_CFS = F.ECCC_CFS;
 let shopCalls = [];        // which mirrors the shop query actually reached
 const CDN_LAG = 1500;
 
@@ -206,7 +215,7 @@ async function walk(browser, scenario){
        this harness serves it and how an un-deployed copy behaves. The
        fallback to OpenStreetMap is the tested behaviour; the browser's
        note about it is not a defect. */
-    else if(m.type()==="error" && !/favicon|ERR_|504|404/.test(t)) errors.push("console: " + t);
+    else if(m.type()==="error" && !/favicon|ERR_|504|404|503/.test(t)) errors.push("console: " + t);
   });
   await mock(page, scenario);
 
@@ -387,6 +396,7 @@ async function walk(browser, scenario){
 
   await shopPass(page, seen);
   await calendarPass(page, seen);
+  if(scenario==="canada"||scenario==="canadadown") await canadaPass(page, seen);
   /* This one picks a river and leaves the app on it, so it runs only where
      that is the point — otherwise it changes the water out from under the
      scenarios that follow. */
@@ -1050,6 +1060,34 @@ async function calendarPass(page, seen){
   }, HATCH_TRUTH);
 }
 
+/* North of the 49th there is no USGS. The gauge, its units and its
+   silences all differ, and none of that may reach the rest of the app:
+   a Canadian river has to read like any other river. */
+async function canadaPass(page, seen){
+  seen.canada = await page.evaluate(async ()=>{
+    const out = {};
+    out.inCanada = {calgary: inCanada(51.03,-114.05), roscoe: inCanada(41.93,-74.91)};
+    const g = await nearestGauge(51.03, -114.05);
+    out.gauge = g ? {id:g.id, name:g.name, ca:!!g.ca, dist:Math.round(g.dist)} : null;
+    out.live = g ? await tryLive(g.id) : null;
+    /* the discontinued station in the fixture must not be the answer */
+    out.pickedDiscontinued = !!(g && /999/.test(g.id));
+    /* and a USGS id must still route to USGS */
+    out.usgsStillWorks = !!(await tryLive("01420500"));
+    /* read it the way the dashboard does, through the whole engine */
+    if(g && out.live){
+      const keep=state.live, keepSpot=state.spot;
+      state.spot = await buildSpot({lat:51.03, lon:-114.05, name:"Bow River", place:"Calgary, AB",
+                                    sp:"trout", gauge:g, pickedGauge:g.id});
+      state.live = Object.assign({}, out.live, {gauge:state.spot.gauge});
+      const ctx=buildContext();
+      out.shown = {cfs:ctx.cfs, flowSource:ctx.flowSource, tempSource:ctx.tempSource};
+      state.live=keep; state.spot=keepSpot;
+    }
+    return out;
+  });
+}
+
 /* ---------- what each scenario must prove ---------- */
 const SCENARIOS = {
   happy: (s)=>{
@@ -1321,6 +1359,42 @@ const SCENARIOS = {
        "Plan says the dates are latitude-only and will read early on a mountain river",
        s.elev.card.slice(0,200));
     ok(s.plays>0, "and everything else still reads", s.plays);
+  },
+  canada: (s)=>{
+    const c=s.canada;
+    ok(c.inCanada.calgary && !c.inCanada.roscoe,
+       "the app knows which side of the border a point is on", c.inCanada);
+    ok(c.gauge && c.gauge.ca, "and asks Environment Canada for a gauge up there", c.gauge);
+    ok(c.gauge && c.gauge.id==="05BH004",
+       "finding the Bow at Calgary by its ECCC station number", c.gauge);
+    ok(!c.pickedDiscontinued, "and skipping the discontinued station beside it", c.gauge);
+    ok(c.live && c.live.cfs===F_ECCC_CFS,
+       `reading 92.3 m³/s back as ${F_ECCC_CFS} cfs, because the flow bands are cubic feet`, c.live);
+    ok(c.live && c.live.tempF===null,
+       "with no water temperature, which that feed does not carry — so it stays modeled", c.live);
+    ok(c.usgsStillWorks, "and a USGS id still goes to USGS", c.usgsStillWorks);
+    /* The reading has to survive the trip to the dashboard. It is turned into
+       a multiple of the water's ideal band to rank the plays on, and that
+       ratio is clamped at ten — so a river far bigger than the bands borrowed
+       for it used to come back a third short. Every Canadian spot is
+       uncalibrated, because ECCC publishes no drainage area, so this is where
+       it shows. */
+    ok(c.shown && c.shown.flowSource==="live" && c.shown.cfs===F_ECCC_CFS,
+       `the dashboard prints the ${F_ECCC_CFS} cfs the gauge actually read`, c.shown);
+  },
+  canadadown: (s)=>{
+    const c=s.canada;
+    ok(!c.gauge || !c.gauge.ca,
+       "with Environment Canada down, no Canadian gauge is claimed", c.gauge);
+    /* Falling through to USGS is deliberate — border rivers are gauged on
+       both sides — so what is asserted is that the fall-through happened
+       and nothing pretended to be an ECCC reading. In this run USGS answers
+       with the Beaverkill because the fixture ignores the bounding box; the
+       real service is asked within a quarter degree of the point. */
+    ok(c.live===null || (c.live && c.live.gauge && !/[A-Za-z]/.test(c.live.gauge)),
+       "and any reading that does come back is not dressed up as one", c.live);
+    ok(s.plays>0, "the river still reads on modeled numbers", s.plays);
+    ok(c.usgsStillWorks, "while USGS is unaffected", c.usgsStillWorks);
   },
   calendar: (s)=>{
     const c=s.cal;

@@ -61,6 +61,26 @@ export const SHOPS = {elements:[
    elevation query in metres, and the app converts. */
 export const ELEV_M = 1463;
 
+/* Environment and Climate Change Canada, through the GeoMet OGC API.
+   Both collections answer GeoJSON. Station numbers carry letters, which
+   is how the app tells an ECCC gauge from a USGS one; discharge is in
+   cubic metres a second, and there is no water temperature in the feed. */
+export const ECCC_STATIONS = {type:"FeatureCollection", features:[
+  {type:"Feature", geometry:{type:"Point", coordinates:[-114.0512, 51.0470]},
+   properties:{STATION_NUMBER:"05BH004", STATION_NAME:"BOW RIVER AT CALGARY",
+               PROV_TERR_STATE_LOC:"AB", STATUS_EN:"Active"}},
+  {type:"Feature", geometry:{type:"Point", coordinates:[-114.1900, 51.1200]},
+   properties:{STATION_NUMBER:"05BH999", STATION_NAME:"OLD GAUGE, LONG GONE",
+               PROV_TERR_STATE_LOC:"AB", STATUS_EN:"Discontinued"}},
+]};
+
+/* 92.3 m³/s is 3,260 cfs — a middling summer Bow. */
+export const ECCC_REALTIME = {type:"FeatureCollection", features:[
+  {type:"Feature", geometry:{type:"Point", coordinates:[-114.0512, 51.0470]},
+   properties:{STATION_NUMBER:"05BH004", DATETIME:"2026-07-15T18:00:00Z", DISCHARGE:92.3, LEVEL:1.44}},
+]};
+export const ECCC_CMS = 92.3, ECCC_CFS = Math.round(92.3*35.3147);
+
 export const GEOCODE = [
   {display_name:"Roscoe, Sullivan County, New York, USA", lat:"41.9337", lon:"-74.9143"},
 ];

@@ -1624,6 +1624,50 @@ const RIVERS = [
  ["North Platte River","Saratoga, WY",41.45,-106.81,"t"],
  ["Snake River","Jackson, WY",43.48,-110.76,"t"],
  ["Wind River","Dubois, WY",43.53,-109.63,"t"],
+ /* --- Canada -------------------------------------------------
+    USGS stops at the border, so these read from Environment and
+    Climate Change Canada's hydrometric service instead — see
+    nearestGauge. Everything downstream is unchanged: the same
+    plays, the same insects, the same wading ladder. Discharge
+    arrives in cubic metres a second and is converted, because the
+    flow bands in this file are cubic feet.
+ ------------------------------------------------------------ */
+ ["Bow River","Calgary, AB",51.03,-114.05,"t"],
+ ["Crowsnest River","Lundbreck, AB",49.58,-114.18,"t"],
+ ["Oldman River","Pincher Creek, AB",49.62,-113.90,"t"],
+ ["Red Deer River","Sundre, AB",51.80,-114.64,"t"],
+ ["North Ram River","Nordegg, AB",52.30,-115.80,"t"],
+ ["Elk River","Fernie, BC",49.50,-115.06,"t"],
+ ["St. Mary River","Kimberley, BC",49.61,-115.90,"t"],
+ ["Skeena River","Terrace, BC",54.52,-128.60,"s"],
+ ["Bulkley River","Smithers, BC",54.78,-127.17,"s"],
+ ["Kispiox River","Hazelton, BC",55.35,-127.68,"s"],
+ ["Babine River","Smithers, BC",55.44,-126.68,"s"],
+ ["Thompson River","Spences Bridge, BC",50.42,-121.35,"s"],
+ ["Vedder / Chilliwack River","Chilliwack, BC",49.10,-121.83,"b"],
+ ["Squamish River","Squamish, BC",49.78,-123.16,"s"],
+ ["Cowichan River","Duncan, BC",48.78,-123.70,"b"],
+ ["Dean River","Bella Coola, BC",52.80,-126.90,"s"],
+ ["Grand River","Fergus, ON",43.71,-80.38,"t"],
+ ["Credit River","Belfountain, ON",43.79,-80.01,"b"],
+ ["Saugeen River","Walkerton, ON",44.12,-81.15,"b"],
+ ["Maitland River","Goderich, ON",43.75,-81.71,"b"],
+ ["Nipigon River","Nipigon, ON",49.02,-88.26,"t"],
+ ["Ganaraska River","Port Hope, ON",43.95,-78.30,"s"],
+ ["Beaver River","Thornbury, ON",44.56,-80.45,"s"],
+ ["Grande-Cascapedia River","Cascapedia, QC",48.22,-65.90,"s"],
+ ["Matapedia River","Matapedia, QC",48.00,-66.95,"s"],
+ ["Bonaventure River","Bonaventure, QC",48.15,-65.50,"s"],
+ ["Jacques-Cartier River","Stoneham, QC",47.03,-71.38,"b"],
+ ["Sainte-Anne River","Saint-Raymond, QC",46.90,-71.83,"b"],
+ ["Miramichi River","Blackville, NB",46.73,-65.83,"s"],
+ ["Restigouche River","Campbellton, NB",47.98,-66.67,"s"],
+ ["Cains River","Blackville, NB",46.65,-65.83,"s"],
+ ["Margaree River","Margaree Forks, NS",46.35,-61.10,"s"],
+ ["LaHave River","Bridgewater, NS",44.38,-64.52,"b"],
+ ["Humber River","Deer Lake, NL",49.17,-57.43,"s"],
+ ["Gander River","Gander, NL",49.00,-54.60,"s"],
+ ["Exploits River","Grand Falls, NL",48.94,-55.66,"s"],
 ].map(([name, place, lat, lon, sp])=>({name, place, lat, lon, sp:SP_OF[sp]}));
 
 /* --- hatches -------------------------------------------------
@@ -1661,7 +1705,7 @@ const Z = {
   south: [[32, 40,  -95, -75]],                 // Southern Appalachians and the Ozarks
   west:  [[31, 60, -126,  -99]],                // the whole interior and coastal West
   rocky: [[33, 53, -119, -102]],                // Rockies and the intermountain west
-  pnw:   [[38, 60, -126, -111]],                // Cascades, coast and inland Northwest
+  pnw:   [[38, 60, -132, -111]],                // Cascades, the BC coast and inland Northwest
   calif: [[33, 43, -125, -117]],                // Sierra, Cascades and the California coast
 };
 const RANGE_OF = (hx)=> hx.range || Z.east;
@@ -2148,6 +2192,15 @@ function buildContext(){
     flowSource = lead===0 ? "live" : "carried";
   } else { flowIx=modelFlow(w,d); }
   cfs = Math.round(mid*flowIx);
+  /* Reading today, show what the gauge says. The line above turns a reading
+     into a multiple of this water's ideal band so the plays can be ranked on
+     it, and that round trip is lossless only while the two agree — the ratio
+     is clamped at ten, so a river running far bigger than the bands borrowed
+     for it comes back smaller than it is. The Bow at Calgary reported 3,260
+     cfs and the dashboard printed 2,210, because ECCC publishes no drainage
+     area and every Canadian spot is therefore uncalibrated. The band still
+     comes from the index; only the number shown is the measured one. */
+  if(flowSource==="live" && live && live.cfs!=null) cfs = Math.round(live.cfs);
 
   let fs = flowStateFromIndex(flowIx);
   if(state.ov.flow){ fs=FLOW_STATES.find(f=>f.k===state.ov.flow); flowSource="you"; cfs=Math.round(mid*fs.ratio); }
@@ -3375,6 +3428,16 @@ function recommend(ctx){
    4. LIVE GAUGE (works when the page can reach the network)
    ============================================================ */
 async function tryLive(gauge){
+  /* Which service to ask is written into the id itself: USGS numbers a
+     station in digits, ECCC in a letter-bearing code like 05BH004. No
+     flag has to be carried around the app for this. */
+  if(/[A-Za-z]/.test(String(gauge||""))){
+    try{
+      const r=await liveCA(gauge);
+      if(r.cfs==null) return null;
+      return {gauge, cfs:r.cfs, tempF:null, at:new Date()};
+    }catch(e){ return null; }
+  }
   try{
     const c=new AbortController(); const t=setTimeout(()=>c.abort(),4500);
     const url=`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${gauge}&parameterCd=00060,00010&siteStatus=all`;
@@ -3784,7 +3847,92 @@ function parseRDB(text){
   return rows;
 }
 
+/* --- gauges north of the border -------------------------------
+   USGS stops at the 49th parallel. Canada's equivalent is
+   Environment and Climate Change Canada, served through the GeoMet
+   OGC API: a station list and a realtime feed, both GeoJSON.
+
+   Three things differ from USGS and all three are handled here so
+   that nothing downstream has to know which country it is in:
+   discharge arrives in cubic metres a second and the flow bands in
+   this file are cubic feet; station numbers are alphanumeric
+   ("05BH004") where USGS ids are digits; and the realtime feed
+   carries no water temperature, so a Canadian river's temperature
+   stays modeled and the dashboard says so, exactly as it does for
+   an American river whose gauge reports flow only.
+
+   Drainage area is not in the station metadata either, so the flow
+   bands travel uncalibrated and are flagged — the same path an
+   American gauge takes when USGS has no area for it.
+------------------------------------------------------------ */
+const ECCC = "https://api.weather.gc.ca";
+const CMS_TO_CFS = 35.3147;
+
+/* Coarse, and only ever used to decide which service to ask. A point
+   that guesses wrong simply asks the service that has nothing for it
+   and falls through to the other. */
+function inCanada(lat, lon){
+  return lat>=48.0 && lat<=70 && lon>=-141 && lon<=-52;
+}
+
+function eccProp(p, ...names){
+  for(const n of names){
+    if(p && p[n]!=null && p[n]!=="") return p[n];
+    if(p && p[n.toLowerCase()]!=null && p[n.toLowerCase()]!=="") return p[n.toLowerCase()];
+  }
+  return null;
+}
+
+async function nearestGaugeCA(lat, lon){
+  for(const pad of [0.35, 0.9]){
+    const bbox=[(lon-pad).toFixed(4),(lat-pad).toFixed(4),(lon+pad).toFixed(4),(lat+pad).toFixed(4)].join(",");
+    const url=`${ECCC}/collections/hydrometric-stations/items`
+            + `?bbox=${bbox}&limit=100&f=json`;
+    try{
+      const res=await withTimeout(url, null, 12000);
+      if(!res.ok) continue;
+      const j=await res.json();
+      let best=null, bd=Infinity;
+      for(const f of (j && j.features) || []){
+        const c=f && f.geometry && f.geometry.coordinates;
+        if(!Array.isArray(c) || c.length<2) continue;
+        const lo=parseFloat(c[0]), la=parseFloat(c[1]);
+        if(!isFinite(la)||!isFinite(lo)) continue;
+        const p=f.properties||{};
+        const id=eccProp(p,"STATION_NUMBER");
+        if(!id) continue;
+        /* Discontinued stations are still in the list and read nothing. */
+        const status=String(eccProp(p,"STATUS_EN","STATUS")||"").toLowerCase();
+        if(status && /discontinued|inactive/.test(status)) continue;
+        const d=metres(lat,lon,la,lo);
+        if(d<bd){ bd=d; best={id:String(id), name:String(eccProp(p,"STATION_NAME")||"").trim(),
+                              lat:la, lon:lo, area:NaN, dist:bd, ca:true}; }
+      }
+      if(best) return best;
+    }catch(e){ /* widen, then give up to the modeled numbers */ }
+  }
+  return null;
+}
+
+/* The realtime feed, newest row for one station. Discharge only —
+   ECCC does not publish water temperature here. */
+async function liveCA(stationId){
+  const url=`${ECCC}/collections/hydrometric-realtime/items`
+          + `?STATION_NUMBER=${encodeURIComponent(stationId)}&limit=1&sortby=-DATETIME&f=json`;
+  const res=await withTimeout(url, null, 9000);
+  if(!res.ok) throw new Error("eccc "+res.status);
+  const j=await res.json();
+  const f=(j && j.features && j.features[0]) || null;
+  const p=(f && f.properties) || {};
+  const cms=parseFloat(eccProp(p,"DISCHARGE","discharge"));
+  return {cfs: isFinite(cms) ? Math.round(cms*CMS_TO_CFS) : null, tempF: null};
+}
+
 async function nearestGauge(lat, lon){
+  if(inCanada(lat, lon)){
+    const ca=await nearestGaugeCA(lat, lon);
+    if(ca) return ca;                       // else fall through: the border is not a wall
+  }
   for(const pad of [0.25, 0.6]){
     const bbox=[(lon-pad).toFixed(4),(lat-pad).toFixed(4),(lon+pad).toFixed(4),(lat+pad).toFixed(4)].join(",");
     const url=`https://waterservices.usgs.gov/nwis/site/?format=rdb&bBox=${bbox}`

@@ -2,7 +2,8 @@
 
 ### [robsriffle.netlify.app](https://robsriffle.netlify.app)
 
-A single-file fly fishing app for the Northeast US: point at where you are
+A single-file fly fishing app for the trout and salmon water of North America:
+point at where you are
 fishing — an address, a pin on the map, your own location — and it finds the
 public access nearby, then reads the date, clock, season and conditions to tell
 you what is likely hatching, what to tie on, and whether the water is worth
@@ -100,12 +101,12 @@ to match a Lake Erie steelhead creek 298 miles away and then get gated out for
 being too far; it now matches a trout freestone at its own latitude, with the
 calendar moved nine days later.
 
-Riffle reads any point you drop in the Northeast — it borrows the seasonal
-curves of the nearest of these 27 hand-written waters and rescales the flow
-bands to the gauge it finds. So your home pool does not have to be on this list
+Riffle reads any point you drop — it borrows the seasonal curves of a
+hand-written water at its own latitude and river type, and rescales the flow
+bands to the gauge it finds. So your home pool does not have to be on any list
 for the app to read it; the list is what it reasons *from*.
 
-Riffle knows 236 rivers. Each is a name, a place, a point, and what swims in
+Riffle knows 272 rivers, 36 of them Canadian. Each is a name, a place, a point, and what swims in
 it — trout, a steelhead or salmon run, or both, which most Great Lakes and
 coastal rivers are at different times of the year. That is the half of this
 problem that is knowledge rather than lookup: ask anyone where you catch trout
@@ -113,7 +114,8 @@ and steelhead near Baldwin, Michigan and you get the Pere Marquette, the
 Manistee and the Muskegon.
 
 What needed looking up was never the river. It was the gauge and the flow
-bands, and those are resolved from USGS the moment you pick one — the gauge
+bands, and those are resolved the moment you pick one — from USGS south of the
+border and from Environment and Climate Change Canada north of it — the gauge
 nearest that river, and its bands scaled from the closest hand-written water's
 by the ratio of the two drainage areas. So no row in that list carries a number
 nobody verified, and the card tells you which gauge it read and what it
@@ -198,6 +200,26 @@ logged days like any other play.
 
 </details>
 
+## Canada
+
+North of the 49th there is no USGS, so Riffle asks Environment and Climate
+Change Canada instead, through its GeoMet hydrometric service. Three things
+differ and all three are handled at the boundary, so nothing downstream knows
+which country it is in:
+
+- **Discharge arrives in cubic metres a second** and the flow bands in this app
+  are cubic feet. It is converted on the way in.
+- **Station numbers carry letters** — `05BH004` is the Bow at Calgary — where a
+  USGS site number is all digits. That is how a reading is routed to the right
+  service; no flag is passed around.
+- **There is no water temperature in that feed.** So a Canadian river reads a
+  live flow and a modeled temperature, and the dashboard says so — the same
+  thing it says for an American gauge that reports flow only.
+
+ECCC publishes no drainage area either, so Canadian flow bands travel
+uncalibrated and are flagged as such. Border rivers are gauged on both sides,
+so if Environment Canada does not answer, the USGS lookup still runs.
+
 ## What it is not
 
 - **It is not a gauge.** Where USGS has a live reading Riffle shows it and says
@@ -274,7 +296,7 @@ Point at a spot and Riffle assembles a reading for it:
    parking with no water near it never appears. **These are mapped features,
    not a statement of legal access** — verify with the state agency or posted
    signs before you park.
-3. **Read the water** — the nearest USGS gauge supplies live flow and
+3. **Read the water** — the nearest gauge supplies live flow and
    temperature. Seasonal temperature curves, hatch timing and flow character
    are borrowed from the nearest of the 27 hand-written waters of the same
    fishery, and the flow bands
