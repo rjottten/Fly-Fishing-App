@@ -1172,14 +1172,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="plan" id="planbar"></section>
   <nav class="tabs" role="tablist" aria-label="Riffle sections">
     <button class="tab" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="true">Plan</button>
-    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="false">Fish</button>
     <button class="tab" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false">Shop</button>
+    <button class="tab" role="tab" id="tab-fish" aria-controls="panel-fish" aria-selected="false">Fish</button>
     <button class="tab" role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false">Report</button>
   </nav>
 
   <div class="panel" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan"></div>
-  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish" hidden></div>
   <div class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden></div>
+  <div class="panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish" hidden></div>
   <!-- Report is the two halves of writing the river down: what you can see
        from where you are standing, and what the day came to. -->
   <div class="panel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden>
@@ -1634,124 +1634,197 @@ const RIVERS = [
    temp  : [min,max] water temp °F that triggers it
    waters: 'all' or a list of water ids
 ------------------------------------------------------------ */
+
+/* --- where an insect lives -----------------------------------
+   A hatch is not a property of a region, it is a property of a
+   species: Hendricksons live in eastern North America, Salmonflies
+   in the montane West, Baetis very nearly everywhere trout do. So
+   the range belongs on the insect, written once, and a location
+   simply gets whichever insects live there.
+
+   This is what replaced the old "outside the book" gate. That gate
+   existed because every hatch in the table was an eastern one, so a
+   Montana river had to be switched off wholesale. With ranges on the
+   species, Montana gets Salmonflies and PMDs and Western Green Drakes
+   and does not get Hendricksons, which is not a gate at all — it is
+   just the chart being right.
+
+   Boxes are [south, north, west, east]. Coarse on purpose: an insect
+   range is a smudge, not a border, and the water temperature gate in
+   hatchIntensity does most of the honest narrowing anyway.
+------------------------------------------------------------ */
+const Z = {
+  cont:  [[25, 60, -170, -52]],                 // wherever trout are
+  east:  [[30, 52,  -97, -52]],                 // eastern North America
+  midw:  [[40, 51,  -98, -76]],                 // upper Midwest and the Driftless
+  gl:    [[39, 51,  -95, -73]],                 // Great Lakes and the country around them
+  south: [[32, 40,  -95, -75]],                 // Southern Appalachians and the Ozarks
+  west:  [[31, 60, -126,  -99]],                // the whole interior and coastal West
+  rocky: [[33, 53, -119, -102]],                // Rockies and the intermountain west
+  pnw:   [[38, 60, -126, -111]],                // Cascades, coast and inland Northwest
+  calif: [[33, 43, -125, -117]],                // Sierra, Cascades and the California coast
+};
+const RANGE_OF = (hx)=> hx.range || Z.east;
+function inRange(hx, lat, lon){
+  for(const [s,n,w,e] of RANGE_OF(hx))
+    if(lat>=s && lat<=n && lon>=w && lon<=e) return true;
+  return false;
+}
+
 const HATCHES = [
  {id:"midge", name:"Midge", latin:"Chironomidae", win:[DOY(1,1),DOY(2,10),DOY(12,31)], size:[20,26], body:"black, olive, cream", hex:"#2A2A2A",
-  hrs:[11,15], temp:[33,52], waters:"all", kind:"midge", winter:true,
+  hrs:[11,15], temp:[33,52], waters:"all", range:Z.cont, kind:"midge", winter:true,
   dry:[["Griffith's Gnat",[20,24]],["Matt's Midge",[22,24]]], nymph:[["Zebra Midge, black/silver",[18,22]],["WD-40, gray",[18,22]]], spinner:null},
  {id:"lbstone", name:"Little Black Stonefly", latin:"Capnia / Allocapnia", win:[DOY(2,1),DOY(2,28),DOY(3,31)], size:[16,20], body:"jet black", hex:"#161616",
-  hrs:[11,15], temp:[38,46], waters:"all", kind:"stone",
+  hrs:[11,15], temp:[38,46], waters:"all", range:Z.cont, kind:"stone",
   dry:[["Black Elk Hair Caddis",[16,18]],["Foam Black Stone",[16]]], nymph:[["Little Black Stone Nymph",[16,18]],["Black Tungsten Perdigon",[16,18]]], spinner:null},
  {id:"bwo-sp", name:"Blue Winged Olive, spring", latin:"Baetis vagans", win:[DOY(3,25),DOY(4,18),DOY(5,15)], size:[16,20], body:"olive to olive-brown", hex:"#5F6B3A",
-  hrs:[11,16], temp:[45,56], waters:"all", kind:"mayfly", overcastLove:true,
+  hrs:[11,16], temp:[45,56], waters:"all", range:Z.cont, kind:"mayfly", overcastLove:true,
   dry:[["BWO Comparadun",[16,20]],["CDC Sparkle Dun, olive",[18,20]],["Parachute Adams",[18,20]]],
   nymph:[["Pheasant Tail, beadhead",[16,20]],["RS2, gray",[18,20]],["Olive Perdigon",[16,18]]],
   spinner:[["Rusty Spinner",[18,20]]]},
  {id:"bluequill", name:"Blue Quill", latin:"Paraleptophlebia adoptiva", win:[DOY(4,1),DOY(4,22),DOY(5,15)], size:[16,18], body:"rusty mahogany", hex:"#6B4630",
-  hrs:[12,16], temp:[48,55], waters:"all", kind:"mayfly",
+  hrs:[12,16], temp:[48,55], waters:"all", range:Z.east, kind:"mayfly",
   dry:[["Blue Quill Comparadun",[16,18]],["Parachute Blue Quill",[16,18]]],
   nymph:[["Pheasant Tail",[16,18]],["Dark Hare's Ear",[16,18]]],
   spinner:[["Mahogany Spinner",[16,18]]]},
  {id:"quillgordon", name:"Quill Gordon", latin:"Epeorus pleuralis", win:[DOY(4,1),DOY(4,20),DOY(5,12)], size:[12,14], body:"dark blue-gray, quill segmented", hex:"#59606B",
-  hrs:[13,16], temp:[48,54], waters:"all", kind:"mayfly",
+  hrs:[13,16], temp:[48,54], waters:"all", range:Z.east, kind:"mayfly",
   dry:[["Quill Gordon Comparadun",[12,14]],["Quill Gordon, Catskill",[12,14]]],
   nymph:[["Quill Gordon Wet",[12,14]],["Dark Hare's Ear",[12,14]]],
   spinner:[["Red Quill Spinner",[12,14]]]},
  {id:"hendrickson", name:"Hendrickson & Red Quill", latin:"Ephemerella subvaria", win:[DOY(4,15),DOY(5,3),DOY(5,25)], size:[12,14], body:"clay pink (female), red-brown (male)", hex:"#B08268",
-  hrs:[14,17], temp:[50,56], waters:"all", kind:"mayfly", marquee:true,
+  hrs:[14,17], temp:[50,56], waters:"all", range:Z.east.concat(Z.midw), kind:"mayfly", marquee:true,
   dry:[["Hendrickson Comparadun",[12,14]],["Red Quill (Flick)",[14]],["Hendrickson Cripple",[12,14]]],
   nymph:[["Hendrickson Soft-Hackle",[12,14]],["Pheasant Tail",[12,14]],["Frenchie",[14]]],
   spinner:[["Red Quill Spinner",[12,14]],["Rusty Spinner",[12,14]]]},
  {id:"grannom", name:"Grannom Caddis", latin:"Brachycentrus numerosus", win:[DOY(4,10),DOY(5,1),DOY(5,25)], size:[12,16], body:"dark olive-black, green egg sac", hex:"#3B4326",
-  hrs:[9,18], temp:[52,60], waters:"all", kind:"caddis", marquee:true,
+  hrs:[9,18], temp:[52,60], waters:"all", range:Z.cont, kind:"caddis", marquee:true,
   dry:[["Elk Hair Caddis, olive/black",[14,16]],["X-Caddis, dark olive",[14,16]],["Henryville Special",[14,16]]],
   nymph:[["Grannom Pupa",[14,16]],["Deep Sparkle Pupa, olive",[14,16]],["Green Caddis Larva",[12,14]]],
   spinner:[["Diving Caddis, black",[14,16]]]},
  {id:"applecaddis", name:"Apple Caddis", latin:"Brachycentrus appalachia", win:[DOY(4,20),DOY(5,7),DOY(5,20)], size:[14,16], body:"bright apple green", hex:"#7EA33C",
-  hrs:[11,15], temp:[52,60], waters:["wbd","ebd","bkill","willo","esopus","farm"], kind:"caddis",
+  hrs:[11,15], temp:[52,60], waters:["wbd","ebd","bkill","willo","esopus","farm"], range:Z.east, kind:"caddis",
   dry:[["Elk Hair Caddis, apple green body",[14,16]]],
   nymph:[["Apple Green Caddis Pupa",[14,16]],["Green Rock Worm",[14]]], spinner:null},
  {id:"marchbrown", name:"March Brown", latin:"Maccaffertium vicarium", win:[DOY(5,1),DOY(5,20),DOY(6,5)], size:[10,14], body:"tan-brown, dark barring", hex:"#A07A4A",
-  hrs:[11,18], temp:[55,64], waters:"all", kind:"mayfly",
+  hrs:[11,18], temp:[55,64], waters:"all", range:Z.east, kind:"mayfly",
   dry:[["March Brown Comparadun",[10,12]],["Parachute March Brown",[12]]],
   nymph:[["March Brown Nymph",[10,12]],["Partridge & Orange soft-hackle",[10,12]],["Hare's Ear",[10,12]]],
   spinner:[["Great Red Spinner",[10,12]]]},
  {id:"sulphur-inv", name:"Sulphur (invaria)", latin:"Ephemerella invaria", win:[DOY(4,28),DOY(5,20),DOY(6,12)], size:[14,16], body:"orange-amber, pink cast", hex:"#E0A94A",
-  hrs:[17,21], temp:[55,64], waters:"all", kind:"mayfly", marquee:true,
+  hrs:[17,21], temp:[55,64], waters:"all", range:Z.east.concat(Z.midw), kind:"mayfly", marquee:true,
   dry:[["Sulphur Comparadun",[14,16]],["Sulphur Cripple",[14,16]],["Snowshoe Sulphur Emerger",[14,16]]],
   nymph:[["Pheasant Tail",[14,16]],["Sulphur Soft-Hackle",[14,16]],["Hot-Spot Sulphur Perdigon",[14,16]]],
   spinner:[["Sulphur Spinner, rusty",[14,16]]]},
  {id:"sulphur-dor", name:"Sulphur (dorothea)", latin:"Ephemerella dorothea", win:[DOY(5,25),DOY(6,15),DOY(7,15)], size:[16,18], body:"pale lemon yellow", hex:"#EFD173",
-  hrs:[19,21.5], temp:[58,66], waters:"all", kind:"mayfly",
+  hrs:[19,21.5], temp:[58,66], waters:"all", range:Z.east.concat(Z.midw), kind:"mayfly",
   dry:[["Pale Evening Dun / Dorothea Comparadun",[16,18]],["Snowshoe Emerger, cream",[16,18]]],
   nymph:[["Pheasant Tail",[16,18]],["Yellow Hot-Spot Perdigon",[16,18]]],
   spinner:[["Sulphur Spinner",[16,18]]]},
  {id:"grayfox", name:"Gray Fox", latin:"Maccaffertium fuscum", win:[DOY(5,25),DOY(6,5),DOY(6,20)], size:[12,14], body:"pale cream-ginger", hex:"#D6BC85",
-  hrs:[16,20], temp:[58,66], waters:"all", kind:"mayfly",
+  hrs:[16,20], temp:[58,66], waters:"all", range:Z.east, kind:"mayfly",
   dry:[["Gray Fox Variant (Flick)",[12]],["Gray Fox Comparadun",[12,14]]],
   nymph:[["Hare's Ear",[12,14]]], spinner:[["Ginger Quill Spinner",[12,14]]]},
  {id:"greendrake", name:"Green Drake & Coffin Fly", latin:"Ephemera guttulata", win:[DOY(5,22),DOY(6,4),DOY(6,15)], size:[8,10], body:"creamy yellow, olive dorsal", hex:"#C9C16A",
-  hrs:"dusk", temp:[58,66], waters:["penns","fishingck","wbd","ebd","main","nvsk","littlej","ausable"], kind:"mayfly", marquee:true,
+  hrs:"dusk", temp:[58,66], waters:["penns","fishingck","wbd","ebd","main","nvsk","littlej","ausable"], range:Z.east, kind:"mayfly", marquee:true,
   dry:[["Green Drake Comparadun, 2XL",[8,10]],["Green Drake Paradrake",[8,10]]],
   nymph:[["Green Drake Wiggle Nymph, 3XL",[8,10]],["Large Hare's Ear",[8,10]]],
   spinner:[["Coffin Fly, white body",[8,10]]]},
  {id:"browndrake", name:"Brown Drake", latin:"Ephemera simulans", win:[DOY(6,5),DOY(6,11),DOY(6,20)], size:[10,12], body:"golden brown, amber", hex:"#B98A46",
-  hrs:"dusk", temp:[58,64], waters:["ebd","main","penns","batten"], kind:"mayfly", marquee:true,
+  hrs:"dusk", temp:[58,64], waters:["ebd","main","penns","batten"], range:Z.east.concat(Z.midw), kind:"mayfly", marquee:true,
   dry:[["Brown Drake Paradrake",[10]],["Brown Drake Comparadun",[10,12]]],
   nymph:[["Brown Drake Wiggle Nymph, 3XL",[8,10]]],
   spinner:[["Brown Drake Spinner",[10,12]]]},
  {id:"cornuta", name:"Large Olive (Cornuta)", latin:"Drunella cornuta", win:[DOY(6,5),DOY(6,14),DOY(6,25)], size:[12,16], body:"bright olive-green", hex:"#6E8A34",
-  hrs:[9,13], temp:[58,65], waters:"all", kind:"mayfly",
+  hrs:[9,13], temp:[58,65], waters:"all", range:Z.east, kind:"mayfly",
   dry:[["Cornuta Comparadun",[12,14]],["Olive Parachute",[14]]],
   nymph:[["Drunella Nymph",[12,14]],["Olive Hare's Ear",[14]]],
   spinner:[["Olive Spinner",[14]]]},
  {id:"lightcahill", name:"Light Cahill", latin:"Stenacron interpunctatum", win:[DOY(6,5),DOY(6,28),DOY(9,10)], size:[12,16], body:"cream to pale ginger", hex:"#EBD9A4",
-  hrs:[19,21.5], temp:[60,68], waters:"all", kind:"mayfly",
+  hrs:[19,21.5], temp:[60,68], waters:"all", range:Z.east.concat(Z.midw), kind:"mayfly",
   dry:[["Light Cahill Comparadun",[12,16]],["Parachute Light Cahill",[14]]],
   nymph:[["Light Cahill Nymph",[12,16]],["Partridge & Cream soft-hackle",[14,16]]],
   spinner:[["Light Cahill Spinner",[12,16]]]},
  {id:"isonychia", name:"Isonychia / Slate Drake", latin:"Isonychia bicolor", win:[DOY(6,1),DOY(9,20),DOY(10,31)], size:[10,14], body:"dark mahogany, pale stripe", hex:"#5A3A34",
-  hrs:[16,21], temp:[55,70], waters:"all", kind:"mayfly", marquee:true, bimodal:[DOY(6,15),DOY(9,25)],
+  hrs:[16,21], temp:[55,70], waters:"all", range:Z.east.concat(Z.midw), kind:"mayfly", marquee:true, bimodal:[DOY(6,15),DOY(9,25)],
   dry:[["Isonychia Comparadun",[10,12]],["Dun Variant (Flick)",[10,12]]],
   nymph:[["Isonychia Nymph",[10,12]],["Zug Bug",[10,12]],["Prince Nymph",[10,12]]],
   spinner:[["White-Gloved Howdy",[10,12]],["Mahogany Spinner",[10,12]]]},
  {id:"tancaddis", name:"Tan / Cinnamon Caddis", latin:"Hydropsyche", win:[DOY(5,10),DOY(7,1),DOY(9,30)], size:[14,18], body:"tan to cinnamon", hex:"#C69B62",
-  hrs:[18,21], temp:[58,72], waters:"all", kind:"caddis",
+  hrs:[18,21], temp:[58,72], waters:"all", range:Z.cont, kind:"caddis",
   dry:[["Elk Hair Caddis, tan",[14,18]],["X-Caddis, tan",[16,18]],["Spent Partridge Caddis",[16,18]]],
   nymph:[["LaFontaine Sparkle Pupa, amber",[14,18]],["Hare's Ear",[14,16]],["Walt's Worm",[14,16]]],
   spinner:[["Diving Caddis, tan",[16,18]]]},
  {id:"goldenstone", name:"Golden Stonefly", latin:"Acroneuria lycorias", win:[DOY(5,20),DOY(6,25),DOY(8,15)], size:[6,10], body:"golden amber", hex:"#C08A2E",
-  hrs:"dusk", temp:[55,70], waters:"all", kind:"stone",
+  hrs:"dusk", temp:[55,70], waters:"all", range:Z.cont, kind:"stone",
   dry:[["Stimulator, golden",[8,10]],["Chubby Chernobyl, gold",[8,10]]],
   nymph:[["Pat's Rubber Legs, gold/brown",[6,10]],["Tungsten Stonefly Jig",[8,10]],["20-Incher",[8,10]]], spinner:null},
  {id:"trico", name:"Trico", latin:"Tricorythodes", win:[DOY(6,28),DOY(8,5),DOY(10,10)], size:[20,24], body:"black (male), olive-black (female)", hex:"#242424",
-  hrs:[7,10.5], temp:[62,74], waters:"all", kind:"mayfly", marquee:true,
+  hrs:[7,10.5], temp:[62,74], waters:"all", range:Z.cont, kind:"mayfly", marquee:true,
   dry:[["Trico Spinner, poly wing",[22,24]],["Trico Comparadun",[22,24]]],
   nymph:[["Black Zebra Midge",[20,22]],["WD-40, black",[22]]],
   spinner:[["Trico Spinner, poly or CDC wing",[22,24]]]},
  {id:"whitefly", name:"White Fly", latin:"Ephoron leukon", win:[DOY(8,20),DOY(9,2),DOY(9,15)], size:[12,16], body:"chalk white", hex:"#EFEFE6",
-  hrs:"dusk", temp:[66,76], waters:["breeches","main","musky","littlej"], kind:"mayfly", marquee:true,
+  hrs:"dusk", temp:[66,76], waters:["breeches","main","musky","littlej"], range:Z.east, kind:"mayfly", marquee:true,
   dry:[["White Wulff",[12,14]],["White Comparadun",[12,14]]],
   nymph:[["White Fly Nymph",[12,14]],["Cream Hare's Ear",[12,14]]],
   spinner:[["White Fly Spinner",[12,14]]]},
  {id:"bwo-fall", name:"Blue Winged Olive, fall Baetis", latin:"Baetis tricaudatus", win:[DOY(9,1),DOY(10,15),DOY(12,10)], size:[18,24], body:"olive to olive-brown", hex:"#57633A",
-  hrs:[11,16], temp:[42,56], waters:"all", kind:"mayfly", marquee:true, overcastLove:true,
+  hrs:[11,16], temp:[42,56], waters:"all", range:Z.cont, kind:"mayfly", marquee:true, overcastLove:true,
   dry:[["BWO Comparadun",[18,22]],["Mole Fly",[18,20]],["CDC Sparkle Dun, olive",[20,22]]],
   nymph:[["Pheasant Tail",[18,22]],["WD-40",[18,22]],["Olive Perdigon",[18,20]]],
   spinner:[["Rusty Spinner",[18,22]]]},
  {id:"mahogany", name:"Mahogany Dun", latin:"Paraleptophlebia debilis", win:[DOY(8,25),DOY(9,20),DOY(10,15)], size:[16,18], body:"dark mahogany", hex:"#6A4534",
-  hrs:[11,15], temp:[50,62], waters:"all", kind:"mayfly",
+  hrs:[11,15], temp:[50,62], waters:"all", range:Z.cont, kind:"mayfly",
   dry:[["Mahogany Comparadun",[16,18]]], nymph:[["Pheasant Tail",[16,18]]], spinner:[["Mahogany Spinner",[16,18]]]},
  {id:"octcaddis", name:"October Caddis", latin:"Pycnopsyche", win:[DOY(9,1),DOY(10,8),DOY(10,31)], size:[8,12], body:"burnt orange to pumpkin", hex:"#C2622A",
-  hrs:[16,20], temp:[48,58], waters:"all", kind:"caddis",
+  hrs:[16,20], temp:[48,58], waters:"all", range:Z.west, kind:"caddis",
   dry:[["October Caddis Stimulator",[8,10]],["Orange Elk Hair Caddis",[10,12]]],
   nymph:[["October Caddis Pupa, amber",[8,12]],["Peeking Caddis",[10,12]]], spinner:null},
  {id:"terrestrial", name:"Terrestrials", latin:"ants, beetles, hoppers, inchworms", win:[DOY(5,15),DOY(8,15),DOY(10,10)], size:[12,20], body:"black, cinnamon, tan", hex:"#3A2E24",
-  hrs:[10,17], temp:[55,72], waters:"all", kind:"terrestrial", marquee:true, windLove:true,
+  hrs:[10,17], temp:[55,72], waters:"all", range:Z.cont, kind:"terrestrial", marquee:true, windLove:true,
   dry:[["Foam Beetle",[12,16]],["Parachute Ant, black",[16,18]],["Chubby Chernobyl, tan",[10,12]],["Green Weenie / Inchworm",[12,14]]],
   nymph:[["Sunken Ant",[16,18]],["Green Weenie",[12,14]]], spinner:null},
  {id:"scud", name:"Cress Bugs & Scuds", latin:"Gammarus / Asellus", win:[DOY(1,1),DOY(6,1),DOY(12,31)], size:[12,18], body:"gray, olive, tan", hex:"#8C8A6E",
-  hrs:"allday", temp:[35,68], waters:["spring","letort","breeches","fishingck","littlej","musky","lacka"], kind:"crustacean",
+  hrs:"allday", temp:[35,68], waters:["spring","letort","breeches","fishingck","littlej","musky","lacka"], range:Z.cont, kind:"crustacean",
   dry:null, nymph:[["Cress Bug, gray-olive",[14,16]],["Scud, olive",[14,16]],["Sowbug",[14,18]]], spinner:null},
+ /* --- the western fauna, and the two big Midwest mayflies ------
+    Everything above this line is eastern or continental, which is why
+    a Montana river used to get no chart at all. These are the insects
+    that actually live west of the plains, plus Hex and the Gray Drake,
+    which are most of June and July on a Michigan river and were never
+    in the book. */
+ {id:"hex", name:"Hexagenia (Hex)", latin:"Hexagenia limbata", win:[DOY(6,10),DOY(6,28),DOY(7,20)], size:[4,8], body:"pale yellow-olive, huge", hex:"#D8C27A",
+  hrs:[20,24], temp:[58,74], waters:"all", range:Z.midw.concat(Z.gl, [[41,48,-79,-68]]), kind:"mayfly",
+  dry:[["Hex Dun, extended body",[4,6]],["Hex Spinner, spent",[4,6]],["White Wulff",[6,8]]], nymph:[["Hex Wiggle Nymph",[4,8]],["Strip Nymph, olive",[6,8]]], spinner:[["Hex Spinner",[4,6]]]},
+ {id:"graydrake", name:"Gray Drake", latin:"Siphlonurus occidentalis / alternatus", win:[DOY(5,25),DOY(6,20),DOY(7,25)], size:[10,12], body:"slate gray, olive sheen", hex:"#7C8290",
+  hrs:[18,22], temp:[52,68], waters:"all", range:Z.midw.concat(Z.west), kind:"mayfly",
+  dry:[["Gray Drake Spinner",[10,12]],["Parachute Adams, large",[10,12]]], nymph:[["Gray Drake Nymph, swimming",[10,12]]], spinner:[["Gray Drake Spinner, spent",[10,12]]]},
+ {id:"skwala", name:"Skwala Stonefly", latin:"Skwala americana", win:[DOY(2,20),DOY(3,20),DOY(4,25)], size:[8,12], body:"olive-brown, amber belly", hex:"#7A6A38",
+  hrs:[12,17], temp:[40,52], waters:"all", range:Z.west, kind:"stone",
+  dry:[["Skwala Stimulator, olive",[8,12]],["Bullet Head Skwala",[10]]], nymph:[["Pat's Rubber Legs, olive-brown",[8,10]],["Twenty Incher",[10,12]]], spinner:null},
+ {id:"wmarchbrown", name:"Western March Brown", latin:"Rhithrogena morrisoni", win:[DOY(2,25),DOY(3,25),DOY(5,5)], size:[12,16], body:"tan-olive, mottled wing", hex:"#A98A5E",
+  hrs:[11,16], temp:[42,54], waters:"all", range:Z.pnw.concat(Z.calif), kind:"mayfly", overcastLove:true,
+  dry:[["March Brown Comparadun",[12,14]],["Parachute March Brown",[12,16]]], nymph:[["Pheasant Tail, natural",[12,16]],["March Brown Clinger Nymph",[12,14]]], spinner:[["March Brown Spinner",[12,14]]]},
+ {id:"salmonfly", name:"Salmonfly", latin:"Pteronarcys californica", win:[DOY(5,20),DOY(6,15),DOY(7,10)], size:[2,6], body:"black body, orange belly", hex:"#C8511E",
+  hrs:[10,19], temp:[50,60], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"stone",
+  dry:[["Chubby Chernobyl, orange",[4,8]],["Rogue Foam Salmonfly",[4,6]],["Norm Wood Special",[4,6]]], nymph:[["Pat's Rubber Legs, black-brown",[2,6]],["Twenty Incher",[8,10]]], spinner:null},
+ {id:"wgoldenstone", name:"Western Golden Stone", latin:"Hesperoperla pacifica", win:[DOY(6,5),DOY(6,28),DOY(7,31)], size:[6,10], body:"amber-gold", hex:"#C9992F",
+  hrs:[10,20], temp:[52,64], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"stone",
+  dry:[["Chubby Chernobyl, gold",[8,10]],["Yellow Stimulator",[8,12]]], nymph:[["Golden Stone Nymph, tungsten",[8,10]],["Pat's Rubber Legs, gold",[6,10]]], spinner:null},
+ {id:"pmd", name:"Pale Morning Dun", latin:"Ephemerella excrucians / infrequens", win:[DOY(6,1),DOY(7,5),DOY(9,5)], size:[14,18], body:"pale yellow-olive", hex:"#E3C877",
+  hrs:[9,14], temp:[50,64], waters:"all", range:Z.west, kind:"mayfly",
+  dry:[["PMD Comparadun",[16,18]],["Sparkle Dun, PMD",[16,18]],["CDC Rusty Spinner",[16,18]]], nymph:[["Pheasant Tail, PMD",[16,18]],["Split Case PMD",[16,18]]], spinner:[["Rusty Spinner",[16,18]]]},
+ {id:"wgreendrake", name:"Western Green Drake", latin:"Drunella grandis / doddsii", win:[DOY(6,15),DOY(7,5),DOY(8,10)], size:[10,14], body:"olive-green, dark wing", hex:"#4E6B3A",
+  hrs:[10,16], temp:[48,60], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"mayfly", overcastLove:true,
+  dry:[["Green Drake Paradrake",[10,12]],["Hairwing Green Drake",[10,12]],["Film Critic, olive",[12]]], nymph:[["Drunella Nymph, olive",[10,14]],["Hare's Ear, dark olive",[10,12]]], spinner:null},
+ {id:"callibaetis", name:"Callibaetis", latin:"Callibaetis ferrugineus", win:[DOY(5,1),DOY(7,1),DOY(9,20)], size:[14,18], body:"speckled tan-gray", hex:"#9C9276",
+  hrs:[10,16], temp:[52,70], waters:"all", range:Z.west.concat(Z.midw), kind:"mayfly",
+  dry:[["Callibaetis Cripple",[14,16]],["Parachute Adams",[14,18]],["Callibaetis Spinner, speckled",[14,16]]], nymph:[["Callibaetis Nymph, swimming",[14,18]],["Pheasant Tail, flashback",[16,18]]], spinner:[["Callibaetis Spinner",[14,16]]]},
+ {id:"yellowsally", name:"Little Yellow Sally", latin:"Isoperla", win:[DOY(5,20),DOY(6,25),DOY(8,15)], size:[14,18], body:"pale yellow, lime highlights", hex:"#DCCB55",
+  hrs:[14,21], temp:[52,66], waters:"all", range:Z.cont, kind:"stone",
+  dry:[["Yellow Sally, foam",[14,16]],["Yellow Stimulator, small",[14,16]]], nymph:[["Little Yellow Stone Nymph",[14,16]],["Yellow Perdigon",[16,18]]], spinner:null},
 ];
 
 /* --- Great Lakes run timing --- */
@@ -2144,9 +2217,15 @@ function rankOf(o){
   return o.i * o.clock * local * marq;
 }
 function activeHatches(ctx){
-  if(ctx.outOfBook) return [];        // no calendar reaches this water
+  /* Which insects live here, at this river's own coordinates — not the
+     analogue's. A few entries are still pinned to named waters, because
+     they really are that local; everything else is gated on the species'
+     range and the water temperature, which is what makes this chart the
+     chart for wherever the angler is standing. */
+  if(ctx.w.sp!=="trout") return [];
+  const {lat, lon} = ctx.w;
   return HATCHES
-    .filter(hx => hx.waters==="all" ? ctx.w.sp==="trout" : hx.waters.includes(hatchKeyOf(ctx.w)))
+    .filter(hx => hx.waters==="all" ? inRange(hx, lat, lon) : hx.waters.includes(hatchKeyOf(ctx.w)))
     .map(hx=>({hx, i:hatchIntensity(hx,ctx), clock:inClock(hx,ctx)}))
     .filter(o=>o.i>0.02)
     .map(o=>(o.rank=rankOf(o), o))
@@ -3223,7 +3302,7 @@ function recommend(ctx){
   /* Every play reads a hatch, a species or a seasonal curve, and out
      here Riffle has none of the three. A guess would be indistinguishable
      from a reading, which is the one thing this app must not produce. */
-  if(ctx.outOfBook) return {picked:[], ah, runs};
+  if(ctx.outOfBook) return {picked:[], ah, runs};   // only when no species reach here at all
   let out=[];
   for(const p of PLAYS){
     let r=null;
@@ -3797,12 +3876,12 @@ async function drainAreas(sites){
    is a number nobody in this file was aiming at. So the shift is
    computed now, and the hand-written values stay as the check.
 
-   The SPECIES do not travel at all. Hendricksons, sulphurs, Cahills
-   and the rest are the eastern North American assemblage; west of
-   the plains it is Salmonfly and PMD and a different insect fauna
-   that this book has never heard of. That is a range, not a radius
-   — so the gate is where these bugs live, and inside it a computed
-   shift carries the calendar the whole way.
+   The SPECIES do not travel at all — so each one carries its own
+   range instead. Hendricksons are eastern, Salmonflies montane
+   western, Hex a Midwest and Great Lakes fly, Baetis very nearly
+   everywhere. A location gets whichever insects live there, timed
+   by its own latitude. There is no region and no radius anywhere in
+   this: just where each animal lives.
 ------------------------------------------------------------ */
 
 /* Where a river's hatch calendar sits, in days, relative to the latitude
@@ -3821,21 +3900,16 @@ function bioShift(lat, type){
   return Math.round(clamp(d, -30, 40));
 }
 
-/* The range of the bugs in this book: eastern North America, from the
-   Southern Appalachians to the boreal edge, and from the Atlantic to
-   the western limit of the eastern mayfly fauna out past the Driftless
-   and the Ozarks. Inside it the calendar is the same calendar, moved
-   by latitude. Outside it the app says so rather than guessing, because
-   a Montana river is not a late Catskill river — it is a different
-   fauna, and no shift in days will turn one into the other. */
-const EAST = {latMin:33.5, latMax:50.0, lonMin:-97.0, lonMax:-52.0};
-const inEast = (lat, lon)=> lat>=EAST.latMin && lat<=EAST.latMax
-                         && lon>=EAST.lonMin && lon<=EAST.lonMax;
+/* Does any insect in the table live here? This used to be a hand-drawn box
+   around eastern North America, because every hatch in the book was eastern.
+   Now that each species carries its own range, the question answers itself
+   from the table — and the answer is yes across the continent. */
+const anyHatchLives = (lat, lon)=> HATCHES.some(hx=>hx.waters==="all" && inRange(hx, lat, lon));
 
-/* How far the borrowed *thermal* curve is being stretched. The calendar
-   is handled by the shift; this is about the temperature and flow curves,
-   which are a real river's numbers and get less like yours the further
-   the analogue sits in latitude. */
+/* How far the borrowed *thermal* curve is being stretched. The calendar is
+   the species' business; this is about the temperature and flow curves,
+   which are a real river's numbers and get less like yours the further the
+   analogue sits in latitude. */
 function rangeOf(latGap){
   if(latGap<=1.2) return "near";       // about 80 miles of latitude
   if(latGap<=4.0) return "borrowed";
@@ -3898,8 +3972,10 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
   /* The calendar is gated on where these bugs live, not on how far the
      analogue is. Inside their range the shift carries it; outside, the
      seasonal half goes quiet and the measured half stays. */
-  const east   = inEast(point.lat, point.lon);
-  const beyond = !east;
+  /* Out of book is no longer a place — it is the answer to "does anything
+     in this table live here". With ranges on the species that is almost
+     nowhere, which is the point. */
+  const beyond = !anyHatchLives(point.lat, point.lon);
   const type   = point.type || (beyond ? "unknown" : tmpl.type);
   const range  = beyond ? "far" : rangeOf(latGap==null ? 0 : latGap);
   const shift  = beyond ? 0 : bioShift(point.lat, type);
@@ -3924,10 +4000,8 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
     temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
     shift, char: tmpl.char,
     note: (beyond
-        ? `This point is outside the range of the insects in Riffle's book, which are the `
-          + `eastern North American hatches. A different fauna lives here and no shift in `
-          + `days turns one into the other, so the hatch chart and the plays that read it `
-          + `are switched off rather than borrowed. `
+        ? `No insect Riffle carries has a range that reaches this point, so there is no `
+          + `hatch chart to print and the plays that read one are off rather than guessed. `
           + (gauge ? `The gauge is real: USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
                    : `No live gauge was found nearby either, so there are no numbers to show.`)
@@ -4305,16 +4379,14 @@ function outOfBookCard(ctx){
       : `The gauge reads <b>${t.toFixed(0)} °F</b>. Trout stress above 65 and should not be fished above 68, on any river.`;
   return `<div class="gate">
     <h2>Outside the book</h2>
-    <p>Riffle's hatch calendar is the <b>eastern North American</b> one — Hendricksons,
-       sulphurs, Cahills, Isonychia. Those insects do not live here. What hatches on this
-       water is a different fauna the book has never carried, and no amount of shifting
-       dates turns one into the other — so the hatch chart and the plays that read it are
-       off rather than borrowed. A guess would look exactly like a reading.</p>
+    <p>Every insect Riffle carries knows where it lives, and none of their ranges reach
+       this point. Rather than print somebody else's calendar here, it prints none — the
+       hatch chart and the plays that read one are off. A guess would look exactly like
+       a reading.</p>
     <p><b>What still holds:</b> a USGS gauge is a USGS gauge, and the access points and
        fly shops come from OpenStreetMap, which maps the whole country. ${thermal}</p>
-    <p>Anywhere from the Appalachians to the Driftless and the Ozarks gets the full
-       reading — the calendar travels on latitude. Out here, use this for the gauge,
-       the access and the shops.</p>
+    <p>Use this for the gauge, the wade call, the access and the shops — all of which
+       are measured rather than modeled, and all of which still hold.</p>
   </div>`;
 }
 
@@ -5134,6 +5206,10 @@ async function setPin(lat, lon, label){
 /* The rivers around the pin. Named rivers first — that list needs no
    network at all, so Baldwin answers instantly — and USGS's gauged
    streams only as the fallback for country nobody has named. */
+/* Past this the written book is not a list of places to fish this weekend,
+   and saying "nearest waters to Baldwin" over a river 300 miles away is the
+   app talking about itself instead of about the water. */
+const FAR_BOOK = 150;
 const RIVER_NEAR_MI = 90;      // how far out a named river is still "near here"
 const RIVER_SHOW    = 12;
 
@@ -5268,9 +5344,9 @@ function renderRiverCard(){
       <p class="muted">${esc(state.spot.name)} is both, at different times of the year. Riffle is reading it as
         <b>${state.spot.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b> — it will not guess which you mean.</p>`:""}
     ${st.status==="loading"?`<p class="muted">Also asking USGS what is gauged out here…</p>`:""}
-    ${!inEast(state.pin.lat, state.pin.lon)?`<p class="muted">Riffle will read any of these — the gauge, the wading
-       call and the shops all work out here. What it will not do is print a hatch chart: the book carries the eastern
-       insects and a different fauna lives on this side of the plains.</p>`:""}`);
+    ${!anyHatchLives(state.pin.lat, state.pin.lon)?`<p class="muted">Riffle will read any of these — the gauge, the
+       wading call and the shops all work out here. What it will not print is a hatch chart: no insect it carries has
+       a range that reaches this far.</p>`:""}`);
 
   const sp=$("#rvSp");
   if(sp) sp.addEventListener("click", ()=>chooseRiver(state.spot.pickedKey, sp.dataset.sp));
@@ -5395,10 +5471,6 @@ function renderWater(ctx){
   const shownList = state.nearAll ? list
     : list.filter((o,i)=> i<NEAR_OPEN || o.w.id===ctx.w.id);
   const hidden = list.length - shownList.length;
-  /* Past this the book is not a list of places to fish this weekend, and
-     saying "nearest waters to Baldwin" over a river 300 miles away is the
-     app talking about itself instead of about the water. */
-  const FAR_BOOK = 150;
   const nearestMi = from && list.length && list[0].d!=null ? list[0].d : 0;
   $("#nearWaters").innerHTML=`
     <div class="wcard">
@@ -5508,12 +5580,15 @@ function locate(explicit){
         const d=haversine(state.geo.lat,state.geo.lon,w.lat,w.lon);
         if(d<bd){bd=d;best=w;}
       }
-      /* The same distance question the pin path asks. A curated water is
-         never "outside the book" — it IS the book — so opening on the
-         nearest one put a phone in Bozeman on Conneaut Creek, 1,554 miles
-         off, with its steelhead run and its hatch chart intact. Beyond the
-         book's reach, open on nothing and let Plan say how far away it is. */
-      if(best && inEast(state.geo.lat, state.geo.lon)){
+      /* Opening on the nearest written water put a phone in Bozeman on
+         Conneaut Creek, 1,554 miles off, with its steelhead run intact.
+         Species ranges fixed the chart but not this: Montana has a real
+         calendar now, so "does anything hatch here" is true and no longer
+         says anything about whether that river is yours. The question here
+         is only whether the nearest written water is near enough to be
+         worth opening on. If it is not, open on nothing — Plan lists the
+         rivers that actually are near, and any of them reads in full. */
+      if(best && bd<=FAR_BOOK){
         state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best);
       }
     }
