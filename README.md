@@ -357,13 +357,50 @@ pressure comes from [Open-Meteo](https://open-meteo.com). Every panel says
 which of its numbers were read and which were modeled, because the difference
 is the whole point.
 
+## What it is written in
+
+Plain vanilla JavaScript, in a single HTML file. No framework, no build step,
+no transpiler, no bundler.
+
+`index.html` is 317 KB and 6,154 lines, and it is the whole app:
+
+| | |
+| --- | --- |
+| Inline JS | 271 KB · 4,941 lines — the engine, the data, the rendering |
+| Inline CSS | 43 KB, including a vendored copy of Leaflet's stylesheet |
+| Actual markup | ~3 KB — a masthead, four tab buttons, four empty divs |
+
+Everything on screen is built by string templates in JS and dropped into those
+divs with `innerHTML`. State is one plain `state` object. There is no reactive
+layer, no virtual DOM and no router.
+
+One external dependency: [Leaflet](https://leafletjs.com) 1.9.4 from cdnjs,
+pinned with a subresource-integrity hash and deferred so nothing on the opening
+tab waits for it. That is the only `<script src>` in the file.
+
+Three small server-side pieces — `netlify/functions/`, also plain ES modules,
+about 370 lines — exist only to hold the Google Places key server-side. The app
+works without them.
+
+The tests are the only part with dependencies: Node driving real Chromium
+through Playwright, plus a local copy of Leaflet to serve instead of the CDN.
+About 2,300 lines across `test/`, running 366 checks.
+
+Two consequences shape how everything else here is written:
+
+- **The CSP allows that inline script by its SHA-256 hash**, not by
+  `'unsafe-inline'`. So every edit to `index.html` needs `npm run seal` to
+  rewrite the hash in `netlify.toml` — forget it and the deploy serves a blank
+  page. `npm test` fails if the seal has drifted. See
+  [Editing index.html](#editing-indexhtml).
+- **No build step is why the data is literal.** The 272 rivers, 36 hatches, 43
+  shops and the play library are arrays in the same file rather than JSON
+  fetched at runtime, so the whole thing is one document you can open from disk
+  in a browser with no server at all.
+
 ## Running it
 
-`index.html` is self-contained — no build step, no dependencies to install.
-[Leaflet](https://leafletjs.com) 1.9.4 loads from cdnjs with a subresource
-integrity hash; its stylesheet is inlined so the map stays styled in embeds
-that block third-party CSS.
-Open it in a browser, or serve the directory:
+Nothing to install. Open `index.html` in a browser, or serve the directory:
 
 ```
 python3 -m http.server 8000
