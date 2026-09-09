@@ -427,7 +427,16 @@ the app falls back to the map, so nothing breaks and nothing is billed.
 
 Check Google's current pricing before you enable billing; the field mask in
 `netlify/functions/_places.mjs` deliberately asks for only what the card draws,
-because the field mask is the bill.
+because the field mask is the bill. It asks for `rating` and
+`userRatingCount` — the two fields the "most used" sort is built on — and that
+moves Text Search from the Essentials tier to **Pro**, so it costs more per
+call. It asks for no photos and no review text, which are the expensive half.
+The tab caches per location and only queries when you open it, so a day's
+fishing is a handful of calls.
+
+The key never reaches the browser: it lives in the Netlify function's
+environment, and the page talks to `/api/shops` on its own origin. Nothing
+needs to go in the CSP, and there is no key in the page source to steal.
 
 ## Deploying to Netlify
 

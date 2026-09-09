@@ -1104,6 +1104,7 @@ async function canadaPass(page, seen){
    confidence in both directions. */
 async function yakimaPass(page, seen){
   seen.yak = await page.evaluate(async ()=>{
+    const out={};
     const read=async (stats)=>{
       const spot=await buildSpot({lat:46.95, lon:-120.55, name:"Yakima River",
                                   place:"Ellensburg, WA", sp:"trout"});
@@ -1123,11 +1124,24 @@ async function yakimaPass(page, seen){
        is the shop anglers name for this water, and whether it writes the
        river up. On the Yakima that is Red's, which is further away than the
        nearest counter and still the right answer. */
+    /* What the reviews are worth. A 5.0 from three people must not beat a
+       4.8 from six hundred, and a shop nobody has reviewed must not be
+       pushed below a worse shop that happens to have been rated. */
+    const S=(o)=>shopScore(Object.assign({kind:"fishing"}, o));
+    out.pop = {
+      thin:  S({rating:5.0, reviews:3}),
+      thick: S({rating:4.8, reviews:600}),
+      unrated: S({}),
+      poorButRated: S({rating:3.1, reviews:400}),
+      /* real numbers must be able to out-argue the hand-written list */
+      knownPlain: S({known:true}),
+      popularStranger: S({rating:4.9, reviews:900}),
+    };
     const shops = knownShops(46.95, -120.55, 40000);
     const ranked = sortShops(shops, "known").map(x=>x.name);
     const nearest = sortShops(shops, "near").map(x=>x.name);
     const report = shopReportFor({name:"Yakima River", lat:46.95, lon:-120.55});
-    return {own: await read(), ranked, nearest, report,
+    return {own: await read(), ranked, nearest, report, pop: out.pop,
             noReportWhereNoneWritten: shopReportFor({name:"Beaverkill", lat:41.94, lon:-74.97})};
   });
 }
@@ -1480,6 +1494,14 @@ const SCENARIOS = {
        "and its river report is the one the Fish tab links to", k.report);
     ok(k.noReportWhereNoneWritten===null,
        "where no shop in the book writes one up, nothing is invented", k.noReportWhereNoneWritten);
+
+    const p=k.pop;
+    ok(p.thick > p.thin,
+       "a 4.8 from six hundred people beats a 5.0 from three", p);
+    ok(p.unrated===p.poorButRated,
+       "an unreviewed shop is not ranked below a badly reviewed one — reviews give neither anything", p);
+    ok(p.popularStranger > p.knownPlain,
+       "and where Google has real numbers they can out-argue the hand-written list", p);
   },
   calendar: (s)=>{
     const c=s.cal;

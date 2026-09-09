@@ -195,6 +195,8 @@ button{font:inherit;color:inherit;cursor:pointer}
   border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--raised);
 }
 .shoplinks a:hover{border-color:var(--accent);color:var(--accent-ink)}
+.stars{font-weight:600;color:var(--ink2)}
+.stars span{font-weight:400;color:var(--ink3)}
 .knownmark{
   display:inline-block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   font-weight:600;color:var(--verd);border:1px solid var(--verd);background:var(--verd-soft);
@@ -5321,10 +5323,34 @@ async function loadShops(){
    key. It is whether this is a shop anglers name for this river, then
    whether the listing looks like a going concern (a website, a phone,
    posted hours) rather than a pin somebody dropped once. */
+/* What the reviews are worth, which is not the star rating. A 5.0 from
+   three people is a friend and a cousin; a 4.8 from six hundred is a
+   shop. So the rating is shrunk toward the ordinary in proportion to how
+   thin the count is — the standard Bayesian average, with a prior of
+   twenty-five reviews at 4.3, which is roughly where small retail sits.
+
+   Absent is not zero: a shop nobody has reviewed scores nothing here and
+   is ranked on distance, rather than being pushed below a worse shop
+   that happens to have been rated. */
+function popScore(sh){
+  const r=Number(sh.rating), n=Number(sh.reviews);
+  if(!(r>0) || !(n>0)) return 0;
+  const m=25, C=4.3;
+  const adj=(n/(n+m))*r + (m/(n+m))*C;
+  return clamp((adj-3.6)*30, 0, 45);
+}
+
 function shopScore(sh){
   let n=0;
-  if(sh.known) n+=100;
-  if(sh.report) n+=20;
+  /* Being the shop anglers name for this water is strong evidence, but not
+     decisive. The hand-written list is forty entries and inevitably
+     incomplete, so a shop it has never heard of with nine hundred reviews
+     at 4.9 out-ranks a bare name on it — which is the honest outcome when
+     there is real data to argue with. Where there is none, as on the
+     OpenStreetMap path, the list still leads. */
+  if(sh.known) n+=35;
+  if(sh.report) n+=15;
+  n+=popScore(sh);
   if(sh.site) n+=6;
   if(sh.tel) n+=4;
   if(sh.hours) n+=3;
@@ -5344,9 +5370,12 @@ function shopRow(sh){
     sh.tel?`<a href="tel:${esc(sh.tel.replace(/[^0-9+]/g,""))}">${esc(sh.tel)}</a>`:"",
     `<a href="${esc(sh.map)}" target="_blank" rel="noopener noreferrer">Map</a>`,
   ].filter(Boolean).join("");
+  const stars = (Number(sh.rating)>0 && Number(sh.reviews)>0)
+    ? `<span class="stars">${Number(sh.rating).toFixed(1)}\u2605 <span>${Number(sh.reviews).toLocaleString()} review${sh.reviews===1?"":"s"}</span></span>`
+    : "";
   return `<div class="shoprow">
     <span class="sn">${esc(sh.name)}${sh.known?` <span class="knownmark">known for this water</span>`:""}
-      <span>${esc(sh.kindLabel)}${sh.where?` \u00b7 ${esc(sh.where)}`:""}</span>
+      <span>${esc(sh.kindLabel)}${sh.where?` \u00b7 ${esc(sh.where)}`:""}${stars?" \u00b7 ":""}${stars}</span>
       <span class="shoplinks">${links}</span>
     </span>
     <span class="wd">${esc(milesOf(sh.dist))}</span>
@@ -5387,11 +5416,18 @@ function renderShopsCard(){
   const anyKnown=st.list.some(sh=>sh.known);
   const toggle=`<div class="dactions" style="margin-top:2px">
       <button type="button" class="dbtn ghost" id="shopSort" data-to="${mode==="known"?"near":"known"}">
-        ${mode==="known"?"Sort by nearest":"Sort by best known"}</button>
+        ${mode==="known"?"Sort by nearest":"Sort by most used"}</button>
     </div>`;
+  /* Google's terms require the attribution wherever their place data is
+     shown without one of their maps under it, so it appears exactly when a
+     row on this card came from them. */
+  const fromGoogle = near.some(sh=>String(sh.id||"").startsWith("places/"));
+  const attribution = fromGoogle
+    ? `<p class="muted" style="margin-top:9px;font-size:11px">Shop details and ratings powered by Google.</p>`
+    : "";
   const lead = mode==="known"
-    ? (anyKnown
-        ? `The shops anglers name for this water first, then the nearest. Call ahead — hours on a river road are their own thing.`
+    ? (anyKnown || fromGoogle
+        ? `The shops people actually use for this water first — what anglers name for it, and what the reviews say — then the nearest. Call ahead; hours on a river road are their own thing.`
         : `Nothing hand-written for this river yet, so this is the nearest the map has. Call ahead — hours on a river road are their own thing.`)
     : `Nearest first. Call ahead — hours on a river road are their own thing.`;
   el.innerHTML=head
@@ -5399,6 +5435,7 @@ function renderShopsCard(){
     + toggle
     + near.map(shopRow).join("")
     + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} listed further out.</p>`:"")
+    + attribution
     + findMore;
   const t=$("#shopSort");
   if(t) t.addEventListener("click", ()=>{ state.shopSort=t.dataset.to; renderShopsCard(); });

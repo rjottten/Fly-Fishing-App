@@ -34,8 +34,14 @@ console.log("\n  what the directory is asked");
   ok(b.locationBias.circle.radius===40000, "biased to the water being read", b.locationBias.circle.radius);
   ok(P.searchBody(LAT,LON,900000).locationBias.circle.radius===50000,
      "and clamped to the largest circle the API accepts", P.searchBody(LAT,LON,900000).locationBias.circle.radius);
-  ok(!/photo|review|rating/i.test(P.FIELD_MASK),
-     "the field mask asks for nothing the card does not draw — it is also the bill", P.FIELD_MASK);
+  /* The mask is the bill, so it is still checked — but rating and review
+     count are now drawn, and they are the only honest answer to which of
+     these is the shop people use. Photos and review TEXT are not drawn and
+     must stay out; they are also the expensive half. */
+  ok(!/photo|places\.reviews/i.test(P.FIELD_MASK),
+     "the field mask asks for no photos and no review text — it is also the bill", P.FIELD_MASK);
+  ok(/places\.rating/.test(P.FIELD_MASK) && /places\.userRatingCount/.test(P.FIELD_MASK),
+     "but it does ask for the rating and how many people left one", P.FIELD_MASK);
 }
 
 console.log("\n  what comes back");
@@ -47,6 +53,20 @@ console.log("\n  what comes back");
   ok(sh.where==="123 River Rd, Starlight", "the address is trimmed to what fits a row", sh.where);
   ok(sh.kindLabel==="Fly and tackle" && sh.pri===0, "and it ranks with the tackle shops", sh);
   ok(sh.dist>0 && sh.dist<40000, "with a real distance from the water", Math.round(sh.dist));
+}
+{
+  /* Ratings are what the Shop tab ranks "most used" on, so they have to
+     survive the mapping — and absence has to survive it too. A shop nobody
+     has reviewed is not a nought-star shop. */
+  const [rated] = run([place({rating:4.8, userRatingCount:612})]);
+  ok(rated.rating===4.8 && rated.reviews===612, "a rating and its count come through", rated);
+  const [bare] = run([place()]);
+  ok(bare.rating===null && bare.reviews===null,
+     "and a shop with neither is null, not zero — nobody has reviewed it, that is all", bare);
+  const [odd] = run([place({rating:"4.4", userRatingCount:"88"})]);
+  ok(odd.rating===4.4 && odd.reviews===88, "numbers arriving as strings are still numbers", odd);
+  const [junk] = run([place({rating:"n/a", userRatingCount:{}})]);
+  ok(junk.rating===null && junk.reviews===null, "and nonsense is dropped rather than coerced", junk);
 }
 {
   const names=run([

@@ -15,12 +15,18 @@
 export const PLACES_URL = "https://places.googleapis.com/v1/places:searchText";
 
 /* Only the fields the card renders. The field mask is also the bill, so
-   asking for reviews or photos here would be paying for pixels nobody
-   draws. */
+   nothing is asked for that nobody draws — no photos, no opening hours,
+   no review text.
+
+   rating and userRatingCount are the exception, and they earn it: they
+   are the only honest answer to "which of these is the shop people
+   actually use". They move this request from the Essentials SKU to Pro,
+   so it costs more per call — which is why the tab still asks once per
+   location and caches, rather than on every redraw. */
 export const FIELD_MASK = [
   "places.id","places.displayName","places.formattedAddress",
   "places.location","places.websiteUri","places.nationalPhoneNumber",
-  "places.businessStatus",
+  "places.businessStatus","places.rating","places.userRatingCount",
 ].join(",");
 
 export function searchBody(lat, lon, radiusM){
@@ -86,6 +92,11 @@ export function normalise(json, lat, lon, radiusM){
       tel:  safeTel(p.nationalPhoneNumber),
       map:  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${encodeURIComponent(String(p.id||""))}`,
       lat: la, lon: lo, dist,
+      /* Absent is not zero. A shop nobody has reviewed is not a bad shop,
+         so it carries null and the ranking leaves it on distance. */
+      rating: Number.isFinite(Number(p.rating)) ? Number(p.rating) : null,
+      reviews: Number.isInteger(p.userRatingCount) ? p.userRatingCount
+             : (Number.isFinite(Number(p.userRatingCount)) ? Math.round(Number(p.userRatingCount)) : null),
     });
   }
   out.sort((a,b)=>a.dist-b.dist);
