@@ -1863,7 +1863,6 @@ const state = {
   access:{status:"idle", list:[], radius:8000, chosen:null},
   shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
   rivers:{status:"idle", list:[], key:null},   // gauged rivers around the pin, from USGS
-  nearAll:false,                               // whether the whole book is open under the map
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plan", checked:new Set(),
   plan:null,                                   // {date,hour} — a day being read ahead of time
@@ -5089,7 +5088,6 @@ function whereShell(){
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
     <div id="riverCard"></div>
-    <div id="nearWaters"></div>
     <div class="wcard" id="accessCard"></div>`;
   wireWhere();
   whereBuilt=true;
@@ -5442,67 +5440,6 @@ function renderWater(ctx){
   whereShell();
   if(state.tab==="plan") initMap();
   renderAccessCard();
-
-  const g=state.geo;
-  /* The book re-sorts around wherever the angler last pointed — a
-     searched address, a dropped pin, an access point they picked —
-     and only falls back to the device location when they have
-     pointed nowhere at all. Asking "what else is near here?" about
-     a place you are not standing in is most of the point of Where. */
-  const short=(t)=>String(t||"").split(",")[0].trim();      // a heading wants the town, not the postal address
-  const from = state.pin ? {lat:state.pin.lat, lon:state.pin.lon, what:short(state.pin.label)||"your pin"}
-             : g        ? {lat:g.lat, lon:g.lon, what:"your location"}
-             : null;
-  /* The book and the named waters go in one list, sorted by distance, because
-     the question is "what is near me" and not "which of these did someone hand-
-     write". What separates them travels with each row instead: a book water
-     names the gauge it was built around, a named one says it is read live. */
-  const list=WATERS.map(w=>({w, named:false, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
-    .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
-
-  /* Nearest first, directly under the map — the answer to the question
-     the map has just been asked. Everything about how the reading was
-     built now travels with the reading itself, on Fish.
-
-     Only the near end is open, because sixty-nine rows between the
-     map and the access list is a wall rather than an answer; the rest
-     is one tap away, and the water being read is always in view. */
-  const NEAR_OPEN=8;
-  const shownList = state.nearAll ? list
-    : list.filter((o,i)=> i<NEAR_OPEN || o.w.id===ctx.w.id);
-  const hidden = list.length - shownList.length;
-  const nearestMi = from && list.length && list[0].d!=null ? list[0].d : 0;
-  $("#nearWaters").innerHTML=`
-    <div class="wcard">
-      <h3>${!from || nearestMi>FAR_BOOK ? "Waters in the book" : `Nearest waters to ${esc(from.what)}`}</h3>
-      <p>${nearestMi>FAR_BOOK
-          ? `The book itself is a Northeast one and its nearest water is <b>${nearestMi} miles</b> away, so these
-             are here to read, not to drive to. The rivers around your pin are in the card above.`
-          : ctx.w.spot
-          ? `Reading <b>${esc(ctx.w.name)}</b>, picked off the map. Tap a water below to read that one instead.`
-          : from
-          ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
-          : `Location is off, so Riffle opened on <b>${esc(ctx.w.name)}</b>. Search above, tap the map, or pick from the list.`}</p>
-      <div class="wlist">
-        ${shownList.map(({w,d})=>`
-          <button class="wbtn" data-w="${w.id}" aria-current="${!ctx.w.spot&&w.id===ctx.w.id}">
-            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
-            ${d!=null?`<span class="wd">${d} mi</span>`:""}
-          </button>`).join("")}
-      </div>
-      ${hidden>0?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearMore">Show all ${list.length} waters</button></div>`
-        : state.nearAll?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearLess">Show the nearest ${NEAR_OPEN}</button></div>`:""}
-    </div>`;
-  const more=$("#nearMore"), less=$("#nearLess");
-  if(more) more.addEventListener("click",()=>{ state.nearAll=true; draw(); });
-  if(less) less.addEventListener("click",()=>{ state.nearAll=false; draw(); });
-
-  document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
-    state.access.chosen=null;
-    state.waterId=b.dataset.w; state.spot=null;
-    state.live=null; state.baro=null; draw();
-    refreshLive(water());
-  }));
 }
 
 /* --- masthead current ribbon -------------------------------- */
@@ -5593,10 +5530,11 @@ function locate(explicit){
       }
     }
     draw();
-    if(explicit){
-      showTab("plan");
-      setPin(state.geo.lat, state.geo.lon, "Your location");
-    }
+    /* The rivers around you are the water picker now, and that card is
+       drawn around a pin — so locating drops one either way. Only an
+       explicit tap moves the angler to Plan to look at it. */
+    if(explicit) showTab("plan");
+    setPin(state.geo.lat, state.geo.lon, explicit ? "Your location" : null);
   },()=>{ if(explicit) draw(); },{timeout:8000, maximumAge:600000});
 }
 
