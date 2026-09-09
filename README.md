@@ -271,6 +271,27 @@ so if Environment Canada does not answer, the USGS lookup still runs.
   they swim away strong. Riffle says so on the day and names colder water
   nearby, but it cannot make the call for you.
 
+## One trip, then a clean sheet
+
+Everything you tap on **Report** is about a particular afternoon. The clarity
+chip means *the water in front of me is green*; the ticked flies mean *I still
+need these*; a planned day means *the Saturday I am driving out*. None of that
+is true a fortnight later, and a phone does not close its tabs.
+
+So the observations expire. Come back after five hours and they clear
+themselves, once, with a line on **Fish** saying what went — because changing
+what the plays are built on without saying so would be the app quietly
+disagreeing with what is on screen.
+
+Two things are never swept: **the diary**, which is the record rather than the
+session, and **which river you were on**, because re-finding it is real work and
+being on the wrong river is obvious in a way that a stale clarity chip is not. A
+day still in the future survives too — that is a plan, not a leftover.
+
+A trip lasting several days is the exception, so it is a switch. **Hold for this
+trip**, at the foot of the Report tab, and nothing expires until you let go. It
+outlives the tab being closed.
+
 ## The diary
 
 Everything else in Riffle is modeled: seasonal curves, hatch calendars,

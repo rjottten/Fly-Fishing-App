@@ -403,6 +403,7 @@ async function walk(browser, scenario){
 
   await shopPass(page, seen);
   await calendarPass(page, seen);
+  if(scenario==="trip") await tripPass(page, seen);
   if(scenario==="yakima") await yakimaPass(page, seen);
   if(scenario==="canada"||scenario==="canadadown") await canadaPass(page, seen);
   /* This one picks a river and leaves the app on it, so it runs only where
@@ -1146,6 +1147,55 @@ async function yakimaPass(page, seen){
   });
 }
 
+/* A phone does not close its tabs. Everything the angler taps is about one
+   afternoon, so coming back a fortnight later must not greet them with last
+   trip's muddy water and a half-ticked shopping list — and must never take
+   the diary, which is the record rather than the session. */
+async function tripPass(page, seen){
+  seen.trip = await page.evaluate(async ()=>{
+    const dirty=()=>{
+      state.ov={flow:"blown", clarity:"muddy", sky:"overcast", baro:null};
+      state.checked=new Set(["f-Parachute Adams","f-Zebra Midge"]);
+      state.plan={date:"2020-05-01", hour:10};          // long past
+      state.diary=[normEntry({date:"2026-05-01", waterId:"bkill", hatchKey:"bkill",
+        water:"Beaverkill", lat:41.94, lon:-74.97, outcome:"hot", methods:["dry"]})];
+    };
+    const snap=()=>({ov:Object.values(state.ov).filter(Boolean).length,
+                     checked:state.checked.size, plan:!!state.plan,
+                     diary:state.diary.length, swept:(state.swept||[]).length});
+    const out={};
+
+    /* Away five minutes: still the same afternoon. */
+    state.trip=false; dirty();
+    localStorage.setItem("riffle.seen.v1", String(Date.now()-5*60*1000));
+    freshenSession(); out.brief=snap();
+
+    /* Away two days: a different trip. */
+    dirty(); state.swept=null;
+    localStorage.setItem("riffle.seen.v1", String(Date.now()-48*60*60*1000));
+    freshenSession(); out.stale=snap();
+
+    /* Same gap, but held on purpose. */
+    dirty(); state.swept=null; state.trip=true;
+    localStorage.setItem("riffle.seen.v1", String(Date.now()-48*60*60*1000));
+    freshenSession(); out.held=snap();
+    state.trip=false;
+
+    /* A day still ahead is a plan, not a leftover. */
+    dirty(); state.swept=null;
+    const d=new Date(Date.now()+7*86400000);
+    state.plan={date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`, hour:10};
+    localStorage.setItem("riffle.seen.v1", String(Date.now()-48*60*60*1000));
+    freshenSession(); out.future=snap();
+
+    /* And the switch survives the tab being closed. */
+    state.trip=true; tripSave(); state.trip=false; tripLoad();
+    out.heldPersists=state.trip;
+    state.trip=false; tripSave();
+    return out;
+  });
+}
+
 /* ---------- what each scenario must prove ---------- */
 const SCENARIOS = {
   happy: (s)=>{
@@ -1502,6 +1552,20 @@ const SCENARIOS = {
        "an unreviewed shop is not ranked below a badly reviewed one — reviews give neither anything", p);
     ok(p.popularStranger > p.knownPlain,
        "and where Google has real numbers they can out-argue the hand-written list", p);
+  },
+  trip: (s)=>{
+    const t=s.trip;
+    ok(t.brief.ov===3 && t.brief.checked===2 && t.brief.plan && !t.brief.swept,
+       "back after five minutes, nothing is touched — that is still the same afternoon", t.brief);
+    ok(t.stale.ov===0 && t.stale.checked===0 && !t.stale.plan,
+       "back after two days, last trip's water and shopping list are gone", t.stale);
+    ok(t.stale.swept===3, "and the app says what it cleared rather than changing its mind quietly", t.stale);
+    ok(t.stale.diary===1, "the diary is never swept — it is the record, not the session", t.stale);
+    ok(t.held.ov===3 && t.held.checked===2 && !t.held.swept,
+       "held for a trip, the same two-day gap changes nothing", t.held);
+    ok(t.future.plan===true,
+       "a day still ahead survives — that is a plan, not a leftover", t.future);
+    ok(t.heldPersists===true, "and the hold outlives the tab", t.heldPersists);
   },
   calendar: (s)=>{
     const c=s.cal;

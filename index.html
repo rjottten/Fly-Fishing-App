@@ -197,6 +197,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 .shoplinks a:hover{border-color:var(--accent);color:var(--accent-ink)}
 .stars{font-weight:600;color:var(--ink2)}
 .stars span{font-weight:400;color:var(--ink3)}
+/* the trip switch, under the chips it governs */
+.tripbar{
+  display:flex;gap:12px;align-items:center;justify-content:space-between;
+  margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);
+}
+.triplab{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.tripbar p{margin:4px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.45;max-width:34em}
+.tripbar .dbtn{flex:none}
+.linkish{
+  background:none;border:0;padding:0;margin-left:6px;font:inherit;font-weight:600;
+  color:var(--accent-ink);text-decoration:underline;cursor:pointer;
+}
 .knownmark{
   display:inline-block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   font-weight:600;color:var(--verd);border:1px solid var(--verd);background:var(--verd-soft);
@@ -2044,7 +2056,82 @@ const state = {
   diaryOK:true,                                // false when the browser refuses to store them
   dform:null,                                  // the half-written entry, kept across redraws
   dmsg:null,                                   // what the last save or import had to say
+  trip:false,                                  // held on purpose — see the trip block below
+  swept:null,                                  // what the last sweep cleared, to say so once
 };
+
+/* --- one trip, then a clean sheet ----------------------------
+   Everything the angler taps is about a particular afternoon. The
+   clarity chip means "the water in front of me is green"; the
+   ticked flies mean "I still need these"; the planned day means
+   "the Saturday I am driving out". None of that is true a
+   fortnight later, and a phone does not close its tabs. Left
+   alone this app would greet someone in April still reading
+   March's muddy water, with last trip's shopping list ticked off,
+   and nothing on screen would say it was stale.
+
+   So the observations expire. Come back after a few hours and
+   they are cleared, once, with a line saying what went. What is
+   never swept is the diary — that is the record, not the session
+   — nor which river you were on, because re-finding it is real
+   work and being on the wrong river is obvious in a way that a
+   stale clarity chip is not.
+
+   A trip lasting several days is the exception, so it is a
+   switch: hold it, and nothing expires until you let go.
+------------------------------------------------------------ */
+const TRIP_KEY  = "riffle.trip.v1";
+const STALE_MS  = 5*60*60*1000;      // a long lunch is not a new trip; a night's sleep is
+
+function tripLoad(){
+  try{
+    const raw=localStorage.getItem(TRIP_KEY);
+    if(!raw) return;
+    const j=JSON.parse(raw);
+    state.trip = !!(j && j.held);
+  }catch(e){ /* storage refused — the sweep still works, it just cannot be held */ }
+}
+function tripSave(){
+  try{ localStorage.setItem(TRIP_KEY, JSON.stringify({held:!!state.trip})); }
+  catch(e){ /* nothing to do; the switch lasts this session only */ }
+}
+
+/* When the tab was last actually used. Written on every draw, so it
+   tracks attention rather than the clock. */
+const SEEN_KEY = "riffle.seen.v1";
+function seenTouch(){ try{ localStorage.setItem(SEEN_KEY, String(Date.now())); }catch(e){} }
+function seenLast(){
+  try{ const n=parseInt(localStorage.getItem(SEEN_KEY),10); return isFinite(n)?n:0; }
+  catch(e){ return 0; }
+}
+
+/* Clears what belongs to one afternoon and returns what it cleared, so
+   the app can say so rather than quietly changing its mind. */
+function sweepSession(){
+  const gone=[];
+  if(Object.values(state.ov).some(v=>v!==null)){
+    state.ov={flow:null, clarity:null, sky:null, baro:null};
+    gone.push("what you said the water was doing");
+  }
+  if(state.checked.size){ state.checked=new Set(); gone.push("the ticks on the shop list"); }
+  /* A day still ahead is a plan, not a leftover. Only a past one goes. */
+  if(state.plan && state.plan.date < isoLocal(new Date())){
+    state.plan=null; gone.push("a planned day that has been and gone");
+  }
+  state.dform=null; state.dmsg=null;
+  return gone;
+}
+
+/* Called on load and whenever the tab comes back to the front. */
+function freshenSession(){
+  if(state.trip){ seenTouch(); return; }
+  const last=seenLast();
+  if(last && Date.now()-last > STALE_MS){
+    const gone=sweepSession();
+    if(gone.length) state.swept=gone;
+  }
+  seenTouch();
+}
 
 /* --- barometer ----------------------------------------------
    Trend, not absolute height, is what moves fish. Weights below
@@ -4893,9 +4980,25 @@ function reportHTML(ctx){
   </div>`;
 }
 
+/* Said once, after a sweep. Changing what the plays are built on without
+   saying so would be the app quietly disagreeing with what is on screen. */
+function sweptHTML(){
+  if(!state.swept || !state.swept.length) return "";
+  const list=state.swept.length===1 ? state.swept[0]
+    : state.swept.slice(0,-1).join(", ")+" and "+state.swept[state.swept.length-1];
+  return `<div class="hint" role="status" id="sweptNote">
+    <span>\u21BB</span>
+    <span><b>Starting fresh.</b> It has been a while, so Riffle cleared ${esc(list)} —
+      that was last time's water, not this one. On a trip of several days,
+      <b>hold</b> it on the Report tab and nothing will expire.
+      <button type="button" class="linkish" id="sweptOK">Got it</button></span>
+  </div>`;
+}
+
 function renderFish(res, ctx){
   const el=$("#panel-fish");
   el.innerHTML=`
+  ${sweptHTML()}
   ${conditionsHTML(ctx)}
   ${reportHTML(ctx)}
   ${ctx.outOfBook?"":tacticHTML(ctx)}
@@ -4947,6 +5050,8 @@ function renderFish(res, ctx){
       : `These are modeled from the calendar and the gauge. Write down what the river actually did today and it comes back the next time you stand here at this point in the season.`}</p>
     <div class="dactions"><button type="button" class="dbtn ghost" id="toDiary">Log this day</button></div>
   </div>`;
+  const ok=$("#sweptOK");
+  if(ok) ok.addEventListener("click",()=>{ state.swept=null; draw(); });
   const go=$("#toDiary");
   if(go) go.addEventListener("click",()=>showTab("report"));
 }
@@ -4977,9 +5082,26 @@ function renderRefine(ctx){
     ${g("Flow","flow",[["low","Low"],["normal","Normal"],["pushy","Pushy"],["high","High"],["blown","Blown"]])}
     ${g("Clarity","clarity",[["gin","Gin clear"],["clear","Clear"],["green","Green"],["stained","Stained"],["muddy","Muddy"]])}
     ${g("Sky","sky",[["bright","Bluebird"],["partly","Partly cloudy"],["overcast","Overcast"]])}
+
+    <div class="tripbar">
+      <div>
+        <div class="triplab">${state.trip?"Held for this trip":"Cleared between trips"}</div>
+        <p>${state.trip
+          ? `Nothing above expires while this is on. Turn it off when you get home, or it will still say this in a fortnight.`
+          : `These read the afternoon you are standing in, so after five hours away they clear themselves. On a trip of several days, hold them.`}</p>
+      </div>
+      <button type="button" class="dbtn ghost" id="tripHold" aria-pressed="${state.trip}">
+        ${state.trip?"Let it clear":"Hold for this trip"}</button>
+    </div>
   </div>`;
 }
 function wireRefine(){
+  const hold=$("#tripHold");
+  if(hold) hold.addEventListener("click",()=>{
+    state.trip=!state.trip; tripSave(); seenTouch();
+    state.swept=null;                       // the notice belongs to the sweep, not to this
+    draw();
+  });
   /* scoped: the day-picker chips above the tabs are .rchip too, and a
      handler that read their missing data-k wrote a stray override. */
   document.querySelectorAll("#onriver .rchip").forEach(b=>{
@@ -6124,6 +6246,7 @@ function draw(){
   renderRiverCard();
   renderDiary(ctx);
   warmShops();
+  if(state.trip || !document.hidden) seenTouch();
 }
 
 /* The counters are looked up from a centre the app already knows, so
@@ -6141,6 +6264,8 @@ function warmShops(){
   seam(); watchLeaflet(); wireTabs(); wireChrome();
   state.diaryOK = diaryUsable();
   state.diary   = diaryLoad();     // the book is open before the first reading is taken
+  tripLoad();
+  freshenSession();                // last trip's observations do not belong to this one
   draw();
   if(state.tab==="plan") whereShown();   // the opening tab carries the map
   locate(false);
@@ -6148,7 +6273,11 @@ function warmShops(){
   tick=setInterval(()=>{ if(!document.hidden) draw(); }, 10*60*1000);
   /* A tab left open on the bank should not show an hour-old clock for ten
      minutes after you pick the phone back up. */
-  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) draw(); });
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden) return;
+    freshenSession();              // a phone left in a pocket for a week comes back to a clean sheet
+    draw();
+  });
 })();
 </script>
 
