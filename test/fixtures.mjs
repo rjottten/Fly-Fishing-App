@@ -81,6 +81,25 @@ export const ECCC_REALTIME = {type:"FeatureCollection", features:[
 ]};
 export const ECCC_CMS = 92.3, ECCC_CFS = Math.round(92.3*35.3147);
 
+/* The Yakima at Umtanum: 1,594 mi² of semi-arid Washington, drawn down for
+   irrigation, and matched — correctly, on latitude and river type — to a
+   54 mi² Adirondack freestone. Its own daily percentiles are what make
+   1,850 cfs read as the ordinary September flow it is. */
+export const SITE_YAKIMA = "USGS\t12484500\tYAKIMA RIVER AT UMTANUM WA\t46.8613\t-120.4842\t1594";
+export const YAKIMA_CFS = 1850;
+
+/* USGS daily-statistics RDB, one row per calendar day. Written for whatever
+   day the suite runs on, because the app asks for today's row. */
+export function yakimaStats(when){
+  const d = when || new Date();
+  return [
+    "# USGS daily statistics",
+    "agency_cd\tsite_no\tparameter_cd\tmonth_nu\tday_nu\tp10_va\tp25_va\tp50_va\tp75_va\tp90_va",
+    "5s\t15s\t5s\t2n\t2n\t12n\t12n\t12n\t12n\t12n",
+    `USGS\t12484500\t00060\t${d.getMonth()+1}\t${d.getDate()}\t980\t1320\t1750\t2400\t3300`,
+  ].join("\n");
+}
+
 export const GEOCODE = [
   {display_name:"Roscoe, Sullivan County, New York, USA", lat:"41.9337", lon:"-74.9143"},
 ];

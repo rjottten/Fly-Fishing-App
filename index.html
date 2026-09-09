@@ -4032,6 +4032,85 @@ async function drainAreas(sites){
   }catch(e){ return {}; }
 }
 
+/* --- a river's bands from its own record ----------------------
+   Scaling an analogue's bands by drainage area assumes two
+   catchments shed water at the same rate per square mile, and
+   across a continent they do not. The Yakima at Umtanum drains
+   1,594 square miles of semi-arid Washington and is drawn down for
+   irrigation; the West Branch Ausable drains 54 square miles of
+   wet Adirondack hillside. Riffle matched them — correctly, on
+   latitude and river type — and then read 1,850 cfs, an ordinary
+   Yakima summer, as BLOWN with the bands carried unscaled and as
+   VERY LOW with them scaled by the 29-fold area ratio. Both
+   answers were confident and neither was close.
+
+   A gauge with a record does not need an analogue. USGS publishes
+   the daily percentiles of every site's own history, which is
+   precisely what a flow band is: p25 to p75 is the water this
+   river normally runs at on this date, p10 is low, p90 is high.
+   So the bands come from the river itself where that record
+   exists, and the analogue is left to do what it is good at —
+   seasonal shape, hatch timing, character.
+
+   Wade thresholds still travel from the analogue, as a multiple of
+   its own ideal band rather than as a number of cubic feet: how
+   wadeable a freestone is at twice its normal flow is a fact about
+   freestones, not about any one river's size.
+------------------------------------------------------------ */
+const STAT_PCTS = ["p10","p25","p50","p75","p90"];
+
+async function gaugeStats(site, when){
+  try{
+    const url=`https://waterservices.usgs.gov/nwis/stat/?format=rdb&sites=${encodeURIComponent(site)}`
+            + `&statReportType=daily&statTypeCd=${STAT_PCTS.join(",")}&parameterCd=00060`;
+    const res=await withTimeout(url, null, 12000);
+    if(!res.ok) return null;
+    const rows=parseRDB(await res.text());
+    if(!rows.length) return null;
+    const d=when||new Date();
+    const m=d.getMonth()+1, day=d.getDate();
+    /* One row per calendar day. Take today's; if the record has a gap
+       there, the nearest day either side still describes this week. */
+    let best=null, bd=Infinity;
+    for(const r of rows){
+      const mm=parseInt(r.month_nu,10), dd=parseInt(r.day_nu,10);
+      if(!isFinite(mm)||!isFinite(dd)) continue;
+      const gap=Math.abs((mm-m)*31+(dd-day));
+      if(gap<bd){ bd=gap; best=r; }
+    }
+    if(!best || bd>10) return null;
+    const v={};
+    for(const k of STAT_PCTS){
+      const n=parseFloat(best[k+"_va"]);
+      if(isFinite(n) && n>=0) v[k]=n;
+    }
+    /* The middle of the record is what the bands are built on, so
+       without p25/p75 there is nothing here worth using. */
+    if(!isFinite(v.p25) || !isFinite(v.p75) || v.p75<=0) return null;
+    return v;
+  }catch(e){ return null; }
+}
+
+/* Percentiles into the shape the rest of the app reads. Blown is the one
+   number the record does not name: p90 is a high year's ordinary spring,
+   not a flood, so it is taken well above that. */
+function bandsFromStats(v, tmpl){
+  const r=(n)=>Math.max(1, Math.round(n));
+  const low   = isFinite(v.p10) ? v.p10 : v.p25*0.6;
+  const high  = isFinite(v.p90) ? v.p90 : v.p75*1.5;
+  const mid   = (v.p25+v.p75)/2;
+  const tMid  = (tmpl.flow.ideal[0]+tmpl.flow.ideal[1])/2;
+  /* Wadeability as a multiple of normal flow is a property of the KIND of
+     river, so those ratios travel from the analogue even though the cubic
+     feet do not. */
+  const k=(x)=> r(mid * (x/tMid));
+  return {
+    flow:{low:r(low), ideal:[r(v.p25), r(v.p75)], high:r(high), blown:r(high*1.6)},
+    wade:{full:k(tmpl.wade.full), good:k(tmpl.wade.good),
+          limited:k(tmpl.wade.limited), max:k(tmpl.wade.max)},
+  };
+}
+
 /* --- the spot profile ---------------------------------------- */
 /* --- how far the book reaches -------------------------------
    This used to be a distance. A spot borrowed the nearest of the
@@ -4196,9 +4275,13 @@ function gaugeAway(m){
   return `${mi<10?mi.toFixed(1):Math.round(mi)} miles from the pin`;
 }
 
-function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
-  const calibrated = isFinite(ratio) && ratio>0;
-  const bands = calibrated ? scaleBands(tmpl, ratio) : {flow:tmpl.flow, wade:tmpl.wade};
+function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap, stats){
+  /* Three ways to get a band, best first: the river's own record, the
+     analogue scaled by drainage area, the analogue as written. */
+  const own = stats ? bandsFromStats(stats, tmpl) : null;
+  const calibrated = !!own || (isFinite(ratio) && ratio>0);
+  const bands = own || (isFinite(ratio) && ratio>0 ? scaleBands(tmpl, ratio)
+                                                   : {flow:tmpl.flow, wade:tmpl.wade});
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
   const ownGauge = !!gauge && gauge.id===tmpl.gauge;
@@ -4248,13 +4331,15 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
           + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
                    : `No live gauge was found nearby, so the numbers are modeled. `)
-          + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
+          + (own ? `Flow bands are this river's own — the daily range USGS ${gauge?gauge.id:""} has recorded for this date.`
+             : !calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
              : ownGauge  ? `The flow bands are this gauge's own.`
                          : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
     pickedGauge: point.pickedGauge || null,
     pickedKey: point.pickedKey || null,
     both: !!point.both,
-    spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
+    spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated,
+           bandSource: own ? "own" : (isFinite(ratio)&&ratio>0 ? "scaled" : "borrowed")},
   };
 }
 
@@ -4285,7 +4370,11 @@ async function buildSpot(point){
   } else if(gauge && gauge.id===tmpl.gauge){
     ratio=1;
   }
-  return spotProfile(point, tmpl, dist, gauge, ratio, latGap);
+  /* The river's own record, where USGS keeps one. Asked after the gauge is
+     known and before the profile is built; a miss just falls through to the
+     analogue, which is what happened before this existed. */
+  const stats = gauge && !gauge.ca ? await gaugeStats(gauge.id) : null;
+  return spotProfile(point, tmpl, dist, gauge, ratio, latGap, stats);
 }
 
 /* ============================================================

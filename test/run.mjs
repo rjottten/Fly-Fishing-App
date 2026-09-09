@@ -145,6 +145,12 @@ async function mock(page, scenario){
     scenario==="noelevation" ? r.fulfill(json({}))
       : r.fulfill(json({elevation:[F.ELEV_M]})));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
+  /* Daily percentiles — a river's own flow bands. The yakima scenario serves
+     them; everywhere else the record is absent, which is the fall-through to
+     the analogue that existed before. */
+  await page.route("**://waterservices.usgs.gov/nwis/stat/**", r =>
+    scenario==="yakima" ? r.fulfill({status:200, contentType:"text/plain", body:F.yakimaStats()})
+      : r.fulfill({status:404, contentType:"text/plain", body:"no statistics"}));
   /* Canada's gauges. Two collections, both GeoJSON; realtime is matched
      first because the stations pattern would otherwise swallow it. */
   await page.route("**://api.weather.gc.ca/collections/hydrometric-stations/**", r =>
@@ -159,6 +165,7 @@ async function mock(page, scenario){
     if(scenario==="michigan") return r.fulfill(rdbOf(bbox ? F.MI_SITES : [F.SITE_PM_UP, F.SITE_BEAVERKILL]));
     if(scenario==="scaled")  return r.fulfill(rdbOf(bbox ? [F.SITE_LITTLE] : [F.SITE_LITTLE, F.SITE_BEAVERKILL]));
     if(scenario==="noarea")  return r.fulfill(rdbOf([F.SITE_LITTLE_NOAREA]));
+    if(scenario==="yakima")  return r.fulfill(rdbOf([F.SITE_YAKIMA, F.SITE_BEAVERKILL]));
     return r.fulfill(rdbOf(bbox ? [F.SITE_BEAVERKILL, F.SITE_LITTLE] : [F.SITE_BEAVERKILL, F.SITE_WBD]));
   });
 }
@@ -396,6 +403,7 @@ async function walk(browser, scenario){
 
   await shopPass(page, seen);
   await calendarPass(page, seen);
+  if(scenario==="yakima") await yakimaPass(page, seen);
   if(scenario==="canada"||scenario==="canadadown") await canadaPass(page, seen);
   /* This one picks a river and leaves the app on it, so it runs only where
      that is the point — otherwise it changes the water out from under the
@@ -1088,6 +1096,30 @@ async function canadaPass(page, seen){
   });
 }
 
+/* A big western river matched to a small eastern one. The match is right —
+   latitude and river type are what make one river a reading for another —
+   but its FLOW is not transferable, and the app used to say so with total
+   confidence in both directions. */
+async function yakimaPass(page, seen){
+  seen.yak = await page.evaluate(async ()=>{
+    const read=async (stats)=>{
+      const spot=await buildSpot({lat:46.95, lon:-120.55, name:"Yakima River",
+                                  place:"Ellensburg, WA", sp:"trout"});
+      const keepS=state.spot, keepL=state.live;
+      state.spot=spot; state.live={gauge:spot.gauge, cfs:1850, tempF:55, at:new Date()};
+      const ctx=buildContext();
+      const out={template:spot.spot.template.name, gauge:spot.gauge,
+                 bandSource:spot.spot.bandSource, ideal:spot.flow.ideal,
+                 blown:spot.flow.blown, wadeMax:spot.wade.max,
+                 cfs:ctx.cfs, state:ctx.fs.k, label:ctx.fs.label,
+                 note:(spot.note||"").match(/Flow bands[^.]*\./)||[""]};
+      state.spot=keepS; state.live=keepL;
+      return out;
+    };
+    return {own: await read()};
+  });
+}
+
 /* ---------- what each scenario must prove ---------- */
 const SCENARIOS = {
   happy: (s)=>{
@@ -1395,6 +1427,23 @@ const SCENARIOS = {
        "and any reading that does come back is not dressed up as one", c.live);
     ok(s.plays>0, "the river still reads on modeled numbers", s.plays);
     ok(c.usgsStillWorks, "while USGS is unaffected", c.usgsStillWorks);
+  },
+  yakima: (s)=>{
+    const y=s.yak.own;
+    ok(y.template==="West Branch Ausable" || /Ausable|Battenkill|Esopus/.test(y.template),
+       "the Yakima still matches an eastern freestone at its latitude — that part was right", y.template);
+    ok(y.gauge==="12484500", "and reads its own gauge", y.gauge);
+    ok(y.bandSource==="own",
+       "but its flow bands come from its own record, not from the analogue", y.bandSource);
+    /* p25 and p75 for this date; the whole point is that 1,850 is ordinary. */
+    ok(y.ideal[0]===1320 && y.ideal[1]===2400,
+       "the daily range USGS has recorded for this river on this date", y.ideal);
+    ok(y.state==="normal",
+       "so 1,850 cfs is a normal September flow — it read Blown unscaled and Very low scaled by area",
+       {cfs:y.cfs, label:y.label});
+    ok(y.wadeMax>2400 && y.wadeMax<12000,
+       "and the wading ceiling is in this river's units, not an Adirondack creek's", y.wadeMax);
+    ok(/this river's own/.test(y.note[0]), "the card says where the bands came from", y.note[0]);
   },
   calendar: (s)=>{
     const c=s.cal;
