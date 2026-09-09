@@ -220,6 +220,18 @@ async function walk(browser, scenario){
   /* The app opens on Plan and the day picker is the first thing on it, so
      it has to be filled by the first paint — not by whatever redraw happens
      to come along next. */
+  /* The book list is gone, so the river card IS the water picker. If it
+     only ever drew around a pin, a browser that has just been told where
+     it is would show no picker at all until the angler searched. It takes
+     its centre from the location too — and it must do that without a pin,
+     because a pin costs an access lookup and a second shop query on load. */
+  if(GEO){
+    seen.pickerOnLoad = await page.evaluate(()=>({
+      rows: document.querySelectorAll("#riverCard .rvbtn").length,
+      pin: !!state.pin,
+      head: (document.querySelector("#riverCard h3")||{}).textContent||"",
+    }));
+  }
   seen.firstPaint = await page.evaluate(()=>{
     const w=document.getElementById("whenbar");
     return {open:(document.querySelector('.tab[aria-selected="true"]')||{}).textContent,
@@ -270,21 +282,17 @@ async function walk(browser, scenario){
   await page.waitForSelector(".wbtn.apt", {timeout:12000});
   if(scenario==="notiles") await page.waitForTimeout(4000);
 
-  // the book re-sorts around the searched point, not the device location
-  seen.nearHead = await page.$eval("#nearWaters h3", n=>n.textContent.trim());
-  seen.nearFirst = await page.$$eval("#nearWaters .wbtn .wn",
+  /* The rivers around the searched point — the only water picker on Plan
+     now that the book list is gone. It re-sorts around where the angler
+     pointed, not around the device location. */
+  await page.waitForSelector("#riverCard .rvbtn", {timeout:10000});
+  seen.nearHead = await page.$eval("#riverCard h3", n=>n.textContent.trim());
+  seen.nearFirst = await page.$$eval("#riverCard .rvbtn .wn",
     ns=>ns.slice(0,3).map(n=>n.childNodes[0].textContent.trim()));
-  seen.nearOpen = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
-  await page.click("#nearMore");
-  seen.nearOrdered = await page.$$eval("#nearWaters .wbtn .wd",
-    ns=>ns.map(n=>parseInt(n.textContent,10)));
-  /* Read the total off the app rather than pinning an integer here: the
-     book grows, and a test that has to be edited every time it does is a
-     test that gets edited without being read. */
-  seen.waterRows = await page.evaluate(()=>WATERS.length);
-  await page.click("#nearLess");
-  seen.nearCollapsed = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
-  await page.click("#nearMore");        // open, so the water switch below can reach Penns
+  seen.nearOrdered = await page.$$eval("#riverCard .rvbtn .wd",
+    ns=>ns.map(n=>parseInt(n.textContent,10)||0));
+  seen.nearBook = await page.$$eval("#riverCard .rvbtn",
+    ns=>ns.filter(n=>/^book:/.test(n.dataset.k)).map(n=>n.dataset.k));
 
   seen.names = await page.$$eval(".wbtn.apt .wn", ns=>ns.map(n=>n.childNodes[0].textContent.trim()));
   seen.kinds = await page.$$eval(".wbtn.apt .akind", ns=>ns.map(n=>n.textContent.trim()));
@@ -307,7 +315,7 @@ async function walk(browser, scenario){
   seen.shop  = await page.$$eval("#panel-shop .sitem", n=>n.length);
 
   // a water from the book must clear the synthesized spot
-  await page.click('#nearWaters .wbtn[data-w="penns"]');
+  await page.click('#riverCard .rvbtn[data-k="book:willo"]');
   await page.waitForTimeout(400);
   seen.afterBook = await page.$eval("#planbar .pb-id h2", n=>n.textContent.trim());
   seen.spotCleared = await page.evaluate(()=>state.spot===null);
@@ -319,7 +327,7 @@ async function walk(browser, scenario){
     const fish=document.getElementById("panel-fish");
     const cond=document.getElementById("conditions");
     const map=document.getElementById("mapCard");
-    const near=document.getElementById("nearWaters");
+    const near=document.getElementById("riverCard");
     const tactic=document.getElementById("tactic");
     const hatch=document.getElementById("hatchIntro");
     const when=document.getElementById("whenbar");
@@ -897,9 +905,9 @@ async function diaryPass(page, seen){
   // and they speak only for the water they were logged on
   seen.reloadPct = await page.evaluate(()=>{
     const here = buildContext().mem.tech.streamer;
-    state.waterId="penns"; state.spot=null;
+    state.waterId="willo"; state.spot=null;         // the water the walk logged them on
     const there = buildContext().mem.tech.streamer;
-    return {elsewhere: here?here.pct:null, penns: there?there.pct:null};
+    return {elsewhere: here?here.pct:null, logged: there?there.pct:null};
   });
 
   // a day on another water, at another time of year, must not speak for this one
@@ -960,14 +968,14 @@ const SCENARIOS = {
     ok(!s.uncalibrated, "bands from the water's own gauge are not flagged uncalibrated");
     ok(s.plays>0 && s.hatch>0 && s.shop>0, "plays, hatch and shop list all render for a spot",
        {plays:s.plays, hatch:s.hatch, shop:s.shop});
-    ok(s.nearHead==="Nearest waters to Roscoe", "the book re-sorts around the point you searched", s.nearHead);
-    eq(s.nearFirst, ["Beaverkill","Willowemoc Creek","East Branch Delaware"],
-       "and lists the Catskill waters around Roscoe first");
-    ok(s.nearOpen<=9, "only the near end of the book is open, so the map is not buried", s.nearOpen);
-    ok(s.nearOrdered.length===s.waterRows && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
-       "and one tap opens every water Riffle knows, nearest first",
-       {shown:s.nearOrdered.length, known:s.waterRows});
-    ok(s.nearCollapsed===s.nearOpen, "and another folds it back", {open:s.nearOpen, back:s.nearCollapsed});
+    ok(/near Roscoe/.test(s.nearHead), "the river list is built around the point you searched", s.nearHead);
+    ok(s.nearFirst.includes("Beaverkill") && s.nearFirst.includes("Willowemoc Creek"),
+       "and leads with the Catskill waters around Roscoe", s.nearFirst);
+    ok(s.nearOrdered.length>0 && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
+       "listed nearest first", s.nearOrdered);
+    ok(s.nearOrdered.length<=12, "and kept short enough not to bury the map", s.nearOrdered.length);
+    ok(s.nearBook.length>0,
+       "with the written waters among them, so nothing is lost with the book list gone", s.nearBook);
     ok(s.layout.condInFish && s.layout.condFirstInFish, "river conditions lead the Fish tab", s.layout);
     ok(s.layout.condHasGauges && s.layout.condHasBaro, "with the gauges and the barometer in them", s.layout);
     ok(s.layout.condHasGaugeId && s.layout.condHasNote,
@@ -1083,7 +1091,7 @@ const SCENARIOS = {
     ok(s.stored.n===1 && s.stored.outcome==="hot", "the day is written to storage", s.stored);
     eq(s.stored.methods, ["streamer"], "with the method that caught");
     ok(s.stored.flies==="Olive sculpin, size 4", "and the flies that caught", s.stored.flies);
-    ok(s.stored.water==="Penns Creek", "logged against the water on screen", s.stored.water);
+    ok(s.stored.water==="Willowemoc Creek", "logged against the water on screen", s.stored.water);
     ok(/Olive sculpin/.test(s.entryText) && /Hot/.test(s.entryText), "and reads back as a day", s.entryText);
     ok(s.formReset===0, "the form clears what you said for the next day", s.formReset);
     ok(s.formKeepsCond===3, "but keeps the conditions prefilled from the reading", s.formKeepsCond);
@@ -1111,7 +1119,7 @@ const SCENARIOS = {
     ok(/^riffle-diary-\d{4}-\d{2}-\d{2}\.json$/.test(s.exported||""),
        "the book exports as a file the deploy's CSP does not block", s.exported);
     ok(s.afterReload===5, "every day survives the tab being closed", s.afterReload);
-    ok(s.reloadPct.penns>=12, "and still lean the plays hard on the next visit", s.reloadPct);
+    ok(s.reloadPct.logged>=12, "and still lean the plays hard on the next visit", s.reloadPct);
     ok(s.reloadPct.elsewhere===null, "on the water they were logged on, and no other", s.reloadPct);
     ok(s.outOfRange===0, "a day on another water in another season speaks for neither", s.outOfRange);
   },
@@ -1142,6 +1150,17 @@ const SCENARIOS = {
        "and there is a way back to now", s.planUI.backToNow);
   },
   security: (s)=>{
+    /* This scenario is one of the two that run with a real geolocation, so
+       it is where the picker-on-load property can be checked. The book list
+       is gone and the river card IS the water picker: if it only ever drew
+       around a pin, a browser that has just been told where it is would show
+       no picker at all until the angler searched. And it has to fill without
+       a pin, because a pin costs an access lookup and a second shop query on
+       load — which is exactly what CI caught. */
+    ok(s.pickerOnLoad.rows>0 && !s.pickerOnLoad.pin,
+       "the river picker fills from your location on first paint, with no pin dropped",
+       s.pickerOnLoad);
+
     ok(s.sec.fired===0, "an OSM name tag full of markup does not execute", s.sec);
     ok(!s.sec.tooltipHasImg && s.sec.tooltipShowsText,
        "the map tooltip renders it as text, not as an element", s.sec);
@@ -1448,7 +1467,7 @@ try{
     SCENARIOS[name](seen);
     ok(seen.violations.length===0, "no Content-Security-Policy violations", seen.violations);
     ok(seen.errors.length===0, "no console or page errors", seen.errors);
-    ok(seen.spotCleared && seen.afterBook==="Penns Creek",
+    ok(seen.spotCleared && seen.afterBook==="Willowemoc Creek",
        "choosing a water from the book clears the spot", seen.afterBook);
   }
 } finally {

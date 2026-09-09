@@ -36,7 +36,10 @@ panel is read through it.
 
 - **Plan** — search an address, drop a pin on the map, or use your location.
   Riffle then lists **the trout and steelhead rivers around that point** — 236
-  of them, across 30-odd states — nearest first, and reads whichever you pick. Below them, the public access OpenStreetMap has mapped around that
+  of them, across 30-odd states, with the 27 written waters among them — nearest
+  first, and reads whichever you pick. That list is the water picker; there is
+  no separate index of the book, because a column of Pennsylvania limestoners
+  700 miles from the pin was never an answer to anything. Below them, the public access OpenStreetMap has mapped around that
   point, and this water's wading ladder.
 - **Fish** — everything you read standing in the river, in the order you ask
   it. **River conditions** first: water temperature, flow band, clarity, light
