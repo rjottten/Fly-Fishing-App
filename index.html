@@ -1362,6 +1362,266 @@ const WATERS = [
   note:"Small, flashy and quick — drops back into shape in 24 to 48 hours. Fish concentrate below Burt Dam."},
 ];
 
+/* --- the rivers ---------------------------------------------
+   Not a book. A book entry is a verified gauge, flow and wading
+   bands tuned to its numbers, a twelve-month temperature curve and
+   a note on how the river fishes — weeks of work each, and there
+   are 27 of them because that is all anyone could write.
+
+   These are the other thing: the rivers people actually fish, with
+   a name, a point, and what swims in them. That is knowledge, and
+   it is the half of this problem that does not need looking up —
+   ask anyone where you catch trout and steelhead near Baldwin,
+   Michigan and you get the Pere Marquette, the Manistee and the
+   Muskegon. What needed looking up was never the river. It was the
+   gauge and the flow bands, and those are resolved at runtime from
+   USGS the moment you pick one.
+
+   Each row is name, place, latitude, longitude, fishery — t trout,
+   s a steelhead or salmon run, b both, which most Great Lakes and
+   coastal rivers are at different times of the year. The 27 written
+   waters appear in the same list and simply read better when picked.
+------------------------------------------------------------ */
+const SP_OF = {t:"trout", s:"steelhead", b:"both"};
+const RIVERS = [
+ ["Kenai River","Soldotna, AK",60.49,-151.06,"b"],
+ ["Little Red River","Heber Springs, AR",35.52,-92.02,"t"],
+ ["Norfork River","Norfork, AR",36.2,-92.28,"t"],
+ ["White River","Cotter, AR",36.28,-92.53,"t"],
+ ["Colorado River at Lees Ferry","Marble Canyon, AZ",36.87,-111.59,"t"],
+ ["American River","Sacramento, CA",38.6,-121.35,"b"],
+ ["East Walker River","Bridgeport, CA",38.2,-119.2,"t"],
+ ["Eel River","Fortuna, CA",40.6,-124.15,"s"],
+ ["Fall River","Fall River Mills, CA",41.0,-121.45,"t"],
+ ["Feather River","Oroville, CA",39.5,-121.55,"b"],
+ ["Hat Creek","Cassel, CA",40.9,-121.55,"t"],
+ ["Klamath River","Happy Camp, CA",41.8,-123.38,"b"],
+ ["Lower Sacramento River","Redding, CA",40.53,-122.35,"b"],
+ ["McCloud River","McCloud, CA",41.2,-122.13,"t"],
+ ["Owens River","Bishop, CA",37.37,-118.4,"t"],
+ ["Pit River","Fall River Mills, CA",41.0,-121.48,"t"],
+ ["Putah Creek","Winters, CA",38.52,-122.1,"t"],
+ ["Smith River","Crescent City, CA",41.8,-124.08,"s"],
+ ["Trinity River","Lewiston, CA",40.72,-122.8,"b"],
+ ["Truckee River","Truckee, CA",39.33,-120.18,"t"],
+ ["Upper Sacramento River","Dunsmuir, CA",41.22,-122.27,"t"],
+ ["Yuba River","Nevada City, CA",39.28,-121.1,"b"],
+ ["Animas River","Durango, CO",37.27,-107.88,"t"],
+ ["Arkansas River","Salida, CO",38.53,-106.0,"t"],
+ ["Big Thompson River","Estes Park, CO",40.37,-105.42,"t"],
+ ["Blue River","Silverthorne, CO",39.63,-106.07,"t"],
+ ["Cache la Poudre River","Fort Collins, CO",40.68,-105.35,"t"],
+ ["Colorado River","Hot Sulphur Springs, CO",40.07,-106.1,"t"],
+ ["Eagle River","Edwards, CO",39.64,-106.6,"t"],
+ ["Fryingpan River","Basalt, CO",39.37,-107.0,"t"],
+ ["Gunnison River","Almont, CO",38.67,-106.85,"t"],
+ ["Rio Grande","South Fork, CO",37.67,-106.63,"t"],
+ ["Roaring Fork River","Basalt, CO",39.37,-107.03,"t"],
+ ["South Platte River","Deckers, CO",39.25,-105.2,"t"],
+ ["Taylor River","Almont, CO",38.72,-106.75,"t"],
+ ["Yampa River","Steamboat Springs, CO",40.48,-106.83,"t"],
+ ["Naugatuck River","Thomaston, CT",41.67,-73.07,"t"],
+ ["Salmon River","Colchester, CT",41.56,-72.44,"t"],
+ ["Willimantic River","Coventry, CT",41.8,-72.32,"t"],
+ ["Chattooga River","Clayton, GA",34.88,-83.3,"t"],
+ ["Toccoa River","Blue Ridge, GA",34.85,-84.28,"t"],
+ ["Bloody Run Creek","Marquette, IA",43.02,-91.2,"t"],
+ ["French Creek","Lansing, IA",43.35,-91.28,"t"],
+ ["Big Wood River","Ketchum, ID",43.68,-114.36,"t"],
+ ["Clearwater River","Orofino, ID",46.48,-116.25,"b"],
+ ["Coeur d'Alene River","Kingston, ID",47.55,-116.13,"t"],
+ ["Henry's Fork","Island Park, ID",44.42,-111.37,"t"],
+ ["Salmon River","Stanley, ID",44.22,-114.93,"b"],
+ ["Silver Creek","Picabo, ID",43.31,-114.1,"t"],
+ ["South Fork Snake River","Swan Valley, ID",43.45,-111.35,"t"],
+ ["St. Joe River","Avery, ID",47.25,-115.8,"t"],
+ ["Teton River","Driggs, ID",43.72,-111.11,"t"],
+ ["Deerfield River","Charlemont, MA",42.63,-72.87,"t"],
+ ["East Branch Westfield","Chesterfield, MA",42.4,-72.85,"t"],
+ ["Swift River","Belchertown, MA",42.27,-72.35,"t"],
+ ["Casselman River","Grantsville, MD",39.7,-79.15,"t"],
+ ["Gunpowder Falls","Monkton, MD",39.57,-76.67,"t"],
+ ["Savage River","Bloomington, MD",39.5,-79.12,"t"],
+ ["Kennebec River","Bingham, ME",45.05,-69.88,"t"],
+ ["Rapid River","Upton, ME",44.72,-70.9,"t"],
+ ["Roach River","Kokadjo, ME",45.66,-69.28,"t"],
+ ["Au Sable River","Grayling, MI",44.66,-84.71,"t"],
+ ["Betsie River","Benzonia, MI",44.62,-86.1,"b"],
+ ["Big Manistee River","Wellston, MI",44.24,-85.98,"b"],
+ ["Black River","Onaway, MI",45.35,-84.2,"t"],
+ ["Boardman River","Traverse City, MI",44.7,-85.6,"t"],
+ ["Chocolay River","Marquette, MI",46.5,-87.3,"b"],
+ ["Dowagiac River","Niles, MI",41.9,-86.2,"b"],
+ ["Escanaba River","Gwinn, MI",46.28,-87.44,"t"],
+ ["Fox River","Seney, MI",46.35,-85.95,"t"],
+ ["Grand River","Grand Rapids, MI",42.96,-85.67,"b"],
+ ["Huron River","Big Bay, MI",46.75,-87.95,"b"],
+ ["Jordan River","East Jordan, MI",45.1,-85.1,"t"],
+ ["Kalamazoo River","Allegan, MI",42.53,-85.85,"b"],
+ ["Little Manistee River","Irons, MI",44.1,-85.85,"b"],
+ ["Manistique River","Manistique, MI",46.0,-86.25,"b"],
+ ["Muskegon River","Newaygo, MI",43.42,-85.8,"b"],
+ ["North Branch Au Sable","Lovells, MI",44.79,-84.48,"t"],
+ ["Ocqueoc River","Ocqueoc, MI",45.48,-84.05,"b"],
+ ["Ontonagon River","Ontonagon, MI",46.75,-89.3,"b"],
+ ["Paint River","Crystal Falls, MI",46.1,-88.33,"t"],
+ ["Pere Marquette River","Baldwin, MI",43.9,-85.85,"b"],
+ ["Pigeon River","Vanderbilt, MI",45.15,-84.55,"t"],
+ ["Pine River","Wellston, MI",44.26,-85.8,"t"],
+ ["Platte River","Honor, MI",44.66,-86.0,"b"],
+ ["Rifle River","Sterling, MI",44.03,-84.02,"b"],
+ ["Rogue River","Rockford, MI",43.12,-85.56,"b"],
+ ["South Branch Au Sable","Roscommon, MI",44.52,-84.55,"t"],
+ ["St. Joseph River","Berrien Springs, MI",41.95,-86.35,"b"],
+ ["Sturgeon River","Wolverine, MI",45.28,-84.6,"t"],
+ ["Thunder Bay River","Alpena, MI",45.06,-83.44,"b"],
+ ["Two Hearted River","Newberry, MI",46.68,-85.35,"b"],
+ ["Upper Manistee River","Grayling, MI",44.6,-84.85,"t"],
+ ["White River","Hesperia, MI",43.57,-86.04,"b"],
+ ["Whitefish River","Rapid River, MI",45.95,-86.98,"b"],
+ ["Baptism River","Silver Bay, MN",47.3,-91.2,"s"],
+ ["Knife River","Knife River, MN",46.95,-91.78,"s"],
+ ["Root River","Lanesboro, MN",43.72,-91.98,"t"],
+ ["South Branch Root River","Preston, MN",43.67,-92.08,"t"],
+ ["Straight River","Park Rapids, MN",46.95,-95.0,"t"],
+ ["Sucker River","Duluth, MN",46.9,-91.9,"s"],
+ ["Whitewater River","Elba, MN",44.09,-92.02,"t"],
+ ["Current River","Montauk, MO",37.45,-91.68,"t"],
+ ["Eleven Point River","Alton, MO",36.7,-91.4,"t"],
+ ["Lake Taneycomo","Branson, MO",36.65,-93.23,"t"],
+ ["Meramec River","St. James, MO",37.98,-91.55,"t"],
+ ["Niangua River","Lebanon, MO",37.78,-92.75,"t"],
+ ["Roaring River","Cassville, MO",36.58,-93.83,"t"],
+ ["Beaverhead River","Dillon, MT",45.22,-112.63,"t"],
+ ["Big Hole River","Wise River, MT",45.79,-112.98,"t"],
+ ["Bighorn River","Fort Smith, MT",45.32,-107.93,"t"],
+ ["Bitterroot River","Hamilton, MT",46.25,-114.16,"t"],
+ ["Blackfoot River","Ovando, MT",46.98,-113.13,"t"],
+ ["Boulder River","Big Timber, MT",45.83,-110.0,"t"],
+ ["Clark Fork","Missoula, MT",46.87,-113.99,"t"],
+ ["Gallatin River","Big Sky, MT",45.28,-111.25,"t"],
+ ["Jefferson River","Twin Bridges, MT",45.55,-112.33,"t"],
+ ["Kootenai River","Libby, MT",48.39,-115.55,"t"],
+ ["Madison River","Ennis, MT",45.35,-111.73,"t"],
+ ["Missouri River","Craig, MT",47.08,-111.98,"t"],
+ ["North Fork Flathead River","Columbia Falls, MT",48.37,-114.18,"t"],
+ ["Rock Creek","Clinton, MT",46.75,-113.68,"t"],
+ ["Ruby River","Alder, MT",45.32,-112.1,"t"],
+ ["Smith River","White Sulphur Springs, MT",46.55,-111.1,"t"],
+ ["Stillwater River","Absarokee, MT",45.52,-109.44,"t"],
+ ["Yellowstone River","Livingston, MT",45.66,-110.56,"t"],
+ ["Davidson River","Brevard, NC",35.28,-82.78,"t"],
+ ["Nantahala River","Bryson City, NC",35.35,-83.62,"t"],
+ ["South Toe River","Burnsville, NC",35.85,-82.22,"t"],
+ ["Tuckasegee River","Dillsboro, NC",35.37,-83.25,"t"],
+ ["Wilson Creek","Collettsville, NC",35.98,-81.75,"t"],
+ ["Androscoggin River","Errol, NH",44.78,-71.13,"t"],
+ ["Connecticut River, Trophy Stretch","Pittsburg, NH",45.09,-71.28,"t"],
+ ["Pemigewasset River","Woodstock, NH",43.98,-71.68,"t"],
+ ["Saco River","North Conway, NH",44.05,-71.13,"t"],
+ ["Big Flat Brook","Layton, NJ",41.17,-74.85,"t"],
+ ["Pequest River","Belvidere, NJ",40.87,-74.98,"t"],
+ ["Rio Chama","Abiquiu, NM",36.3,-106.65,"t"],
+ ["Rio Grande","Pilar, NM",36.32,-105.78,"t"],
+ ["San Juan River","Navajo Dam, NM",36.8,-107.65,"t"],
+ ["Truckee River","Reno, NV",39.52,-119.82,"t"],
+ ["Callicoon Creek","Callicoon, NY",41.76,-75.06,"t"],
+ ["East Branch Ausable","Jay, NY",44.36,-73.72,"t"],
+ ["Oatka Creek","Mumford, NY",43.0,-77.87,"t"],
+ ["Rondout Creek","Sundown, NY",41.93,-74.42,"t"],
+ ["Schoharie Creek","Hunter, NY",42.21,-74.22,"t"],
+ ["West Branch Croton","Croton Falls, NY",41.34,-73.72,"t"],
+ ["West Canada Creek","Trenton Falls, NY",43.29,-75.13,"t"],
+ ["Wiscoy Creek","Pike, NY",42.55,-78.13,"t"],
+ ["Ashtabula River","Ashtabula, OH",41.85,-80.79,"s"],
+ ["Chagrin River","Willoughby, OH",41.64,-81.4,"s"],
+ ["Grand River","Painesville, OH",41.72,-81.24,"s"],
+ ["Rocky River","Cleveland, OH",41.44,-81.85,"s"],
+ ["Vermilion River","Vermilion, OH",41.4,-82.36,"s"],
+ ["Clackamas River","Estacada, OR",45.29,-122.33,"s"],
+ ["Crooked River","Prineville, OR",44.15,-120.9,"t"],
+ ["Deschutes River","Maupin, OR",45.18,-121.08,"b"],
+ ["Fall River","La Pine, OR",43.77,-121.63,"t"],
+ ["Grande Ronde River","Troy, OR",45.95,-117.45,"b"],
+ ["John Day River","Fossil, OR",44.95,-120.2,"b"],
+ ["McKenzie River","Blue River, OR",44.16,-122.33,"t"],
+ ["Metolius River","Camp Sherman, OR",44.47,-121.64,"t"],
+ ["North Umpqua River","Idleyld Park, OR",43.35,-123.0,"b"],
+ ["Owyhee River","Adrian, OR",43.4,-117.2,"t"],
+ ["Rogue River","Grants Pass, OR",42.44,-123.33,"b"],
+ ["Sandy River","Sandy, OR",45.4,-122.27,"s"],
+ ["Williamson River","Chiloquin, OR",42.58,-121.87,"t"],
+ ["Allegheny River","Kinzua tailwater, Warren, PA",41.84,-79.14,"t"],
+ ["Big Spring Creek","Newville, PA",40.17,-77.4,"t"],
+ ["Brodhead Creek","Analomink, PA",41.05,-75.2,"t"],
+ ["Bushkill Creek","Easton, PA",40.7,-75.22,"t"],
+ ["Falling Spring Branch","Chambersburg, PA",39.94,-77.66,"t"],
+ ["Kettle Creek","Cross Fork, PA",41.48,-77.83,"t"],
+ ["Lackawaxen River","Rowland, PA",41.47,-74.98,"t"],
+ ["Loyalsock Creek","Forksville, PA",41.49,-76.6,"t"],
+ ["Oil Creek","Titusville, PA",41.63,-79.67,"t"],
+ ["Pine Creek","Slate Run, PA",41.47,-77.5,"t"],
+ ["Tulpehocken Creek","Reading, PA",40.35,-75.98,"t"],
+ ["Youghiogheny River","Confluence, PA",39.81,-79.35,"t"],
+ ["Clinch River","Norris, TN",36.22,-84.09,"t"],
+ ["Hiwassee River","Reliance, TN",35.18,-84.5,"t"],
+ ["Little River","Townsend, TN",35.68,-83.75,"t"],
+ ["South Holston River","Bristol, TN",36.52,-82.1,"t"],
+ ["Watauga River","Elizabethton, TN",36.35,-82.15,"t"],
+ ["Green River","Dutch John, UT",40.92,-109.42,"t"],
+ ["Logan River","Logan, UT",41.75,-111.7,"t"],
+ ["Provo River","Heber City, UT",40.52,-111.42,"t"],
+ ["Weber River","Oakley, UT",40.72,-111.3,"t"],
+ ["Jackson River","Covington, VA",37.83,-79.95,"t"],
+ ["Mossy Creek","Bridgewater, VA",38.4,-78.95,"t"],
+ ["Rapidan River","Syria, VA",38.4,-78.35,"t"],
+ ["Smith River","Bassett, VA",36.75,-79.98,"t"],
+ ["Lamoille River","Johnson, VT",44.64,-72.68,"t"],
+ ["Mettawee River","Dorset, VT",43.25,-73.1,"t"],
+ ["White River","Stockbridge, VT",43.77,-72.68,"t"],
+ ["Winooski River","Waterbury, VT",44.34,-72.75,"t"],
+ ["Bogachiel River","Forks, WA",47.9,-124.4,"s"],
+ ["Cowlitz River","Salkum, WA",46.53,-122.63,"s"],
+ ["Hoh River","Forks, WA",47.8,-124.25,"s"],
+ ["Kalama River","Kalama, WA",46.02,-122.8,"s"],
+ ["Klickitat River","Klickitat, WA",45.82,-121.15,"s"],
+ ["Methow River","Twisp, WA",48.37,-120.12,"s"],
+ ["Queets River","Amanda Park, WA",47.53,-124.0,"s"],
+ ["Sauk River","Darrington, WA",48.25,-121.6,"s"],
+ ["Skagit River","Rockport, WA",48.49,-121.6,"s"],
+ ["Skykomish River","Gold Bar, WA",47.85,-121.7,"s"],
+ ["Sol Duc River","Forks, WA",47.95,-124.3,"s"],
+ ["Yakima River","Ellensburg, WA",46.95,-120.55,"t"],
+ ["Black Earth Creek","Cross Plains, WI",43.11,-89.65,"t"],
+ ["Bois Brule River","Brule, WI",46.55,-91.55,"b"],
+ ["Castle Rock Creek","Fennimore, WI",42.95,-90.6,"t"],
+ ["Kinnickinnic River","River Falls, WI",44.86,-92.62,"t"],
+ ["Milwaukee River","Grafton, WI",43.32,-87.95,"s"],
+ ["Namekagon River","Hayward, WI",46.01,-91.48,"t"],
+ ["Oconto River","Oconto, WI",44.89,-87.87,"b"],
+ ["Peshtigo River","Crivitz, WI",45.24,-88.0,"t"],
+ ["Prairie River","Merrill, WI",45.2,-89.65,"t"],
+ ["Root River","Racine, WI",42.73,-87.85,"s"],
+ ["Rush River","Ellsworth, WI",44.73,-92.45,"t"],
+ ["Sheboygan River","Sheboygan Falls, WI",43.73,-87.82,"s"],
+ ["Timber Coulee Creek","Coon Valley, WI",43.7,-90.98,"t"],
+ ["West Fork Kickapoo River","Avalanche, WI",43.6,-90.75,"t"],
+ ["Willow River","Hudson, WI",45.02,-92.68,"t"],
+ ["Wolf River","White Lake, WI",45.17,-88.77,"t"],
+ ["Cranberry River","Richwood, WV",38.28,-80.55,"t"],
+ ["Elk River","Webster Springs, WV",38.48,-80.42,"t"],
+ ["North Branch Potomac","Barnum, WV",39.44,-79.15,"t"],
+ ["Seneca Creek","Seneca Rocks, WV",38.85,-79.38,"t"],
+ ["Williams River","Marlinton, WV",38.35,-80.35,"t"],
+ ["Bighorn River","Thermopolis, WY",43.65,-108.21,"t"],
+ ["Firehole River","Yellowstone, WY",44.55,-110.85,"t"],
+ ["Green River","Pinedale, WY",42.87,-109.87,"t"],
+ ["Lamar River","Yellowstone, WY",44.9,-110.25,"t"],
+ ["North Platte River","Saratoga, WY",41.45,-106.81,"t"],
+ ["Snake River","Jackson, WY",43.48,-110.76,"t"],
+ ["Wind River","Dubois, WY",43.53,-109.63,"t"],
+].map(([name, place, lat, lon, sp])=>({name, place, lat, lon, sp:SP_OF[sp]}));
+
 /* --- hatches -------------------------------------------------
    win   : [startDOY, peakDOY, endDOY]  (Catskill baseline)
    hrs   : emergence clock window, or 'dusk' | 'dawn' | 'allday'
@@ -1523,6 +1783,7 @@ const state = {
   spot:null,                                   // water-shaped profile synthesized for that point
   access:{status:"idle", list:[], radius:8000, chosen:null},
   shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
+  rivers:{status:"idle", list:[], key:null},   // gauged rivers around the pin, from USGS
   nearAll:false,                               // whether the whole book is open under the map
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plan", checked:new Set(),
@@ -2344,6 +2605,215 @@ const PLAYS = [
   };
 }},
 
+{key:"mouse", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.day<DOY(6,1)||ctx.day>DOY(10,1)) return null;
+  if(ctx.lw.k!=="night"&&ctx.lw.k!=="dusk") return null;
+  if(ctx.w.size<2) return null;                 // a mouse needs room to swim
+  let s = 12;
+  if(ctx.lw.k==="night") s+=14;
+  if(ctx.temp>=58&&ctx.temp<=70) s+=10;         // the fish are awake and eating
+  if(ctx.temp>70) s-=10;                        // too warm to be handling them at all
+  if(ctx.temp<54) s-=12;
+  if(ctx.day>=DOY(6,20)&&ctx.day<=DOY(9,10)) s+=8;
+  if(ctx.w.type==="freestone") s+=5;
+  if(ctx.fs.k==="normal"||ctx.fs.k==="pushy") s+=6;
+  if(ctx.fs.k==="verylow") s-=6;
+  if(ctx.fs.k==="blown") s-=14;
+  if(ctx.clarity.n<=1) s-=6;
+  if(ctx.sky==="overcast") s+=4;                // no moon is better than a moon
+  const warm = ctx.temp>68;
+  return {
+    score:s,
+    title: ctx.lw.k==="night" ? "Swim a mouse in the dark" : "Mouse the last of the light out",
+    technique:"Mouse — night, swung and swum on top",
+    chips:[["After dark","grn"],["Big fish, few fish",""],[warm?"Handle carefully":"Bank water",""]],
+    why:`The largest brown in this river almost never eats in daylight in ${ctx.day<DOY(8,1)?"midsummer":"late summer"} — it eats at night, and it eats things that are swimming, not drifting. A mouse gives a fish that has seen ten thousand drifted flies something it has never been fooled by. Expect very few takes and an outsized average fish.${warm?" At this temperature, fight them fast and keep them wet — a night-caught fish in warm water is easy to kill by accident." : ""}`,
+    where:"Wade water you walked in daylight. Cast tight to the far bank, undercuts and log jams, and swim it back across the soft inside of every seam. The tailout of a big pool at 2am is the classic spot.",
+    steps:[
+      "<b>Walk it in the light first.</b> Pick one pool, learn its wading, then come back after dark. Do not explore at night.",
+      "<b>Cast to the bank and swim, don't drift.</b> Quarter down, keep the line tight, and lead the fly so it pushes a small wake the whole way across.",
+      "<b>Wait for weight.</b> You will hear the take before you feel it. Do not set on the sound — set when the rod loads, and set sideways.",
+      "<b>Cover it once, then move.</b> A fish that boils and misses will often come again in ten minutes; a pool you have swum twice is done for the night."
+    ],
+    flyGroups:[
+      {lab:"Mice & big waking flies", items:[
+        {name:"Deer-hair Mouse (Morrish or Master Splinter)", size:"#2–4", hex:"#6B5844", qty:"2", note:"the one that has to float all night"},
+        {name:"Foam Gurgler, black", size:"#2–6", hex:"#1E1B18", qty:"2", note:"easier to cast, wakes just as well"},
+        {name:"Muddler Minnow, oversized", size:"#2–6", hex:"#A9865A", qty:"2", note:"fish it dry on top or wet just under"}]},
+      {lab:"When they will not eat on top", items:[
+        {name:"Black Woolly Bugger", size:"#2–6", hex:"#1A1A1A", qty:"3", note:"a black silhouette is the whole point after dark"},
+        {name:"Zoo Cougar / Sculpin, tan", size:"#2–4", hex:"#B08F5E", qty:"2", note:""}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft 6–7 wt, weight-forward floating — you are casting a wet golf ball",
+      "Leader":"6–7 ft: 3 ft of 30 lb, 2 ft of 20 lb, 2 ft of 12–16 lb",
+      "Tippet":"0X–1X (12–16 lb). Fine tippet at night only loses fish you will think about for years.",
+      "Weight":"None. Dress it and squeeze it dry often.",
+      "Connection":"Non-slip loop knot so it swims with its nose up",
+      "Bring":"A headlamp with a red mode, and a wading staff. Rig up before dark."
+    },
+    tackle:[T.fluoro("0X"), T.fluoro("1X"), T.floatant()],
+    windowTxt: ctx.lw.k==="night" ? "Full dark to about 2:00" : "Last light into full dark"
+  };
+}},
+
+{key:"highwater", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.fs.k!=="pushy"&&ctx.fs.k!=="high"&&ctx.fs.k!=="blown") return null;
+  let s = 15;
+  if(ctx.fs.k==="high") s+=12;
+  if(ctx.fs.k==="blown") s+=8;                  // still fishable, but only the edges
+  if(ctx.fs.k==="pushy") s+=4;
+  if(ctx.clarity.n<=1) s+=8;                    // dirty water is exactly when this wins
+  if(ctx.clarity.n>=3) s-=6;
+  if(ctx.temp>=45&&ctx.temp<=65) s+=6;
+  if(ctx.temp<42) s-=8;
+  if(ctx.w.size>=3) s+=4;
+  if(ctx.acc&&ctx.acc.tone==="bad") s-=6;       // when it is not safe to be in it, lean on it less
+  const filthy = ctx.clarity.n<=1;
+  return {
+    score:s,
+    title: ctx.fs.k==="blown" ? "Fish the edges of a blown river" : "Work the high-water edge",
+    technique:"High water — heavy fly, short line, hard against the bank",
+    chips:[[ctx.fs.label,"warn"],[ctx.clarity.label,""],["Edges only",""]],
+    why:`At ${ctx.cfs.toLocaleString()} ${ctx.w.unit} the fish are not where you normally find them. They have left the main current entirely and are sitting in water you could stand in — inside bends, flooded grass, the slack behind a boulder, the seam six inches off the bank. ${filthy?"They cannot see far, so they are hunting by silhouette and vibration: go big, go dark, and go close.":"The river is pushing but readable — the fish have simply slid sideways."} High water is not a lost day, it is a different map.`,
+    where:"The first three feet from the bank, the slack inside every bend, flooded willow and grass margins, and the cushion in front of and behind any boulder large enough to break the surface. Walk the bank, do not wade the middle.",
+    steps:[
+      "<b>Fish where you would normally walk.</b> The lie you are looking for is ankle to knee deep, out of the push, and often behind you.",
+      "<b>Short casts, tight line.</b> Ten to twenty feet. You cannot mend your way to a drift in this — get close and lead the fly.",
+      `<b>${filthy?"Go dark and go big.":"Go big before you go heavy."}</b> ${filthy?"Black and olive show as a silhouette in stained water where naturals disappear. Size is how the fish finds it.":"A #8 stonefly gets seen where a #16 pheasant tail vanishes."} Weight is what keeps it in the strike zone in fast water.`,
+      "<b>Check the bank before every step.</b> Rising water undercuts and moves gravel. If you would not wade it sober in daylight, do not wade it at all."
+    ],
+    flyGroups:[
+      {lab:"Big nymphs", items:[
+        {name:"Pat's Rubber Legs, black/brown", size:"#6–10", hex:"#3A2E22", qty:"3", note:"the high-water fly in the Northeast, and it is not close"},
+        {name:"Tungsten Stonefly, golden", size:"#8–12", hex:"#B98A3C", qty:"3", note:""},
+        {name:"Squirmy Worm / San Juan Worm, pink or red", size:"#10–12", hex:"#D2596B", qty:"4", note:"washed in from the banks — this is the real thing right now"},
+        {name:"Egg pattern, peach or chartreuse", size:"#12–14", hex:"#F2A65A", qty:"3", note:"a visible round target in bad water"}]},
+      {lab:"Streamers for the same water", items:[
+        {name:"Black or olive Woolly Bugger, coneheaded", size:"#4–8", hex:"#22301F", qty:"3", note:""},
+        {name:"Sculpin pattern, dark", size:"#4–6", hex:"#5A4A38", qty:"2", note:"swim it slowly along the bank you are standing on"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft – 10 ft 6 wt, weight-forward floating. The extra length is reach, not distance.",
+      "Leader":"7½–9 ft tapered to 2X–3X — short and stout, it must turn over the weight",
+      "Tippet":"2X–3X fluorocarbon. Fine tippet in high water just donates flies to the river.",
+      "Weight":"Enough to tick bottom in the first two feet of the drift. Add shot until you touch, then take one off.",
+      "Indicator":"Large and buoyant, or a tight-line sighter if you are within a rod length",
+      "Bring":"A wading staff and a belt, cinched. This is the water that drowns people."
+    },
+    tackle:[T.leader("9 ft","3X","nylon"), T.fluoro("2X"), T.fluoro("3X"), T.shot("#4, BB, 3/0"), T.bobber("¾ in")],
+    windowTxt:"All day — the water, not the clock, is what changes"
+  };
+}},
+
+{key:"crustacean", build(ctx, ah){
+  if(ctx.isGL) return null;
+  const scud = ah.filter(o=>o.hx.kind==="crustacean")[0];
+  const limestone = ctx.w.type==="limestone", tail = ctx.w.type==="tailwater";
+  if(!scud && !tail) return null;               // freestones do not hold enough of them to plan on
+  let s = 11;
+  if(scud) s+=10;
+  if(limestone) s+=10;
+  if(tail) s+=6;
+  if(ctx.w.size<=2) s+=3;
+  if(ctx.fs.k==="verylow"||ctx.fs.k==="low"||ctx.fs.k==="normal") s+=5;
+  if(ctx.fs.k==="high"||ctx.fs.k==="blown") s-=10;
+  if(ctx.clarity.n>=3) s+=4;
+  /* Its whole reason for existing is the day with no hatch on it. */
+  const best = ah.filter(o=>o.hx.kind!=="crustacean")[0];
+  if(!best || best.i<0.35) s+=12;
+  else if(best.i>0.7) s-=8;
+  if(ctx.temp>=38&&ctx.temp<=60) s+=5;
+  if(ctx.day<DOY(4,15)||ctx.day>DOY(10,15)) s+=6;   // the cold months are scud months
+  return {
+    score:s,
+    title: limestone ? "Scuds and cress bugs on the limestone" : "Scuds through the tailwater",
+    technique:"Nymph — crustacean, dead drift near the bottom",
+    chips:[["Scud · sowbug · cress bug","sul"],["No hatch needed",""],[limestone?"Weed beds":"Below the dam",""]],
+    why:`${limestone?"A limestoner carries scuds and cress bugs in the weed all year, in numbers no mayfly ever reaches. Its trout eat them every day of their lives — which is why a good cress bug outfishes a good hatch imitation on eleven months out of twelve.":"Tailwater fish below a bottom-release dam live on scuds. The steady cold water grows them year-round, and there is no season when the fish stop expecting them."} This is the play for the day when nothing is coming off and everything still needs to eat.`,
+    where:"The downstream edge of every weed bed, the gravel between the weed, the first slot below a riffle, and any channel a foot deeper than the water beside it. On the limestone, fish the seam where the weed ends and the sand begins.",
+    steps:[
+      "<b>Get it on the bottom and keep it there.</b> A scud that drifts a foot off the gravel is a scud no fish has ever seen.",
+      "<b>Match the size before the colour.</b> #14–16 covers most of it. Grey-olive when the water is clear, tan when it is stained.",
+      "<b>Fish it short.</b> Fifteen to twenty-five feet, leader mostly out of the water, watching the sighter or the leader butt for the hesitation.",
+      "<b>Add an orange one.</b> A scud that has been eaten or is carrying eggs goes orange, and a single hot-spot scud in the team gets a disproportionate share of the takes."
+    ],
+    flyGroups:[
+      {lab:"Scuds & sowbugs", items:[
+        {name:"Grey-Olive Scud, tungsten bead", size:"#14–16", hex:"#8C8A6E", qty:"4", note:"the anchor"},
+        {name:"Sowbug / Cress Bug, grey", size:"#14–18", hex:"#9A9A8C", qty:"4", note:"flat, drab, and deadly on the Letort and Spring Creek"},
+        {name:"Tan Scud", size:"#14–16", hex:"#C2A87A", qty:"3", note:"stained water"},
+        {name:"Hot-Orange Scud", size:"#14–16", hex:"#E07B2C", qty:"2", note:"the one that gets eaten out of turn"}]},
+      {lab:"The natural dropper", items:[
+        {name:"Pheasant Tail, small", size:"#16–20", hex:"#6E4B2A", qty:"3", note:"18 in below the scud, for the fish that wanted something else"},
+        {name:"Zebra Midge, black-silver", size:"#18–20", hex:"#2A2A2A", qty:"3", note:"winter droppers"}]},
+    ],
+    rig:{
+      "Rod / line":"9 ft – 10 ft 3–4 wt, weight-forward floating",
+      "Leader":limestone?"12 ft tapered to 5X — these fish are looked at every weekend":"9–10 ft tapered to 4X",
+      "Tippet":limestone?"3 ft of 5X–6X fluorocarbon":"2–3 ft of 4X–5X fluorocarbon",
+      "Weight":"A 2.5 mm tungsten bead on the scud is usually enough. One #8 shot if the slot is deep.",
+      "Indicator":"Wool, a greased leader butt, or nothing at all if you are close enough to watch the leader",
+      "Connection":"Tippet ring above the point fly; hang the dropper off a tag"
+    },
+    tackle:[T.leader(limestone?"12 ft":"9 ft",limestone?"5X":"4X","nylon"), T.fluoro("5X"), T.fluoro("6X"), T.rings(), T.shot("#8, #6")],
+    windowTxt:"All day, best when nothing is hatching"
+  };
+}},
+
+{key:"sight", build(ctx, ah){
+  if(ctx.isGL) return null;
+  if(ctx.fs.k!=="verylow"&&ctx.fs.k!=="low") return null;
+  if(ctx.clarity.n<3) return null;              // you cannot sight-fish water you cannot see into
+  if(ctx.lw.k==="night"||ctx.lw.k==="dawn"||ctx.lw.k==="dusk") return null;
+  let s = 13;
+  if(ctx.fs.k==="verylow") s+=8;
+  if(ctx.clarity.n>=4) s+=6;
+  if(ctx.lw.k==="midday"||ctx.lw.k==="afternoon") s+=8;   // overhead sun is what lets you see
+  if(ctx.sky==="bright") s+=7;
+  if(ctx.sky==="overcast") s-=8;
+  if(ctx.w.size<=2) s+=5;
+  if(ctx.w.type==="limestone") s+=6;
+  if(ctx.w.char==="flat") s+=4;
+  if(ctx.temp>70) s-=10;
+  return {
+    score:s,
+    title:"Hunt single fish in low, clear water",
+    technique:"Sight fishing — one fish at a time",
+    chips:[[ctx.clarity.label,"grn"],[ctx.fs.label,""],["Move slowly",""]],
+    why:`At ${ctx.cfs.toLocaleString()} ${ctx.w.unit} and ${ctx.clarity.vis} of visibility, blind-fishing this river mostly educates fish. But the same conditions that make them impossible to fool at random make them possible to find: you can see them. Sight fishing turns a hard day into a small number of very good chances, and the fish you can see is nearly always bigger than the fish you cannot.`,
+    where:"Walk the bank and look before you wade. Tailouts, the sand between weed beds, the shade line under a bank, and the flat immediately above a riffle where a feeding fish sits high. Look for the shadow on the bottom, the white of a mouth, or a tail — not a whole fish.",
+    steps:[
+      "<b>Spend the first ten minutes not casting.</b> Sun over your shoulder, polarised glasses, and look at the bottom. If you are moving, you are not looking.",
+      "<b>Get below and to the side.</b> Approach from downstream on your knees if you have to. Every fish you spook is one you could have caught.",
+      "<b>One cast, well ahead.</b> Land it three to six feet upstream of the fish and off to its side — never over its back. If the first drift is wrong, wait, do not recast into it.",
+      "<b>Watch the fish, not the fly.</b> Set when it moves or its mouth flashes white. On a nymph you will never see the take any other way."
+    ],
+    flyGroups:[
+      {lab:"On top", items:[
+        {name:"Parachute Adams or Comparadun", size:"#16–20", hex:"#8E8E88", qty:"3", note:"drab, low-riding, small"},
+        {name:"Foam Beetle, small", size:"#16–18", hex:"#221E1A", qty:"3", note:"the fish that refuses everything else eats a beetle"},
+        {name:"Parachute Ant, black", size:"#18–20", hex:"#26211C", qty:"3", note:""}]},
+      {lab:"Under it", items:[
+        {name:"Unweighted Pheasant Tail", size:"#16–20", hex:"#6E4B2A", qty:"3", note:"no bead — a bead lands too loud on a fish you can see"},
+        {name:"Walt's Worm / Sowbug, small", size:"#16–18", hex:"#9A9A8C", qty:"3", note:""},
+        {name:"Zebra Midge", size:"#18–22", hex:"#2A2A2A", qty:"3", note:"for the fish holding low and barely moving"}]},
+    ],
+    rig:{
+      "Rod / line":"8 ft 6 in – 9 ft 3–4 wt. A soft rod protects fine tippet on a short line.",
+      "Leader":"12–15 ft tapered to 5X — length is what buys you the drift at this range",
+      "Tippet":"4–5 ft of 6X–7X nylon. Long and fine, so slack lands before the fly does.",
+      "Weight":"None on top. Nothing heavier than a bare nymph underneath.",
+      "Connection":"Improved clinch. Check the knot after every fish and every snag.",
+      "Bring":"Polarised glasses, a brimmed hat, and drab clothing. This is the day the details matter."
+    },
+    tackle:[T.leader("12 ft","5X","nylon"), T.nylon("6X"), T.nylon("7X"), T.floatant()],
+    windowTxt:"10:00 – 16:00, when the sun is high enough to see into the water"
+  };
+}},
+
 /* ---------- GREAT LAKES ---------- */
 {key:"gl-indicator", build(ctx, ah, runs){
   if(!ctx.isGL) return null;
@@ -2572,12 +3042,12 @@ const MEM_STRETCH = 12;       // days a sighting may stretch a hatch window
 /* The six ways a fly gets fished, and the plays each one covers.
    The angler logs a method; the engine ranks plays. */
 const METHODS = [
-  {k:"dry",        label:"Dry fly",           plays:["hatch-dry","spinner","terrestrial"]},
+  {k:"dry",        label:"Dry fly",           plays:["hatch-dry","spinner","terrestrial","sight"]},
   {k:"drydropper", label:"Dry-dropper",       plays:["drydropper"]},
-  {k:"nymph",      label:"Nymph under an indicator", plays:["indicator","midge","gl-indicator"]},
+  {k:"nymph",      label:"Nymph under an indicator", plays:["indicator","midge","gl-indicator","highwater","crustacean"]},
   {k:"tightline",  label:"Euro / tight-line", plays:["euro","gl-tightline"]},
   {k:"swing",      label:"Wet fly / swung fly", plays:["wetswing","gl-swing"]},
-  {k:"streamer",   label:"Streamer",          plays:["streamer","gl-streamer"]},
+  {k:"streamer",   label:"Streamer",          plays:["streamer","gl-streamer","mouse"]},
 ];
 const METHOD_OF_PLAY = (()=>{ const m={}; METHODS.forEach(x=>x.plays.forEach(k=>m[k]=x.k)); return m; })();
 const METHOD_BY_KEY  = (()=>{ const m={}; METHODS.forEach(x=>m[x.k]=x); return m; })();
@@ -3220,6 +3690,68 @@ async function nearestGauge(lat, lon){
   return null;
 }
 
+/* --- what rivers are near here -------------------------------
+   This is the same bBox call nearestGauge already makes; it used to
+   keep the closest row and throw the rest of the response away. The
+   rest of the response is a list of the gauged rivers around a point,
+   from USGS, with a name, a position and a drainage area on each —
+   which is exactly the list an angler wants after typing a town, and
+   exactly the list nobody should be writing by hand.
+
+   A gauge is also the thing that makes a river readable: it is where
+   the live flow and water temperature that drive the plays come from.
+   So a river that appears here is one Riffle can actually read, and
+   picking it hands the plays that gauge rather than whichever one
+   happened to be nearest the pin.
+------------------------------------------------------------ */
+
+/* USGS station names carry the gauge's business, not the river's:
+   "BEAVER KILL AT COOKS FALLS NY". The river is the part before the
+   locator, and that is what belongs on a button. */
+const AT_SPLIT = /\s+(?:AT|NEAR|NR|ABOVE|ABV|BELOW|BLW|BL)\s+/i;
+function riverNameOf(station){
+  const raw = String(station||"").split(AT_SPLIT)[0].replace(/,.*$/,"").trim();
+  if(!raw) return "Unnamed gauge";
+  /* USGS shouts. Title-case it, but leave initialisms and directions alone. */
+  return raw.toLowerCase().replace(/\b[a-z]/g, c=>c.toUpperCase())
+            .replace(/\b(Ef|Wf|Nf|Sf|Mf)\b/g, m=>m.toUpperCase());
+}
+
+/* Rivers big enough to be worth a drive. A gauge on a 3 sq mi headwater
+   ditch is a real gauge and not a fishery, and the list is more useful
+   short. */
+const RIVER_MIN_AREA = 8;      // square miles of drainage
+const RIVER_MAX      = 12;
+
+async function nearbyRivers(lat, lon){
+  const out=new Map();
+  for(const pad of [0.35, 0.8]){
+    const bbox=[(lon-pad).toFixed(4),(lat-pad).toFixed(4),(lon+pad).toFixed(4),(lat+pad).toFixed(4)].join(",");
+    const url=`https://waterservices.usgs.gov/nwis/site/?format=rdb&bBox=${bbox}`
+            + `&siteType=ST&siteStatus=active&hasDataTypeCd=iv&parameterCd=00060&siteOutput=expanded`;
+    try{
+      const res=await withTimeout(url, null, 12000);
+      if(!res.ok) continue;
+      for(const r of parseRDB(await res.text())){
+        const la=parseFloat(r.dec_lat_va), lo=parseFloat(r.dec_long_va);
+        if(!isFinite(la)||!isFinite(lo)) continue;
+        const area=parseFloat(r.drain_area_va);
+        if(isFinite(area) && area>0 && area<RIVER_MIN_AREA) continue;
+        const name=riverNameOf(r.station_nm);
+        const dist=metres(lat,lon,la,lo);
+        /* One row per river, not per gauge: a river with four gauges on it
+           is one button, and the button is the gauge nearest the angler. */
+        const prev=out.get(name);
+        if(!prev || dist<prev.dist)
+          out.set(name, {id:r.site_no, river:name, station:(r.station_nm||"").trim(),
+                         lat:la, lon:lo, area:isFinite(area)?area:null, dist});
+      }
+      if(out.size>=4) break;         // the tight box answered; no need to widen
+    }catch(e){ /* try the wider box, then give up */ }
+  }
+  return [...out.values()].sort((a,b)=>a.dist-b.dist).slice(0, RIVER_MAX);
+}
+
 /* Drainage area for a pair of sites, so flow bands can be scaled. */
 async function drainAreas(sites){
   try{
@@ -3237,34 +3769,91 @@ async function drainAreas(sites){
 
 /* --- the spot profile ---------------------------------------- */
 /* --- how far the book reaches -------------------------------
-   The 27 waters are hand-written for the Northeast, and a spot
-   borrows the nearest one's seasonal curves, hatch calendar and
-   flow character. That is sound for a neighbouring river and
-   nonsense for a distant one: the westernmost waters in the book
-   are Lake Erie steelhead tributaries, so a pin on a Montana
-   trout river was inheriting a steelhead fishery — no hatches at
-   all, and egg patterns ranked first, in May.
+   This used to be a distance. A spot borrowed the nearest of the
+   27 waters and anything past 250 miles was switched off, which
+   put Baldwin, Michigan — the Pere Marquette — on a Lake Erie
+   steelhead creek 298 miles away, and then gated it out for being
+   too far. Both halves were wrong, and for the same reason: miles
+   are not what makes one river a reading for another.
 
-   Spring hatch timing moves roughly a week per hundred miles, so
-   the bands below are about how wrong the calendar can be before
-   it stops being a calendar.
+   Two things travel, and they travel differently.
+
+   The CALENDAR travels on latitude. The shift field on each water
+   is the number of days that river runs behind or ahead of the
+   Beaverkill, and all 20 trout entries were written by hand, river
+   by river, with no formula in mind. Fitted afterwards they come to
+   4.86 days per degree of latitude, +5.1 for a tailwater and −2.1
+   for a limestoner — R² 0.96, mean error one day. Hopkins' bio-
+   climatic law puts the latitude term at 4 days per degree, which
+   is a number nobody in this file was aiming at. So the shift is
+   computed now, and the hand-written values stay as the check.
+
+   The SPECIES do not travel at all. Hendricksons, sulphurs, Cahills
+   and the rest are the eastern North American assemblage; west of
+   the plains it is Salmonfly and PMD and a different insect fauna
+   that this book has never heard of. That is a range, not a radius
+   — so the gate is where these bugs live, and inside it a computed
+   shift carries the calendar the whole way.
 ------------------------------------------------------------ */
-const RANGE_NEAR = 75;    // miles: a genuine neighbour, same climate band
-const RANGE_MAX  = 250;   // miles: past this the book does not know this water
 
-function rangeOf(miles){
-  if(miles<=RANGE_NEAR) return "near";
-  if(miles<=RANGE_MAX)  return "borrowed";
-  return "beyond";
+/* Days a hatch runs behind the Beaverkill at 41.95° N. Fitted to the
+   27, then held to them by test. */
+const PHENOLOGY_REF_LAT = 41.95;
+const PHENOLOGY = {perDegLat: 4.86, tailwater: 5.14, limestone: -2.12, base: -0.36};
+
+function bioShift(lat, type){
+  const p = PHENOLOGY;
+  const d = p.perDegLat*(lat - PHENOLOGY_REF_LAT) + p.base
+          + (type==="tailwater" ? p.tailwater : 0)
+          + (type==="limestone" ? p.limestone : 0);
+  return Math.round(clamp(d, -30, 40));
 }
 
-function templateFor(lat, lon){
-  let best=WATERS[0], bd=Infinity;
-  for(const w of WATERS){
-    const d=metres(lat,lon,w.lat,w.lon);
+/* The range of the bugs in this book: eastern North America, from the
+   Southern Appalachians to the boreal edge, and from the Atlantic to
+   the western limit of the eastern mayfly fauna out past the Driftless
+   and the Ozarks. Inside it the calendar is the same calendar, moved
+   by latitude. Outside it the app says so rather than guessing, because
+   a Montana river is not a late Catskill river — it is a different
+   fauna, and no shift in days will turn one into the other. */
+const EAST = {latMin:33.5, latMax:50.0, lonMin:-97.0, lonMax:-52.0};
+const inEast = (lat, lon)=> lat>=EAST.latMin && lat<=EAST.latMax
+                         && lon>=EAST.lonMin && lon<=EAST.lonMax;
+
+/* How far the borrowed *thermal* curve is being stretched. The calendar
+   is handled by the shift; this is about the temperature and flow curves,
+   which are a real river's numbers and get less like yours the further
+   the analogue sits in latitude. */
+function rangeOf(latGap){
+  if(latGap<=1.2) return "near";       // about 80 miles of latitude
+  if(latGap<=4.0) return "borrowed";
+  return "far";
+}
+
+/* Which water in the book is the best READING for this point — not the
+   closest one. Latitude dominates, because it sets both the thermal
+   season and the calendar; water type matters nearly as much, since a
+   bottom-release tailwater and a limestone spring creek at the same
+   latitude are different rivers all year; longitude barely matters at
+   all, and only as a proxy for how continental the climate is.
+
+   Nearest-by-miles put Oatka Creek, a trout stream, on Oak Orchard's
+   steelhead calendar, and Baldwin on Conneaut Creek. Both go away when
+   the question is "what is this river like" instead of "what is near". */
+function climateDist(lat, lon, type, w){
+  return Math.abs(lat - w.lat)
+       + (type && type!==w.type ? 0.8 : 0)
+       + Math.abs(lon - w.lon)*0.12;
+}
+function templateFor(lat, lon, sp, type){
+  const pool = sp ? WATERS.filter(w=>w.sp===sp) : WATERS;
+  const from = pool.length ? pool : WATERS;
+  let best=from[0], bd=Infinity;
+  for(const w of from){
+    const d=climateDist(lat, lon, type, w);
     if(d<bd){ bd=d; best=w; }
   }
-  return {w:best, dist:bd};
+  return {w:best, dist:metres(lat,lon,best.lat,best.lon), latGap:Math.abs(lat-best.lat)};
 }
 
 /* Flow scales roughly with the area that drains into the gauge,
@@ -3287,50 +3876,64 @@ function gaugeAway(m){
   return `${mi<10?mi.toFixed(1):Math.round(mi)} miles from the pin`;
 }
 
-function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
+function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
   const calibrated = isFinite(ratio) && ratio>0;
   const bands = calibrated ? scaleBands(tmpl, ratio) : {flow:tmpl.flow, wade:tmpl.wade};
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
   const ownGauge = !!gauge && gauge.id===tmpl.gauge;
-  const range = rangeOf(miles);
-  const beyond = range==="beyond";
+
+  /* The calendar is gated on where these bugs live, not on how far the
+     analogue is. Inside their range the shift carries it; outside, the
+     seasonal half goes quiet and the measured half stays. */
+  const east   = inEast(point.lat, point.lon);
+  const beyond = !east;
+  const type   = point.type || (beyond ? "unknown" : tmpl.type);
+  const range  = beyond ? "far" : rangeOf(latGap==null ? 0 : latGap);
+  const shift  = beyond ? 0 : bioShift(point.lat, type);
+  const dLat   = Math.round((point.lat - tmpl.lat)*10)/10;
+
   return {
     id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
     hatchKey: tmpl.id,                       // borrow this water's hatch calendar
     name: point.name || "Selected spot",
     place: point.place || "",
     lat: point.lat, lon: point.lon,
-    range, beyond, templateMiles: miles,
-    /* Beyond the book, the template's species is an accident of which
-       of 27 Northeast rivers happens to be least far away. Inheriting
-       it is how a Montana trout river came to be read as a Lake Erie
-       steelhead run, so out here the spot claims no fishery at all. */
-    type: beyond ? "unknown" : tmpl.type,
-    sp:   beyond ? "unknown" : tmpl.sp,
-    size: tmpl.size,
+    range, beyond, templateMiles: miles, latGap: latGap==null?null:Math.round(latGap*10)/10,
+    /* Outside the eastern fauna the book has no species to claim, so it
+       claims none — that is how a Montana trout river came to be read as
+       a Lake Erie steelhead run. */
+    type,
+    sp:   beyond ? "unknown" : (point.sp || tmpl.sp),
+    size: point.size || tmpl.size,
     gauge: gauge ? gauge.id : tmpl.gauge,
     unit: "cfs",
     flow: bands.flow, wade: bands.wade, float: tmpl.float,
     temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
-    shift: tmpl.shift, char: tmpl.char,
+    shift, char: tmpl.char,
     note: (beyond
-        ? `This point is ${away} from the nearest water in Riffle's book, which is `
-          + `hand-written for the Northeast. Nothing seasonal travels that far, so the `
-          + `hatch chart and the plays are switched off here rather than borrowed from `
-          + `${tmpl.name}. `
+        ? `This point is outside the range of the insects in Riffle's book, which are the `
+          + `eastern North American hatches. A different fauna lives here and no shift in `
+          + `days turns one into the other, so the hatch chart and the plays that read it `
+          + `are switched off rather than borrowed. `
           + (gauge ? `The gauge is real: USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
                    : `No live gauge was found nearby either, so there are no numbers to show.`)
-        : `Seasonal temperature, hatch timing and flow character are modeled on `
-          + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
-          + (range==="borrowed" ? `That is far enough that hatch dates will run a week or two out — read the calendar as a guide, not a date. ` : "")
+        : `Seasonal temperature and flow character are modeled on ${tmpl.name} — the closest `
+          + `match in the book by latitude and river type, ${Math.abs(dLat)<0.15 ? "at the same latitude"
+              : `${Math.abs(dLat).toFixed(1)}° of latitude ${dLat>0?"south":"north"} of here`}. `
+          + `Hatch dates are moved ${shift===0?"not at all":`${Math.abs(shift)} day${Math.abs(shift)===1?"":"s"} ${shift>0?"later":"earlier"}`} `
+          + `for this latitude and river type. `
+          + (range==="far" ? `That is a long stretch for a borrowed thermal curve — carry a thermometer. ` : "")
           + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
                    : `No live gauge was found nearby, so the numbers are modeled. `)
           + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
              : ownGauge  ? `The flow bands are this gauge's own.`
                          : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
+    pickedGauge: point.pickedGauge || null,
+    pickedKey: point.pickedKey || null,
+    both: !!point.both,
     spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
   };
 }
@@ -3339,9 +3942,12 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
    degradations, never dead ends: worst case the angler still
    gets the nearest water in the book, modeled. */
 async function buildSpot(point){
-  const {w:tmpl, dist} = templateFor(point.lat, point.lon);
-  let gauge=null, ratio=NaN;
-  try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; }
+  const {w:tmpl, dist, latGap} = templateFor(point.lat, point.lon, point.sp, point.type);
+  let ratio=NaN;
+  /* A river picked off the list already knows its gauge — it IS a gauge.
+     Only a bare pin has to go looking for one. */
+  let gauge = point.gauge || null;
+  if(!gauge){ try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; } }
   if(gauge && gauge.id!==tmpl.gauge){
     const areas = await drainAreas([gauge.id, tmpl.gauge]);
     const a=areas[gauge.id], b=areas[tmpl.gauge];
@@ -3351,7 +3957,7 @@ async function buildSpot(point){
   } else if(gauge && gauge.id===tmpl.gauge){
     ratio=1;
   }
-  return spotProfile(point, tmpl, dist, gauge, ratio);
+  return spotProfile(point, tmpl, dist, gauge, ratio, latGap);
 }
 
 /* ============================================================
@@ -3688,15 +4294,16 @@ function outOfBookCard(ctx){
       : `The gauge reads <b>${t.toFixed(0)} °F</b>. Trout stress above 65 and should not be fished above 68, on any river.`;
   return `<div class="gate">
     <h2>Outside the book</h2>
-    <p>Riffle's 27 waters are hand-written for the Northeast, and the nearest of them
-       is <b>${ctx.templateMiles} miles</b> from here. Hatch dates, seasonal water
-       temperature, flow character and wade thresholds are all that water's, not this
-       one's — so there are no plays, no hatch chart and no wade call here. A guess
-       would look exactly like a reading.</p>
+    <p>Riffle's hatch calendar is the <b>eastern North American</b> one — Hendricksons,
+       sulphurs, Cahills, Isonychia. Those insects do not live here. What hatches on this
+       water is a different fauna the book has never carried, and no amount of shifting
+       dates turns one into the other — so the hatch chart and the plays that read it are
+       off rather than borrowed. A guess would look exactly like a reading.</p>
     <p><b>What still holds:</b> a USGS gauge is a USGS gauge, and the access points and
        fly shops come from OpenStreetMap, which maps the whole country. ${thermal}</p>
-    <p>Pick a water from the book on <b>Plan</b> for the full reading, or use this one
-       for the gauge, the access and the shops.</p>
+    <p>Anywhere from the Appalachians to the Driftless and the Ozarks gets the full
+       reading — the calendar travels on latitude. Out here, use this for the gauge,
+       the access and the shops.</p>
   </div>`;
 }
 
@@ -4389,6 +4996,7 @@ function whereShell(){
       <div id="map" role="application" aria-label="Map. Tap to choose where you are fishing."></div>
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
+    <div id="riverCard"></div>
     <div id="nearWaters"></div>
     <div class="wcard" id="accessCard"></div>`;
   wireWhere();
@@ -4499,7 +5107,56 @@ async function setPin(lat, lon, label){
       }
     });
   }
+  loadRivers(lat, lon);          // the river list and the access list are independent asks
   await loadAccess(lat, lon);
+}
+
+/* The rivers around the pin. Named rivers first — that list needs no
+   network at all, so Baldwin answers instantly — and USGS's gauged
+   streams only as the fallback for country nobody has named. */
+const RIVER_NEAR_MI = 90;      // how far out a named river is still "near here"
+const RIVER_SHOW    = 12;
+
+function namedRiversNear(lat, lon){
+  const out=[];
+  for(const w of WATERS)
+    out.push({key:"book:"+w.id, book:w.id, name:w.name, place:w.place, lat:w.lat, lon:w.lon,
+              sp:w.sp==="steelhead"?"steelhead":"trout", d:haversine(lat,lon,w.lat,w.lon)});
+  for(const r of RIVERS)
+    out.push({key:"riv:"+r.name+"|"+r.place, name:r.name, place:r.place, lat:r.lat, lon:r.lon,
+              sp:r.sp, d:haversine(lat,lon,r.lat,r.lon)});
+  const seen=new Set(), keep=[];
+  for(const r of out.sort((a,b)=>a.d-b.d)){
+    if(r.d>RIVER_NEAR_MI) break;
+    const k=r.name+"|"+r.place;
+    if(seen.has(k)) continue;               // a written water and its own row are one river
+    seen.add(k); keep.push(r);
+  }
+  return keep.slice(0, RIVER_SHOW);
+}
+
+async function loadRivers(lat, lon){
+  const key = lat.toFixed(3)+","+lon.toFixed(3);
+  if(state.rivers.key===key && state.rivers.status==="ok") return;
+
+  const named = namedRiversNear(lat, lon);
+  if(named.length>=3){
+    state.rivers={status:"ok", src:"named", list:named, key, sp:state.rivers.sp};
+    renderRiverCard();
+    return;
+  }
+  /* Nothing named within ninety miles. Ask USGS what is gauged out here
+     instead — a river that reports its flow is one Riffle can still read. */
+  state.rivers={status:"loading", src:"usgs", list:named, key, sp:state.rivers.sp};
+  renderRiverCard();
+  let list=[];
+  try{ list = await nearbyRivers(lat, lon); }
+  catch(e){ state.rivers={status:"error", src:"usgs", list:named, key}; renderRiverCard(); return; }
+  if(state.rivers.key!==key) return;                 // the pin moved while we asked
+  const rows = named.concat(list.map(g=>({key:"gauge:"+g.id, name:g.river, place:`USGS ${g.id}`,
+                lat:g.lat, lon:g.lon, sp:"trout", gauge:g, d:g.dist/1609.34})));
+  state.rivers={status: rows.length?"ok":"empty", src:"usgs", list:rows.sort((a,b)=>a.d-b.d).slice(0,RIVER_SHOW), key, sp:state.rivers.sp};
+  renderRiverCard();
 }
 
 async function loadAccess(lat, lon){
@@ -4540,6 +5197,90 @@ async function selectSpot(point){
 function milesOf(m){
   const mi=m/1609.34;
   return mi<0.1 ? Math.round(m)+" m" : (mi<10 ? mi.toFixed(1) : Math.round(mi))+" mi";
+}
+
+/* --- the rivers around the pin ------------------------------
+   The list an angler wants after typing a town. Named rivers first,
+   because that is what the question means — ask anyone what you fish
+   near Baldwin and you get the Pere Marquette, not a list of gauges.
+   Picking one sends Riffle to find its gauge, and that gauge is what
+   the plays are ranked on.
+
+   The fishery stays the angler's to say. A river marked as both reads
+   as trout water and offers the run as a tap; the app never decides
+   on its own that a trout river is a steelhead river.
+------------------------------------------------------------ */
+
+function renderRiverCard(){
+  const el=$("#riverCard"); if(!el) return;
+  const st=state.rivers||{status:"idle"};
+  const where = state.pin ? (state.pin.label ? String(state.pin.label).split(",")[0].trim()
+                                             : `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`) : null;
+  if(!state.pin || st.status==="idle"){ el.innerHTML=""; return; }
+  const head=`<h3>Trout and steelhead near ${esc(where)}</h3>`;
+  const wrap=(inner)=>{ el.innerHTML=`<div class="wcard">${head}${inner}</div>`; };
+
+  if(st.status==="loading"&&!st.list.length){ wrap(`<p class="muted">Looking for the rivers around that point…</p>`); return; }
+  if(st.status==="error"&&!st.list.length){
+    wrap(`<p class="muted">Nothing named within ${RIVER_NEAR_MI} miles, and the USGS lookup did not answer. The pin itself can still be read.</p>`); return; }
+  if(st.status==="empty"||!st.list.length){
+    wrap(`<p class="muted">No trout or steelhead river Riffle knows within ${RIVER_NEAR_MI} miles of that point,
+      and USGS has no gauged stream out there either. Move the pin, or read the pin itself below.</p>`); return; }
+
+  const cur = state.spot ? ("riv:"+state.spot.name+"|"+state.spot.place)
+            : ("book:"+((water()||{}).id||""));
+  const curG = state.spot && state.spot.pickedGauge;
+  const FISH = {trout:"Trout", steelhead:"Steelhead &amp; salmon", both:"Trout &amp; steelhead"};
+  wrap(`
+    <p>Pick the river you are fishing. Riffle finds its gauge, reads the live flow and water
+       temperature off it, and ranks the plays on that.</p>
+    <div class="wlist">
+      ${st.list.map(r=>`
+        <button class="wbtn rvbtn" data-k="${esc(r.key)}"
+                aria-current="${r.key===cur || (r.gauge&&r.gauge.id===curG)}">
+          <span class="wn">${esc(r.name)}<span class="wt">${esc(r.place)} · ${FISH[r.sp]||"Trout"}${r.book?" · in the book":""}</span></span>
+          <span class="wd">${r.d<1?"here":Math.round(r.d)+" mi"}</span>
+        </button>`).join("")}
+    </div>
+    ${state.spot && state.spot.both ? `<div class="dactions">
+      <button type="button" class="dbtn ghost" id="rvSp" data-sp="${state.spot.sp==="steelhead"?"trout":"steelhead"}">
+        Read ${esc(state.spot.name)} as ${state.spot.sp==="steelhead"?"trout water":"a steelhead run"}</button></div>
+      <p class="muted">${esc(state.spot.name)} is both, at different times of the year. Riffle is reading it as
+        <b>${state.spot.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b> — it will not guess which you mean.</p>`:""}
+    ${st.status==="loading"?`<p class="muted">Also asking USGS what is gauged out here…</p>`:""}
+    ${!inEast(state.pin.lat, state.pin.lon)?`<p class="muted">Riffle will read any of these — the gauge, the wading
+       call and the shops all work out here. What it will not do is print a hatch chart: the book carries the eastern
+       insects and a different fauna lives on this side of the plains.</p>`:""}`);
+
+  const sp=$("#rvSp");
+  if(sp) sp.addEventListener("click", ()=>chooseRiver(state.spot.pickedKey, sp.dataset.sp));
+  document.querySelectorAll("#riverCard .rvbtn").forEach(b=>b.addEventListener("click", ()=>chooseRiver(b.dataset.k)));
+}
+
+/* A river with two seasons in it is not one Riffle gets to decide between.
+   Rivers marked "both" are read as trout water and offer the run as a tap;
+   the app never picks the fishery on the angler's behalf. */
+async function chooseRiver(key, spOverride){
+  const r=(state.rivers.list||[]).find(x=>x.key===key);
+  if(!r) return;
+  state.access.chosen=null;
+  if(r.book && !spOverride){          // a written water reads better as itself
+    state.waterId=r.book; state.spot=null; state.live=null; state.baro=null;
+    draw(); refreshLive(water()); return;
+  }
+  const card=$("#riverCard"); if(card) card.setAttribute("aria-busy","true");
+  try{
+    await selectSpot({
+      lat:r.lat, lon:r.lon, name:r.name, place:r.place,
+      sp: spOverride || (r.sp==="steelhead" ? "steelhead" : "trout"),
+      gauge: r.gauge ? {id:r.gauge.id, name:r.gauge.station, lat:r.gauge.lat, lon:r.gauge.lon,
+                        area:r.gauge.area, dist:0} : null,
+      pickedGauge: r.gauge ? r.gauge.id : null,
+      pickedKey: key, both: r.sp==="both",
+    });
+  } finally {
+    const c=$("#riverCard"); if(c) c.removeAttribute("aria-busy");
+  }
 }
 
 function renderAccessCard(){
@@ -4616,24 +5357,36 @@ function renderWater(ctx){
   const from = state.pin ? {lat:state.pin.lat, lon:state.pin.lon, what:short(state.pin.label)||"your pin"}
              : g        ? {lat:g.lat, lon:g.lon, what:"your location"}
              : null;
-  const list=WATERS.map(w=>({w, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
+  /* The book and the named waters go in one list, sorted by distance, because
+     the question is "what is near me" and not "which of these did someone hand-
+     write". What separates them travels with each row instead: a book water
+     names the gauge it was built around, a named one says it is read live. */
+  const list=WATERS.map(w=>({w, named:false, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
     .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
 
   /* Nearest first, directly under the map — the answer to the question
      the map has just been asked. Everything about how the reading was
      built now travels with the reading itself, on Fish.
 
-     Only the near end of the book is open, because 27 rows between the
+     Only the near end is open, because sixty-nine rows between the
      map and the access list is a wall rather than an answer; the rest
      is one tap away, and the water being read is always in view. */
   const NEAR_OPEN=8;
   const shownList = state.nearAll ? list
     : list.filter((o,i)=> i<NEAR_OPEN || o.w.id===ctx.w.id);
   const hidden = list.length - shownList.length;
+  /* Past this the book is not a list of places to fish this weekend, and
+     saying "nearest waters to Baldwin" over a river 300 miles away is the
+     app talking about itself instead of about the water. */
+  const FAR_BOOK = 150;
+  const nearestMi = from && list.length && list[0].d!=null ? list[0].d : 0;
   $("#nearWaters").innerHTML=`
     <div class="wcard">
-      <h3>${from?`Nearest waters to ${esc(from.what)}`:"Waters in the book"}</h3>
-      <p>${ctx.w.spot
+      <h3>${!from || nearestMi>FAR_BOOK ? "Waters in the book" : `Nearest waters to ${esc(from.what)}`}</h3>
+      <p>${nearestMi>FAR_BOOK
+          ? `The book itself is a Northeast one and its nearest water is <b>${nearestMi} miles</b> away, so these
+             are here to read, not to drive to. The rivers around your pin are in the card above.`
+          : ctx.w.spot
           ? `Reading <b>${esc(ctx.w.name)}</b>, picked off the map. Tap a water below to read that one instead.`
           : from
           ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
@@ -4653,7 +5406,8 @@ function renderWater(ctx){
   if(less) less.addEventListener("click",()=>{ state.nearAll=false; draw(); });
 
   document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
-    state.waterId=b.dataset.w; state.spot=null; state.access.chosen=null;
+    state.access.chosen=null;
+    state.waterId=b.dataset.w; state.spot=null;
     state.live=null; state.baro=null; draw();
     refreshLive(water());
   }));
@@ -4739,7 +5493,7 @@ function locate(explicit){
          nearest one put a phone in Bozeman on Conneaut Creek, 1,554 miles
          off, with its steelhead run and its hatch chart intact. Beyond the
          book's reach, open on nothing and let Plan say how far away it is. */
-      if(best && rangeOf(bd)!=="beyond"){
+      if(best && inEast(state.geo.lat, state.geo.lon)){
         state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best);
       }
     }
@@ -4770,6 +5524,7 @@ function draw(){
   renderFish(res,ctx);
   renderShop(res,ctx);
   renderWater(ctx);
+  renderRiverCard();
   renderDiary(ctx);
   warmShops();
 }

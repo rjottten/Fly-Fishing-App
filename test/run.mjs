@@ -132,6 +132,7 @@ async function mock(page, scenario){
 
   await page.route("**://waterservices.usgs.gov/nwis/site/**", r => {
     const bbox = r.request().url().includes("bBox=");
+    if(scenario==="michigan") return r.fulfill(rdbOf(bbox ? F.MI_SITES : [F.SITE_PM_UP, F.SITE_BEAVERKILL]));
     if(scenario==="scaled")  return r.fulfill(rdbOf(bbox ? [F.SITE_LITTLE] : [F.SITE_LITTLE, F.SITE_BEAVERKILL]));
     if(scenario==="noarea")  return r.fulfill(rdbOf([F.SITE_LITTLE_NOAREA]));
     return r.fulfill(rdbOf(bbox ? [F.SITE_BEAVERKILL, F.SITE_LITTLE] : [F.SITE_BEAVERKILL, F.SITE_WBD]));
@@ -166,9 +167,15 @@ async function walk(browser, scenario){
     security: {latitude:41.9337, longitude:-74.9143},   // Roscoe, NY
     outofbook:{latitude:45.6770, longitude:-111.0429},  // Bozeman, MT
   }[scenario];
+  /* Half of what this app decides is a function of the clock — which light
+     window it is, whether a hatch is on its hours, whether it is dark enough
+     to swim a mouse. Left to the container the browser runs in UTC, which is
+     a timezone no user of a Northeast fly-fishing app is ever in, and 23:00
+     in July then reads as evening rather than night. Pin it to the water. */
+  const TZ = {timezoneId:"America/New_York"};
   const ctx = await browser.newContext(GEO
-    ? {permissions:["geolocation"], geolocation:GEO}
-    : {});
+    ? Object.assign({permissions:["geolocation"], geolocation:GEO}, TZ)
+    : Object.assign({}, TZ));
   const page = await ctx.newPage();
   const errors = [], violations = [], refusals = [];
   page.on("pageerror", e => errors.push("pageerror: " + e.message));
@@ -271,6 +278,10 @@ async function walk(browser, scenario){
   await page.click("#nearMore");
   seen.nearOrdered = await page.$$eval("#nearWaters .wbtn .wd",
     ns=>ns.map(n=>parseInt(n.textContent,10)));
+  /* Read the total off the app rather than pinning an integer here: the
+     book grows, and a test that has to be edited every time it does is a
+     test that gets edited without being read. */
+  seen.waterRows = await page.evaluate(()=>WATERS.length);
   await page.click("#nearLess");
   seen.nearCollapsed = await page.$$eval("#nearWaters .wbtn", ns=>ns.length);
   await page.click("#nearMore");        // open, so the water switch below can reach Penns
@@ -357,6 +368,9 @@ async function walk(browser, scenario){
   if(scenario==="plan")  await planPass(page, seen);
   if(scenario==="security") await securityPass(page, seen);
   if(scenario==="outofbook") await outOfBookPass(page, seen);
+  if(scenario==="plays") await playsPass(page, seen);
+  if(scenario==="named") await namedPass(page, seen);
+  if(scenario==="michigan") await michiganPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
@@ -408,10 +422,12 @@ async function shopPass(page, seen){
    the modeled half of the app off, not quietly reassign the fishery. */
 async function outOfBookPass(page, seen){
   seen.book = await page.evaluate(()=>{
-    const at=(lat,lon)=>{ const t=templateFor(lat,lon); return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp}; };
+    const at=(lat,lon)=>{ const t=templateFor(lat,lon);
+      return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp,
+              latGap:Math.round(t.latGap*10)/10, east:inEast(lat,lon)}; };
     const read=(lat,lon,name)=>{
       const t=templateFor(lat,lon);
-      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN);
+      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN, t.latGap);
       state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
       const ctx=buildContext();
       return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
@@ -445,6 +461,161 @@ async function outOfBookPass(page, seen){
     };
   });
   await page.evaluate(()=>{ state.spot=null; draw(); });
+}
+
+/* The four condition-driven plays added alongside the hatch ones answer
+   a question the calendar cannot: what to do when nothing is coming off,
+   when the river is up, when it is too clear, and after dark. None of
+   them can be checked by reading the source — a play is only correct if
+   it appears under the conditions it is for and stays out of the way
+   otherwise, and that is a property of the whole scoring engine, not of
+   the builder. So the engine is driven directly, one condition set at a
+   time, and asked what it would have said. */
+async function playsPass(page, seen){
+  seen.plays4 = await page.evaluate(()=>{
+    const keep={water:state.waterId, when:state.when, ov:state.ov, live:state.live, spot:state.spot};
+    state.spot=null; state.plan=null;
+
+    const at=(o)=>{
+      state.waterId = o.water;
+      state.when = new Date(2026, o.mo-1, o.d, o.h, 0);
+      state.ov = {flow:o.flow||null, clarity:o.clarity||null, sky:o.sky||null, baro:null};
+      state.live = o.tempF!=null ? {gauge:water().gauge, tempF:o.tempF, cfs:null} : null;
+      const ctx = buildContext(), r = recommend(ctx);
+      return {all:(r.all||[]).map(p=>p.key), top:r.picked.map(p=>p.key),
+              lw:ctx.lw.k, fs:ctx.fs.k, clarity:ctx.clarity.k, temp:Math.round(ctx.temp)};
+    };
+
+    const out = {
+      /* every play the engine knows, and the diary's map of them — an
+         unmapped key is not an error anywhere, it just silently stops
+         the angler's own days from ever moving that play again */
+      keys: PLAYS.map(p=>p.key),
+      unmapped: PLAYS.map(p=>p.key).filter(k=>!METHOD_OF_PLAY[k]),
+
+      // mouse: a warm July night on a river big enough to swim one
+      mouseNight: at({water:"bkill", mo:7, d:15, h:23, tempF:64, flow:"normal"}),
+      mouseNoon:  at({water:"bkill", mo:7, d:15, h:13, tempF:64, flow:"normal"}),
+      mouseWinter:at({water:"bkill", mo:1, d:15, h:23, tempF:38, flow:"normal"}),
+      mouseSmall: at({water:"willo", mo:7, d:15, h:23, tempF:64, flow:"normal"}),
+
+      // high water: the flow is the whole trigger
+      highUp:   at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"high",   clarity:"stained"}),
+      highBlown:at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"blown",  clarity:"muddy"}),
+      highNorm: at({water:"bkill", mo:5, d:10, h:12, tempF:54, flow:"normal", clarity:"clear"}),
+
+      // scuds: the limestone and the tailwater carry them, the freestone does not
+      scudLime: at({water:"spring", mo:2, d:10, h:12, tempF:48, flow:"low", clarity:"clear"}),
+      scudTail: at({water:"wbd",    mo:2, d:10, h:12, tempF:42, flow:"low", clarity:"clear"}),
+      scudFree: at({water:"bkill",  mo:2, d:10, h:12, tempF:38, flow:"low", clarity:"clear"}),
+
+      // sight fishing: low, clear, and bright enough to see into
+      sightLow:  at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"verylow", clarity:"gin",   sky:"bright"}),
+      sightMuddy:at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"verylow", clarity:"muddy", sky:"bright"}),
+      sightHigh: at({water:"spring", mo:8, d:20, h:13, tempF:58, flow:"high",    clarity:"gin",   sky:"bright"}),
+      sightDark: at({water:"spring", mo:8, d:20, h:23, tempF:58, flow:"verylow", clarity:"gin",   sky:"bright"}),
+
+      /* A steelhead trib has its own four plays and none of these. A scud
+         play on the Salmon River would be a trout play wearing a hat. */
+      gl: at({water:"salmonr", mo:11, d:5, h:12, flow:"low", clarity:"clear"}),
+    };
+
+    state.waterId=keep.water; state.when=keep.when; state.ov=keep.ov;
+    state.live=keep.live; state.spot=keep.spot;
+    return out;
+  });
+}
+
+/* RIVERS is the half of this app that is knowledge rather than lookup: the
+   rivers people actually fish, with a name, a point and what swims in them.
+   It carries no gauge, no bands and no curve — those are resolved from USGS
+   the moment a river is picked — so what has to hold is that nothing crept
+   in that nobody can source, and that every row is somewhere the app can
+   still say something true. */
+async function namedPass(page, seen){
+  seen.named = await page.evaluate(()=>{
+    const invented = RIVERS.filter(r=>r.gauge||r.flow||r.wade||r.temps||r.shift!=null);
+    const incomplete = RIVERS.filter(r=>!r.name||!r.place||!isFinite(r.lat)||!isFinite(r.lon)||!r.sp);
+    const badSp = RIVERS.filter(r=>!["trout","steelhead","both"].includes(r.sp)).map(r=>r.name);
+    const dupes = RIVERS.map(r=>r.name+"|"+r.place).filter((n,i,a)=>a.indexOf(n)!==i);
+    const offMap = RIVERS.filter(r=>r.lat<24||r.lat>66||r.lon<-170||r.lon>-52).map(r=>r.name);
+    const states = new Set(RIVERS.map(r=>r.place.split(", ").pop()));
+    /* A river in the list has to resolve to a template of its own fishery,
+       or picking it hands an angler the wrong calendar. */
+    const wrongSp = RIVERS.map(r=>({r, t:templateFor(r.lat,r.lon, r.sp==="steelhead"?"steelhead":"trout").w}))
+      .filter(o=>o.t.sp !== (o.r.sp==="steelhead"?"steelhead":"trout")).map(o=>o.r.name);
+    return {count:RIVERS.length, invented:invented.map(r=>r.name), incomplete:incomplete.map(r=>r.name),
+            badSp, dupes, offMap, wrongSp, states:[...states].sort(), nStates:states.size,
+            both:RIVERS.filter(r=>r.sp==="both").length};
+  });
+}
+
+/* Baldwin, Michigan. Under the old model this was the whole failure in one
+   place: the nearest of the 27 was a Lake Erie steelhead creek 298 miles
+   away, so the pin inherited a steelhead fishery and was then gated out for
+   being too far — wrong analogue, and no reading either way. It is the
+   worked example for the whole path: type a town, get the rivers that are
+   actually there, pick one, and have its gauge be what the plays read. */
+async function michiganPass(page, seen){
+  seen.pheno = await page.evaluate(()=>{
+    /* The shift is computed now. The 27 hand-written values were written
+       river by river with no formula in mind, so they are the only
+       independent check this file has on the formula that replaced them. */
+    const tr=WATERS.filter(w=>w.sp==="trout");
+    const err=tr.map(w=>({name:w.name, hand:w.shift, calc:bioShift(w.lat,w.type)}))
+                .map(o=>({...o, off:Math.abs(o.calc-o.hand)}));
+    return {worst: err.reduce((a,b)=>b.off>a.off?b:a, err[0]),
+            mean: +(err.reduce((s,o)=>s+o.off,0)/err.length).toFixed(2),
+            over4: err.filter(o=>o.off>4).map(o=>o.name),
+            baldwin: bioShift(43.90,"freestone"), letort: bioShift(40.19,"limestone"),
+            east:{baldwin:inEast(43.90,-85.85), driftless:inEast(43.60,-90.85),
+                  ozark:inEast(36.30,-93.20), bozeman:inEast(45.68,-111.04),
+                  gallatinLon:inEast(43.90,-111.04)}};
+  });
+
+  await page.click("#tab-plan");
+  await page.waitForSelector("#findQ");
+  await page.evaluate(()=>{ state.spot=null; });
+  await page.evaluate(()=>setPin(43.9022, -85.8517, "Baldwin, Lake County, Michigan"));
+  await page.waitForSelector("#riverCard .rvbtn", {timeout:10000});
+
+  seen.mi = await page.evaluate(()=>({
+    head: (document.querySelector("#riverCard h3")||{}).textContent,
+    rivers: [...document.querySelectorAll("#riverCard .rvbtn .wn")].map(n=>n.childNodes[0].textContent.trim()),
+    keys: [...document.querySelectorAll("#riverCard .rvbtn")].map(b=>b.dataset.k),
+    subs: [...document.querySelectorAll("#riverCard .rvbtn .wt")].map(n=>n.textContent.trim()),
+    src: state.rivers.src, n: state.rivers.list.length,
+  }));
+
+  await page.click("#riverCard .rvbtn");
+  await page.waitForFunction(()=>!!state.spot, {timeout:10000}).catch(()=>{});
+  seen.miPick = await page.evaluate(()=>{
+    const w=water(), ctx=buildContext();
+    return {name:w.name, place:w.place, sp:w.sp, gauge:w.gauge, both:!!w.both,
+            tmpl:w.spot.template.name, tmplSp:w.spot.template.sp,
+            latGap:w.latGap, shift:w.shift, beyond:!!w.beyond, out:ctx.outOfBook,
+            hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length,
+            saysGauge:/USGS \d/.test(w.note||""), saysShift:/day/.test(w.note||"")};
+  });
+  // and in May, when the calendar has to be doing real work
+  seen.miMay = await page.evaluate(()=>{
+    const keep=state.when;
+    state.when=new Date(2026,4,20,14,0);
+    const ctx=buildContext();
+    const out={hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.map(p=>p.key)};
+    state.when=keep;
+    return out;
+  });
+  // the fishery is the angler's call, never the app's
+  await page.waitForSelector("#rvSp", {timeout:8000});
+  await page.click("#rvSp");
+  await page.waitForFunction(()=>water().sp==="steelhead", {timeout:10000}).catch(()=>{});
+  seen.miGL = await page.evaluate(()=>{
+    const w=water(), ctx=buildContext();
+    return {sp:w.sp, name:w.name, tmplSp:w.spot.template.sp, isGL:ctx.isGL,
+            plays:recommend(ctx).picked.map(p=>p.key)};
+  });
+  await page.evaluate(()=>{ state.spot=null; state.pin=null; state.rivers={status:"idle",list:[],key:null}; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -750,8 +921,9 @@ const SCENARIOS = {
     eq(s.nearFirst, ["Beaverkill","Willowemoc Creek","East Branch Delaware"],
        "and lists the Catskill waters around Roscoe first");
     ok(s.nearOpen<=9, "only the near end of the book is open, so the map is not buried", s.nearOpen);
-    ok(s.nearOrdered.length===27 && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
-       "and one tap opens every water in the book, nearest first", s.nearOrdered.slice(0,5));
+    ok(s.nearOrdered.length===s.waterRows && s.nearOrdered.every((d,i,a)=>i===0||d>=a[i-1]),
+       "and one tap opens every water Riffle knows, nearest first",
+       {shown:s.nearOrdered.length, known:s.waterRows});
     ok(s.nearCollapsed===s.nearOpen, "and another folds it back", {open:s.nearOpen, back:s.nearCollapsed});
     ok(s.layout.condInFish && s.layout.condFirstInFish, "river conditions lead the Fish tab", s.layout);
     ok(s.layout.condHasGauges && s.layout.condHasBaro, "with the gauges and the barometer in them", s.layout);
@@ -873,7 +1045,15 @@ const SCENARIOS = {
     ok(s.formReset===0, "the form clears what you said for the next day", s.formReset);
     ok(s.formKeepsCond===3, "but keeps the conditions prefilled from the reading", s.formKeepsCond);
     ok(s.oneDay>0 && s.oneDay<=15, "one hot day nudges the streamer, no more than 15%", s.oneDay);
-    ok(s.pcts.streamer===15, "four of them lean on it as hard as the cap allows", s.pcts);
+    /* Four hot days on the streamer put the multiplier within a point of the
+       ceiling and never through it. Pinning the exact integer was pinning a
+       rounding boundary — the confidence term is asymptotic, so it approaches
+       15% without ever reaching it, and which side of 14.5 it lands on moves
+       with the water and the date. The cap is the invariant; the lean is the
+       claim. */
+    ok(s.pcts.streamer>s.oneDay, "four of them lean harder than one", s.pcts);
+    ok(s.pcts.streamer>=14 && s.pcts.streamer<=15,
+       "as hard as the cap allows, and no harder", s.pcts);
     ok(s.pcts.dry<0, "and a blank on the dry fly reads the other way", s.pcts);
     ok(s.rank.found, "the streamer play is among those the engine scored", s.rank);
     ok(s.rank.moved, "and scores higher with the book than without it", s.rank);
@@ -946,8 +1126,15 @@ const SCENARIOS = {
     ok(s.names.length>1, "with the access flow unaffected", s.names);
   },
   outofbook: (s)=>{
-    ok(s.book.nearest.bozeman.sp==="steelhead" && s.book.nearest.bozeman.miles>1000,
-       "the nearest water to Montana really is a steelhead tributary 1,500 miles off", s.book.nearest);
+    /* The analogue is chosen on climate now, so Bozeman gets a trout freestone
+       at nearly its own latitude rather than the least-far river of any kind.
+       That is the right analogue — and it is still not a reading, because the
+       gate is about which insects live there, not how far the analogue sits. */
+    ok(s.book.nearest.bozeman.sp==="trout" && s.book.nearest.bozeman.latGap<1.5,
+       "Montana matches a trout river at its own latitude, not the least-far one",
+       s.book.nearest.bozeman);
+    ok(s.book.nearest.bozeman.east===false,
+       "and it is still outside the range of the book's insects", s.book.nearest.bozeman);
     ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
     ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
        "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
@@ -1009,6 +1196,118 @@ const SCENARIOS = {
     ok(s.shops.names.length===3, "a slow Overpass is waited for, not abandoned", s.shops.names);
     ok(s.shopMs >= 6500, `and it really was slow (${s.shopMs} ms)`, s.shopMs);
   },
+  plays: (s)=>{
+    const p=s.plays4, has=(r,k)=>r.all.includes(k);
+    ok(p.keys.length===17, "the book carries seventeen plays", p.keys.length);
+    eq(p.unmapped, [], "and the diary can weight every one of them");
+
+    // --- after dark ---
+    ok(p.mouseNight.lw==="night", "23:00 in July reads as night", p.mouseNight.lw);
+    ok(has(p.mouseNight,"mouse"), "a mouse is on the table after dark in July", p.mouseNight.all);
+    ok(p.mouseNight.top.includes("mouse"),
+       "and it is one of the three shown — nothing else was answering the dark", p.mouseNight.top);
+    ok(!has(p.mouseNoon,"mouse"), "but not at one in the afternoon", p.mouseNoon.all);
+    ok(!has(p.mouseWinter,"mouse"), "and not on a January night", p.mouseWinter.all);
+    ok(!has(p.mouseSmall,"mouse"),
+       "nor on a creek too small to swim one", p.mouseSmall.all);
+
+    // --- the river up ---
+    ok(has(p.highUp,"highwater"), "high water gets its own play", p.highUp.all);
+    ok(p.highUp.top.includes("highwater"), "and it leads with the river up", p.highUp.top);
+    ok(has(p.highBlown,"highwater"), "a blown river is still the edges, not a lost day", p.highBlown.all);
+    ok(!has(p.highNorm,"highwater"), "at normal flow it stays out of the way", p.highNorm.all);
+
+    // --- crustaceans, on the day nothing hatches ---
+    ok(has(p.scudLime,"crustacean"), "February on the limestone is scud water", p.scudLime.all);
+    ok(p.scudLime.top.includes("crustacean"),
+       "and with no hatch on, that is what it says to fish", p.scudLime.top);
+    ok(has(p.scudTail,"crustacean"), "a bottom-release tailwater grows them too", p.scudTail.all);
+    ok(!has(p.scudFree,"crustacean"),
+       "a Catskill freestone does not, and is not told it does", p.scudFree.all);
+
+    // --- low and clear ---
+    ok(has(p.sightLow,"sight"), "low, gin-clear and bright is sight-fishing", p.sightLow.all);
+    ok(p.sightLow.top.includes("sight"), "and it is worth the top three there", p.sightLow.top);
+    ok(!has(p.sightMuddy,"sight"), "you cannot hunt fish you cannot see", p.sightMuddy.all);
+    ok(!has(p.sightHigh,"sight"), "and not with the river up", p.sightHigh.all);
+    ok(!has(p.sightDark,"sight"), "nor in the dark", p.sightDark.all);
+
+    // --- and none of it leaks onto a steelhead river ---
+    eq(p.gl.all.filter(k=>["mouse","highwater","crustacean","sight"].includes(k)), [],
+       "no trout play reaches a Great Lakes tributary");
+    ok(p.gl.all.every(k=>k.startsWith("gl-")), "which still runs only its own four", p.gl.all);
+
+    ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
+    ok(s.errors.length===0, "no console or page errors", s.errors);
+  },
+
+  named: (s)=>{
+    const n=s.named;
+    ok(n.count>=200, "the app knows a couple of hundred rivers, not a book of 27", n.count);
+    ok(n.nStates>=25, "spread across the country rather than one corner of it", n.nStates);
+    eq(n.invented, [], "and not one of them carries a gauge, band or curve nobody verified");
+    eq(n.incomplete, [], "every one has a name, a place, a point and a fishery");
+    eq(n.badSp, [], "and a fishery Riffle actually models");
+    eq(n.dupes, [], "no river listed twice");
+    eq(n.offMap, [], "none of them off the map");
+    eq(n.wrongSp, [], "every one resolves to a template of its own fishery");
+    ok(n.both>=30, "and the rivers that are both trout and steelhead are marked as both", n.both);
+  },
+
+  michigan: (s)=>{
+    const p=s.pheno;
+    ok(p.mean<=1.5, "the computed shift lands within a day and a half of the hand-written 27", p.mean);
+    ok(p.worst.off<=4, "and never more than four days off any one of them", p.worst);
+    eq(p.over4, [], "no river the formula gets badly wrong");
+    ok(p.baldwin>=7 && p.baldwin<=12,
+       "Baldwin runs a week to a fortnight behind the Beaverkill", p.baldwin);
+    ok(p.letort<=-9, "and the Letort runs well ahead of it", p.letort);
+    ok(p.east.baldwin && p.east.driftless && p.east.ozark,
+       "Michigan, the Driftless and the Ozarks are all inside the book's insects", p.east);
+    ok(!p.east.bozeman && !p.east.gallatinLon, "Montana is not, at any latitude", p.east);
+
+    /* The question this whole card exists to answer. Ask anyone where you
+       catch trout and steelhead near Baldwin and you get these three. */
+    ok(/Trout and steelhead near Baldwin/.test(s.mi.head), "the card asks the right question", s.mi.head);
+    ok(s.mi.src==="named", "and answers it from named rivers, without asking the network", s.mi.src);
+    const named=s.mi.rivers.join(" | ");
+    ok(/Pere Marquette/.test(named), "the Pere Marquette is on the list", named);
+    ok(/Manistee/.test(named), "so is the Manistee", named);
+    ok(/Muskegon/.test(named), "and the Muskegon", named);
+    ok(s.mi.rivers[0]==="Pere Marquette River", "nearest first, and Baldwin's own river leads", s.mi.rivers);
+    ok(s.mi.rivers.length>=6, "with the rest of the country around it", s.mi.rivers.length);
+    ok(new Set(s.mi.rivers.map((n,i)=>n+s.mi.subs[i])).size===s.mi.rivers.length,
+       "no river listed twice", s.mi.rivers);
+    ok(s.mi.subs.filter(t=>/Trout & steelhead/.test(t)).length>=3,
+       "the Michigan rivers are marked as both, which is what they are", s.mi.subs);
+
+    ok(s.miPick.name==="Pere Marquette River" && /Baldwin/.test(s.miPick.place),
+       "picking one reads that river", s.miPick);
+    ok(s.miPick.sp==="trout" && s.miPick.tmplSp==="trout",
+       "as trout water by default, borrowed from a trout river", s.miPick);
+    ok(s.miPick.both, "and it knows the river is also a run", s.miPick);
+    ok(s.miPick.gauge && /^\d{8}$/.test(String(s.miPick.gauge)),
+       "with a real USGS gauge found for it at runtime", s.miPick.gauge);
+    ok(s.miPick.latGap<=1.6, "matched to a river at nearly its own latitude", s.miPick);
+    ok(s.miPick.shift>=7 && s.miPick.shift<=12, "with the calendar moved for that latitude", s.miPick);
+    ok(!s.miPick.beyond && !s.miPick.out,
+       "and it is a reading, not a gate — this is the case that used to fail", s.miPick);
+    ok(s.miPick.saysGauge && s.miPick.saysShift,
+       "the card says which gauge it read and how far it moved the calendar", s.miPick);
+
+    ok(s.miMay.hatches>0 && s.miMay.plays.length===3,
+       "in May it has a hatch chart and three ranked plays", s.miMay);
+    ok(!s.miMay.plays.some(k=>k.startsWith("gl-")), "none of them a steelhead play", s.miMay.plays);
+
+    ok(s.miGL.sp==="steelhead" && s.miGL.isGL && s.miGL.name==="Pere Marquette River",
+       "and one tap re-reads the same river as a steelhead run", s.miGL);
+    ok(s.miGL.plays.every(k=>k.startsWith("gl-")),
+       "which is a different set of plays entirely", s.miGL.plays);
+
+    ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
+    ok(s.errors.length===0, "no console or page errors", s.errors);
+  },
+
   notiles: (s)=>{
     ok(s.mapRendered, "the map still initialises without tiles");
     ok(s.mapNote.includes("blocked"), "blank tiles are explained", s.mapNote);

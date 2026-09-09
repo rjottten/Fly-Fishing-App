@@ -76,6 +76,18 @@ export const SITE_LITTLE     = "USGS\t01420990\tLITTLE BEAVER KILL AT LEW BEACH 
 export const SITE_LITTLE_NOAREA = "USGS\t01420990\tLITTLE BEAVER KILL AT LEW BEACH NY\t41.9900\t-74.8000\t";
 export const SITE_WBD        = "USGS\t01426500\tW BR DELAWARE R AT HALE EDDY NY\t42.0114\t-75.3883\t595";
 
+/* Baldwin, Michigan — what a bBox around a town 300 miles outside the old
+   250-mile gate looks like coming back from USGS. Shouted station names,
+   several gauges on one river, and a headwater ditch small enough that the
+   list should drop it. Site numbers here are fixture values, not a claim
+   about which gauge USGS really operates where. */
+export const SITE_PM      = "USGS\t04122200\tPERE MARQUETTE RIVER AT SCOTTVILLE MI\t43.9500\t-86.2800\t709";
+export const SITE_PM_UP   = "USGS\t04122100\tPERE MARQUETTE RIVER NEAR BALDWIN MI\t43.8990\t-85.8500\t250";
+export const SITE_BALDWIN = "USGS\t04122150\tBALDWIN RIVER NEAR BALDWIN MI\t43.8800\t-85.8600\t62";
+export const SITE_LTMANI  = "USGS\t04125460\tLITTLE MANISTEE RIVER NEAR LUTHER MI\t44.0400\t-85.6800\t180";
+export const SITE_DITCH   = "USGS\t04122099\tUNNAMED DRAIN AT IDLEWILD MI\t43.8900\t-85.8000\t3.1";
+export const MI_SITES = [SITE_PM_UP, SITE_BALDWIN, SITE_PM, SITE_LTMANI, SITE_DITCH];
+
 export const IV = {value:{timeSeries:[
   {variable:{variableCode:[{value:"00060"}]}, values:[{value:[{value:"412"}]}]},
   {variable:{variableCode:[{value:"00010"}]}, values:[{value:[{value:"12.5"}]}]},
