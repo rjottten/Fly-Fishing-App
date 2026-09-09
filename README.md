@@ -60,12 +60,19 @@ is not curated. It is the same bBox call the app already made to find a single
 gauge, keeping the rest of the response instead of throwing it away, so a river
 appears because USGS gauges it, not because somebody wrote it down.
 
-How far that reading is honest is now a question about **insects**, not miles.
-Riffle's hatch calendar is the eastern North American one, and those species
-live from the Appalachians to the Driftless and the Ozarks — so that is the
-range, and inside it the calendar travels on latitude. West of the plains a
-different fauna lives, no shift in days turns one into the other, and the app
-says so instead of guessing.
+Every insect Riffle carries knows where it lives. Hendricksons are eastern,
+Salmonflies montane western, Hexagenia a Midwest and Great Lakes fly, Baetis
+and midges very nearly everywhere trout are. A location gets whichever insects
+live there, timed for its own latitude — so Montana gets salmonflies, PMDs and
+Western Green Drakes and does not get Hendricksons, and the Pere Marquette
+finally gets Hex, which is most of its June.
+
+There is no region and no radius anywhere in this. A range belongs to an
+animal, written once, and a place is simply where some of those ranges
+overlap. Twelve regional calendars would have written Baetis twelve times and
+had them drift apart by the third edit; a region would also have had to put a
+border somewhere, and the Driftless and western Michigan share a fauna that no
+sensible border separates.
 
 **Every river gets its own hatch chart, stated in its own dates.** Nothing an
 angler reads is expressed as an offset from somewhere else: on the Pere
@@ -122,11 +129,11 @@ week per hundred miles, so:
 
 | where you are | what you get |
 | --- | --- |
-| inside the eastern hatches' range, analogue within ~1.2° of latitude | the full reading |
-| inside the range, analogue further off in latitude | the full reading, with the borrowed thermal curve flagged — carry a thermometer |
-| outside the range | **outside the book** — no plays, no hatch chart, no wade call, and no modeled numbers |
+| some insect's range reaches you, thermal analogue within ~1.2° of latitude | the full reading |
+| range reaches you, analogue further off in latitude | the full reading, with the borrowed thermal curve flagged — carry a thermometer |
+| no range reaches you at all | **outside the book** — no plays, no hatch chart, no wade call, and no modeled numbers |
 
-Outside that range the app says so rather than guessing. It still gives you the live
+Where nothing reaches, the app says so rather than guessing. It still gives you the live
 USGS gauge, the public access and the fly shops, because a gauge is a gauge and
 OpenStreetMap maps the whole country — but the modeled half goes quiet. The
 alternative is worse than useless: the westernmost waters in the book are Lake

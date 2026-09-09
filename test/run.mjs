@@ -424,29 +424,39 @@ async function outOfBookPass(page, seen){
   seen.book = await page.evaluate(()=>{
     const at=(lat,lon)=>{ const t=templateFor(lat,lon);
       return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp,
-              latGap:Math.round(t.latGap*10)/10, east:inEast(lat,lon)}; };
-    const read=(lat,lon,name)=>{
-      const t=templateFor(lat,lon);
-      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN, t.latGap);
-      state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
+              latGap:Math.round(t.latGap*10)/10, lives:anyHatchLives(lat,lon)}; };
+    const read=(lat,lon,name,sp)=>{
+      const t=templateFor(lat,lon,sp);
+      state.spot=spotProfile({lat,lon,name,sp}, t.w, t.dist, null, NaN, t.latGap);
+      state.when=new Date(2026,5,20,14,0);                 // 20 June: salmonfly and green drake country
       const ctx=buildContext();
-      return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
-              hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length};
+      const ah=activeHatches(ctx);
+      return {out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp, shift:ctx.w.shift,
+              hatches:ah.length, bugs:ah.map(o=>o.hx.id),
+              plays:recommend(ctx).picked.length};
     };
     const out={
       nearest:{bozeman:at(45.677,-111.043), boise:at(43.615,-116.202)},
-      montana: read(45.677,-111.043,"Gallatin River"),
-      roscoe:  read(41.9337,-74.9143,"Beaverkill"),
-      edge:    read(40.7934,-77.86,"Spring Creek"),
+      /* The case this scenario was built around. It used to be the proof that
+         the app knew when to stay quiet; now it is the proof that it knows
+         what lives there. */
+      montana: read(45.677,-111.043,"Gallatin River","trout"),
+      oregon:  read(45.180,-121.080,"Deschutes River","trout"),
+      roscoe:  read(41.9337,-74.9143,"Beaverkill","trout"),
+      michigan:read(43.9000, -85.8500,"Pere Marquette River","trout"),
+      /* Somewhere no insect in the table reaches. The gate still exists; it
+         is just answered by the species now, so it takes a different ocean
+         to trip it. */
+      offmap:  read(51.08,-1.49,"River Test","trout"),
     };
     state.spot=null; state.when=new Date();
     return out;
   });
 
-  // and what the angler is actually shown out there
+  // and what the angler is shown where nothing in the table lives
   seen.bookUI = await page.evaluate(()=>{
-    const t=templateFor(45.677,-111.043);
-    state.spot=spotProfile({lat:45.677,lon:-111.043,name:"Gallatin River"}, t.w, t.dist, null, NaN);
+    const t=templateFor(51.08,-1.49,"trout");
+    state.spot=spotProfile({lat:51.08,lon:-1.49,name:"River Test",sp:"trout"}, t.w, t.dist, null, NaN, t.latGap);
     draw();
     const fish=document.getElementById("panel-fish");
     return {
@@ -568,9 +578,14 @@ async function michiganPass(page, seen){
             mean: +(err.reduce((s,o)=>s+o.off,0)/err.length).toFixed(2),
             over4: err.filter(o=>o.off>4).map(o=>o.name),
             baldwin: bioShift(43.90,"freestone"), letort: bioShift(40.19,"limestone"),
-            east:{baldwin:inEast(43.90,-85.85), driftless:inEast(43.60,-90.85),
-                  ozark:inEast(36.30,-93.20), bozeman:inEast(45.68,-111.04),
-                  gallatinLon:inEast(43.90,-111.04)}};
+            /* Which insects reach each place. There is no geographic gate left
+               to test — the species answer it — so what matters is that four
+               different places get four different sets. */
+            lives:(()=>{
+              const at=(la,lo)=>HATCHES.filter(h=>h.waters==="all"&&inRange(h,la,lo)).map(h=>h.id);
+              return {baldwin:at(43.90,-85.85), driftless:at(43.60,-90.85),
+                      ozark:at(36.30,-93.20), bozeman:at(45.68,-111.04)};
+            })()};
   });
 
   await page.click("#tab-plan");
@@ -971,8 +986,8 @@ const SCENARIOS = {
        "the access ladder sits on Fish, under the call it explains", s.layout);
     ok(!s.layout.strayReading && !s.layout.gaugesInPlan && !s.layout.callInPlan,
        "with nothing left behind on Plan", s.layout);
-    eq(s.tabOrder, ["Plan","Fish","Shop","Report"],
-       "four tabs: Plan leads them and Report closes them");
+    eq(s.tabOrder, ["Plan","Shop","Fish","Report"],
+       "four tabs: plan the day, gear up, then fish it, then write it down");
     ok(s.onRiverChips>0, "the condition chips live on the Report tab", s.onRiverChips);
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
     ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
@@ -1154,26 +1169,39 @@ const SCENARIOS = {
     ok(s.names.length>1, "with the access flow unaffected", s.names);
   },
   outofbook: (s)=>{
-    /* The analogue is chosen on climate now, so Bozeman gets a trout freestone
-       at nearly its own latitude rather than the least-far river of any kind.
-       That is the right analogue — and it is still not a reading, because the
-       gate is about which insects live there, not how far the analogue sits. */
-    ok(s.book.nearest.bozeman.sp==="trout" && s.book.nearest.bozeman.latGap<1.5,
-       "Montana matches a trout river at its own latitude, not the least-far one",
-       s.book.nearest.bozeman);
-    ok(s.book.nearest.bozeman.east===false,
-       "and it is still outside the range of the book's insects", s.book.nearest.bozeman);
-    ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
-    ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
-       "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
-    ok(s.book.montana.hatches===0 && s.book.montana.plays===0,
-       "no hatch chart and no plays, in the middle of May", s.book.montana);
-    ok(s.book.roscoe.out===false && s.book.roscoe.plays>0 && s.book.roscoe.hatches>0,
-       "a water in the book still reads in full", s.book.roscoe);
-    ok(s.book.edge.out===false && s.book.edge.plays>0,
-       "and so does one a few miles off it", s.book.edge);
+    const b=s.book;
+    /* Every insect carries a range now, so a location gets whichever ones
+       live there. Montana is the case that used to be switched off. */
+    ok(b.montana.out===false && b.montana.hatches>0 && b.montana.plays===3,
+       "a Montana river has a hatch chart and ranked plays, in June", b.montana);
+    ok(b.montana.bugs.includes("salmonfly") && b.montana.bugs.includes("pmd"),
+       "with the insects that actually live there", b.montana.bugs);
+    ok(!b.montana.bugs.includes("hendrickson") && !b.montana.bugs.includes("quillgordon"),
+       "and not the eastern ones, which do not", b.montana.bugs);
+    ok(b.montana.sp==="trout" && b.montana.isGL===false,
+       "read as trout water, not as whichever river happened to be least far", b.montana);
+
+    ok(b.oregon.bugs.includes("wmarchbrown") || b.oregon.bugs.includes("wgreendrake")
+       || b.oregon.bugs.includes("salmonfly"),
+       "the Deschutes gets the western fauna too", b.oregon.bugs);
+    ok(b.michigan.bugs.includes("hex") || b.michigan.bugs.includes("browndrake"),
+       "and a Michigan river finally gets Hex and the Brown Drake", b.michigan.bugs);
+    ok(!b.roscoe.bugs.includes("salmonfly") && !b.roscoe.bugs.includes("pmd"),
+       "while a Catskill river gets none of the western ones", b.roscoe.bugs);
+    ok(b.roscoe.out===false && b.roscoe.plays>0 && b.roscoe.hatches>0,
+       "and still reads in full", b.roscoe);
+
+    /* Each of these charts is genuinely different from the others. */
+    const sets=[b.montana.bugs, b.oregon.bugs, b.roscoe.bugs, b.michigan.bugs];
+    const pairs=[[0,2],[1,2],[3,0]];
+    ok(pairs.every(([i,j])=>sets[i].some(x=>!sets[j].includes(x)) && sets[j].some(x=>!sets[i].includes(x))),
+       "no two of these locations get the same chart", sets.map(x=>x.length));
+
+    /* The gate still exists — it is answered by the species now. */
+    ok(b.offmap.out===true && b.offmap.hatches===0 && b.offmap.plays===0,
+       "somewhere no insect in the table reaches gets no chart at all", b.offmap);
     ok(/Outside the book/.test(s.bookUI.gate) && s.bookUI.says,
-       "the Fish tab says so in place of the plays", s.bookUI);
+       "and the Fish tab says so in place of the plays", s.bookUI);
     ok(s.bookUI.plays===0 && !s.bookUI.eggs,
        "with nothing ranked, and no egg patterns anywhere on it", s.bookUI);
     ok(!s.bookUI.tactic && !s.bookUI.ladder,
@@ -1183,9 +1211,10 @@ const SCENARIOS = {
     ok(/No list for this water/.test(s.bookUI.shopHead),
        "the shop list says why it is empty", s.bookUI.shopHead);
 
-    /* Same bug, other door: the device-location path never asked the
-       distance question, so this browser — sitting in Bozeman — opened
-       on a Lake Erie steelhead tributary with its run and chart intact. */
+    /* Same bug, other door: a phone in Bozeman used to open on a Lake Erie
+       steelhead tributary. Species ranges do not fix that — Montana hatches
+       now, so "does anything live here" is true and says nothing about
+       whether that river is yours. Distance is what answers this one. */
     ok(s.settledOnLoad.geo, "the browser's location was actually read", s.settledOnLoad);
     ok(s.settledOnLoad.water!=="Conneaut Creek" && s.settledOnLoad.sp!=="steelhead",
        "a phone in Montana does not open on a steelhead river 1,554 miles away",
@@ -1196,6 +1225,7 @@ const SCENARIOS = {
        "while inside the book it still names real ones, at a drivable distance",
        s.reach.refugesFromPenns);
   },
+
   slowshops: (s)=>{
     /* The mirrors used to be tried in turn on a 30 s timeout each, so a
        queued first host cost a full minute before the second was asked. */
@@ -1290,9 +1320,25 @@ const SCENARIOS = {
     ok(p.baldwin>=7 && p.baldwin<=12,
        "Baldwin runs a week to a fortnight behind the Beaverkill", p.baldwin);
     ok(p.letort<=-9, "and the Letort runs well ahead of it", p.letort);
-    ok(p.east.baldwin && p.east.driftless && p.east.ozark,
-       "Michigan, the Driftless and the Ozarks are all inside the book's insects", p.east);
-    ok(!p.east.bozeman && !p.east.gallatinLon, "Montana is not, at any latitude", p.east);
+    // ranges live on the species now, so each place gets its own set of insects
+    const L=p.lives;
+    ok(L.baldwin.includes("hex"), "Hex reaches Michigan, which is most of its June", L.baldwin.length);
+    ok(!L.ozark.includes("hex"), "and not the Ozarks", L.ozark.length);
+    ok(L.bozeman.includes("salmonfly") && L.bozeman.includes("pmd"),
+       "Montana gets the salmonfly and the PMD", L.bozeman);
+    ok(!L.bozeman.includes("hendrickson") && !L.baldwin.includes("salmonfly"),
+       "and neither place gets the other's insects", {mt:L.bozeman.length, mi:L.baldwin.length});
+    ok(L.baldwin.includes("midge") && L.bozeman.includes("midge") && L.ozark.includes("midge"),
+       "while what really does live everywhere is written once and reaches all of them", true);
+    /* Michigan, the Ozarks and Montana are three different faunas. The
+       Driftless is deliberately not in that list — it shares Michigan's,
+       which is the correct answer and the reason ranges beat regions. */
+    const distinct=["baldwin","ozark","bozeman"].map(k=>L[k].slice().sort().join(","));
+    ok(new Set(distinct).size===3,
+       "Michigan, the Ozarks and Montana each get their own chart",
+       {mi:L.baldwin.length, oz:L.ozark.length, mt:L.bozeman.length});
+    ok(L.driftless.slice().sort().join(",")===L.baldwin.slice().sort().join(","),
+       "and the Driftless shares Michigan's, because it really does", L.driftless.length)
 
     /* The question this whole card exists to answer. Ask anyone where you
        catch trout and steelhead near Baldwin and you get these three. */
