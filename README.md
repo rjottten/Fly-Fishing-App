@@ -208,13 +208,23 @@ logged days like any other play.
 ## Shops, and why "popular" is hand-written
 
 OpenStreetMap knows where a shop is. It does not know which one the guides
-actually use, and no free service will tell us: Google Places, Yelp and
-Foursquare all need an API key, and a key in a page with no backend is a
-published key. So Riffle does not scrape a star rating. It carries a
+actually use, and no *free* service will tell us: Google Places, Yelp and
+Foursquare all need an API key, and a key in a page with no backend would be a
+published key — which is why the key here lives in a Netlify function and never
+in the page. With no key configured Riffle still has an answer, because it
+carries a
 hand-written list of the shops anglers name for a given river — the same kind
 of knowledge the river list is — and ranks those first, with a tap to fall back
 to plain distance. Ask anyone where to buy a fly for the Yakima and the answer
 is Red's, whatever the map says.
+
+**Where a Google Places key is configured**, real ratings join that — through
+the `/api/shops` function, so the key stays server-side. The star rating is
+shrunk toward the ordinary in proportion to how few people left one, so a 5.0
+from three reviews does not beat a 4.8 from six hundred, and a shop nobody has
+reviewed is ranked on distance rather than pushed below a worse shop that
+happens to have been rated. A shop the hand-written list has never heard of,
+with nine hundred reviews at 4.9, out-ranks a bare name on it.
 
 That list is fallible and says so: town-level positions, no invented phone
 numbers, and the search link stays on the card because it is not the whole
