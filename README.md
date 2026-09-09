@@ -283,10 +283,15 @@ themselves, once, with a line on **Fish** saying what went — because changing
 what the plays are built on without saying so would be the app quietly
 disagreeing with what is on screen.
 
-Two things are never swept: **the diary**, which is the record rather than the
-session, and **which river you were on**, because re-finding it is real work and
-being on the wrong river is obvious in a way that a stale clarity chip is not. A
-day still in the future survives too — that is a plan, not a leftover.
+**The diary is never swept** — that is the record rather than the session — and
+a day still in the future survives too, because that is a plan rather than a
+leftover.
+
+**The river depends on where you are.** Under fifty miles it is a home water and
+you should not have to pick it again every week; further than that you have
+driven home, and the app should stop claiming the Yakima at a kitchen table in
+Ohio, so it lets go and Plan lists what is actually near. With location off
+there is nothing to judge on, so it stays.
 
 A trip lasting several days is the exception, so it is a switch. **Hold for this
 trip**, at the foot of the Report tab, and nothing expires until you let go. It

@@ -2058,6 +2058,7 @@ const state = {
   dmsg:null,                                   // what the last save or import had to say
   trip:false,                                  // held on purpose — see the trip block below
   swept:null,                                  // what the last sweep cleared, to say so once
+  staleGap:false,                              // a long gap, waiting on a location to finish the sweep
 };
 
 /* --- one trip, then a clean sheet ----------------------------
@@ -2082,6 +2083,11 @@ const state = {
 ------------------------------------------------------------ */
 const TRIP_KEY  = "riffle.trip.v1";
 const STALE_MS  = 5*60*60*1000;      // a long lunch is not a new trip; a night's sleep is
+/* How far from a river you have to be before it stops being yours. Under
+   this it is a home water and re-picking it every week would be a chore;
+   over it you have driven home, and the app should stop claiming the
+   Yakima at a kitchen table in Ohio. */
+const RIVER_HOME_MI = 50;
 
 function tripLoad(){
   try{
@@ -2129,8 +2135,31 @@ function freshenSession(){
   if(last && Date.now()-last > STALE_MS){
     const gone=sweepSession();
     if(gone.length) state.swept=gone;
+    /* Whether the river goes too is a question about where you are, and
+       nothing here knows that yet — geolocation answers later, if at all.
+       So the gap is recorded and locate() finishes the job. */
+    state.staleGap=true;
   }
   seenTouch();
+}
+
+/* Called once, when the device location arrives after a stale gap. A river
+   fifty miles away is a home water you should not have to pick again every
+   week; a river four hundred miles away is last week's trip, and keeping it
+   means the app opens on the Yakima at a kitchen table in Ohio. */
+function dropDistantRiver(){
+  if(!state.staleGap || !state.geo) return false;
+  state.staleGap=false;
+  const w=water();
+  if(!w || !isFinite(w.lat) || !isFinite(w.lon)) return false;
+  const mi=haversine(state.geo.lat, state.geo.lon, w.lat, w.lon);
+  if(mi<=RIVER_HOME_MI) return false;
+  state.spot=null; state.pin=null;
+  state.access={status:"idle", list:[], radius:8000, chosen:null};
+  state.rivers={status:"idle", list:[], key:null};
+  state.shops={status:"idle", list:[], radius:0, key:null};
+  (state.swept=state.swept||[]).push(`the river you were reading, ${mi} miles from where you are now`);
+  return true;
 }
 
 /* --- barometer ----------------------------------------------
@@ -6192,6 +6221,7 @@ function locate(explicit){
   if(!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
     state.geo={lat:pos.coords.latitude, lon:pos.coords.longitude};
+    dropDistantRiver();      // last trip's river, now that we know where "here" is
     if(!state.spot){
       let best=null,bd=1e9;
       for(const w of WATERS){

@@ -1188,6 +1188,27 @@ async function tripPass(page, seen){
     localStorage.setItem("riffle.seen.v1", String(Date.now()-48*60*60*1000));
     freshenSession(); out.future=snap();
 
+    /* Whether the river goes with the rest depends on where you are now.
+       A home water fifty miles off is not worth re-picking every week; the
+       one you drove four hundred miles to is last week's trip. */
+    const river=(lat,lon,geoLat,geoLon)=>{
+      state.trip=false; state.swept=null; state.staleGap=true;
+      state.spot=spotProfile({lat,lon,name:"Test River",place:"",sp:"trout"},
+                             templateFor(lat,lon,"trout").w, 0, null, NaN, 0);
+      state.geo={lat:geoLat, lon:geoLon};
+      const dropped=dropDistantRiver();
+      return {dropped, spot:!!state.spot, note:(state.swept||[]).join(" | ")};
+    };
+    out.homeWater = river(46.95,-120.55, 46.99,-120.53);     // still in Ellensburg
+    out.droveHome = river(46.95,-120.55, 41.50,-81.70);       // back in Ohio
+    /* With no location there is nothing to judge on, so the river stays. */
+    state.trip=false; state.swept=null; state.staleGap=true;
+    state.spot=spotProfile({lat:46.95,lon:-120.55,name:"Test River",place:"",sp:"trout"},
+                           templateFor(46.95,-120.55,"trout").w, 0, null, NaN, 0);
+    state.geo=null;
+    out.noLocation={dropped:dropDistantRiver(), spot:!!state.spot};
+    state.spot=null; state.geo=null; state.staleGap=false; state.swept=null;
+
     /* And the switch survives the tab being closed. */
     state.trip=true; tripSave(); state.trip=false; tripLoad();
     out.heldPersists=state.trip;
@@ -1566,6 +1587,14 @@ const SCENARIOS = {
     ok(t.future.plan===true,
        "a day still ahead survives — that is a plan, not a leftover", t.future);
     ok(t.heldPersists===true, "and the hold outlives the tab", t.heldPersists);
+    ok(t.homeWater.dropped===false && t.homeWater.spot===true,
+       "a river you are standing beside is a home water, not a leftover", t.homeWater);
+    ok(t.droveHome.dropped===true && t.droveHome.spot===false,
+       "the one you drove four hundred miles to does not follow you home", t.droveHome);
+    ok(/miles from where you are now/.test(t.droveHome.note),
+       "and the notice says why it went", t.droveHome.note);
+    ok(t.noLocation.dropped===false && t.noLocation.spot===true,
+       "with location off there is nothing to judge on, so the river stays", t.noLocation);
   },
   calendar: (s)=>{
     const c=s.cal;
