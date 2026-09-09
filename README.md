@@ -35,11 +35,8 @@ above the tabs, and the day you are fishing sits below them, because every
 panel is read through it.
 
 - **Plan** — search an address, drop a pin on the map, or use your location.
-  Sixty-nine waters re-sort directly under the map, nearest to wherever you last
-  pointed: the 27 hand-written ones — Catskill and Delaware tailwaters,
-  Pennsylvania limestoners, New England freestones, Lake Ontario / Lake Erie
-  steelhead tributaries — and 42 more marked **read live**, which are a name and
-  a point and nothing else until you tap one. Below them, the public access OpenStreetMap has mapped around that
+  Riffle then lists **the trout and steelhead rivers around that point** — 236
+  of them, across 30-odd states — nearest first, and reads whichever you pick. Below them, the public access OpenStreetMap has mapped around that
   point, and this water's wading ladder.
 - **Fish** — everything you read standing in the river, in the order you ask
   it. **River conditions** first: water temperature, flow band, clarity, light
@@ -90,22 +87,27 @@ curves of the nearest of these 27 hand-written waters and rescales the flow
 bands to the gauge it finds. So your home pool does not have to be on this list
 for the app to read it; the list is what it reasons *from*.
 
-The **read live** waters are that same machinery with a name on the front. A
-hand-written entry is a verified USGS gauge, flow and wading bands tuned to that
-gauge's numbers, a twelve-month temperature curve and a note on how the river
-fishes — weeks of work, which is why there are only 27 of them. A read-live
-entry is a name and a point. Tap one and Riffle looks up its gauge, scales the
-nearest written water's bands by the ratio of the two drainage areas, and prints
-which gauge it found and what it borrowed. Nothing is claimed that the card
-cannot show you the source of, so the list can grow without the book losing its
-footing — and a river that is missing costs you a search rather than a wrong
-reading.
+Riffle knows 236 rivers. Each is a name, a place, a point, and what swims in
+it — trout, a steelhead or salmon run, or both, which most Great Lakes and
+coastal rivers are at different times of the year. That is the half of this
+problem that is knowledge rather than lookup: ask anyone where you catch trout
+and steelhead near Baldwin, Michigan and you get the Pere Marquette, the
+Manistee and the Muskegon.
 
-The water it borrows from is matched on fishery, not just distance. Oatka Creek
-is a western New York trout stream 29 miles from Oak Orchard, a steelhead
-tributary, and 139 miles from the nearest written trout water; nearest-of-all
-would have put it on a steelhead calendar and ranked egg patterns in May. Every
-read-live water borrows from a written water of its own kind.
+What needed looking up was never the river. It was the gauge and the flow
+bands, and those are resolved from USGS the moment you pick one — the gauge
+nearest that river, and its bands scaled from the closest hand-written water's
+by the ratio of the two drainage areas. So no row in that list carries a number
+nobody verified, and the card tells you which gauge it read and what it
+borrowed.
+
+The 27 hand-written waters appear in the same list and simply read better when
+picked, because they have a verified gauge, bands tuned to its numbers and a
+twelve-month temperature curve behind them.
+
+A river that is both trout water and a run is read as trout water and offers
+the run as a tap. Riffle never decides on its own that a trout river is a
+steelhead river — that was the Montana bug, and it is not coming back.
 
 How far that reaches is measured, not assumed. Spring hatch timing moves about a
 week per hundred miles, so:
@@ -148,33 +150,6 @@ Creek (State Line, PA/OH) · Eighteenmile Creek (Burt Dam, NY)
 
 </details>
 
-<details>
-<summary><b>The 42 read-live waters</b></summary>
-
-A name and a point each — the gauge, the flow bands and the calendar are
-resolved when you tap one, and the card says what it found.
-
-East Branch Ausable (Jay, NY) · Pequest River (Belvidere, NJ) · Rondout Creek
-(Sundown, NY) · Callicoon Creek (Callicoon, NY) · Big Spring Creek (Newville,
-PA) · Mettawee River (Dorset, VT) · Bushkill Creek (Easton, PA) · Schoharie
-Creek (Hunter, NY) · Naugatuck River (Thomaston, CT) · Brodhead Creek
-(Analomink, PA) · Lackawaxen River (Rowland, PA) · Big Flat Brook (Layton, NJ)
-· Falling Spring Branch (Chambersburg, PA) · Pine Creek (Slate Run, PA) · East
-Branch Westfield (Chesterfield, MA) · Deerfield River (Charlemont, MA) ·
-Kettle Creek (Cross Fork, PA) · Willimantic River (Coventry, CT) · West Branch
-Croton (Croton Falls, NY) · Salmon River (Colchester, CT) · Swift River
-(Belchertown, MA) · Gunpowder Falls (Monkton, MD) · Winooski River (Waterbury,
-VT) · White River (Stockbridge, VT) · Loyalsock Creek (Forksville, PA) ·
-Lamoille River (Johnson, VT) · Tulpehocken Creek (Reading, PA) · Youghiogheny
-River (Confluence, PA) · West Canada Creek (Trenton Falls, NY) · Savage River
-(Bloomington, MD) · Allegheny River (Kinzua tailwater, Warren, PA) ·
-Pemigewasset River (Woodstock, NH) · North Branch Potomac (Barnum, WV) · Oil
-Creek (Titusville, PA) · Wiscoy Creek (Pike, NY) · Saco River (North Conway,
-NH) · Connecticut River, Trophy Stretch (Pittsburg, NH) · Androscoggin River
-(Errol, NH) · Oatka Creek (Mumford, NY) · Rapid River (Upton, ME) · Kennebec
-River (Bingham, ME) · Roach River (Kokadjo, ME)
-
-</details>
 
 <details>
 <summary><b>The seventeen plays</b></summary>

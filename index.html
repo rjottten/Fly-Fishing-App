@@ -1362,72 +1362,265 @@ const WATERS = [
   note:"Small, flashy and quick — drops back into shape in 24 to 48 hours. Fish concentrate below Burt Dam."},
 ];
 
-/* --- named waters, read live -------------------------------
-   The 27 entries above are hand-written: a verified USGS gauge,
-   flow and wading bands tuned to that gauge's numbers, a seasonal
-   temperature curve, and a note about how the river actually
-   fishes. That is weeks of work per river and it is why the book
-   is small.
+/* --- the rivers ---------------------------------------------
+   Not a book. A book entry is a verified gauge, flow and wading
+   bands tuned to its numbers, a twelve-month temperature curve and
+   a note on how the river fishes — weeks of work each, and there
+   are 27 of them because that is all anyone could write.
 
-   These are not that. Each one is a name and a point, nothing
-   more — no gauge id, no flow bands, no invented curve. Tapping
-   one runs exactly the path a dropped pin runs: Riffle asks USGS
-   for the nearest active gauge to that point, scales the nearest
-   hand-written water's bands by the ratio of the two drainage
-   areas, and says on the card which gauge it found and what it
-   borrowed. Nothing here is asserted that the app cannot show you
-   the source of.
+   These are the other thing: the rivers people actually fish, with
+   a name, a point, and what swims in them. That is knowledge, and
+   it is the half of this problem that does not need looking up —
+   ask anyone where you catch trout and steelhead near Baldwin,
+   Michigan and you get the Pere Marquette, the Manistee and the
+   Muskegon. What needed looking up was never the river. It was the
+   gauge and the flow bands, and those are resolved at runtime from
+   USGS the moment you pick one.
 
-   So this list can grow without the book losing its footing, and
-   a river that is missing costs an angler a search rather than a
-   wrong reading. Every entry is inside the book's 250-mile reach
-   of a hand-written trout water, which is what keeps the hatch
-   calendar honest.
+   Each row is name, place, latitude, longitude, fishery — t trout,
+   s a steelhead or salmon run, b both, which most Great Lakes and
+   coastal rivers are at different times of the year. The 27 written
+   waters appear in the same list and simply read better when picked.
 ------------------------------------------------------------ */
-const NAMED = [
- {id:"n-ebau", name:"East Branch Ausable", place:"Jay, NY", lat:44.36, lon:-73.72, sp:"trout"},
- {id:"n-pequest", name:"Pequest River", place:"Belvidere, NJ", lat:40.87, lon:-74.98, sp:"trout"},
- {id:"n-rondout", name:"Rondout Creek", place:"Sundown, NY", lat:41.93, lon:-74.42, sp:"trout"},
- {id:"n-callicoon", name:"Callicoon Creek", place:"Callicoon, NY", lat:41.76, lon:-75.06, sp:"trout"},
- {id:"n-bigspring", name:"Big Spring Creek", place:"Newville, PA", lat:40.17, lon:-77.4, sp:"trout"},
- {id:"n-mettawee", name:"Mettawee River", place:"Dorset, VT", lat:43.25, lon:-73.1, sp:"trout"},
- {id:"n-bushkill", name:"Bushkill Creek", place:"Easton, PA", lat:40.7, lon:-75.22, sp:"trout"},
- {id:"n-schoharie", name:"Schoharie Creek", place:"Hunter, NY", lat:42.21, lon:-74.22, sp:"trout"},
- {id:"n-naugatuck", name:"Naugatuck River", place:"Thomaston, CT", lat:41.67, lon:-73.07, sp:"trout"},
- {id:"n-brodhead", name:"Brodhead Creek", place:"Analomink, PA", lat:41.05, lon:-75.2, sp:"trout"},
- {id:"n-lackawaxen", name:"Lackawaxen River", place:"Rowland, PA", lat:41.47, lon:-74.98, sp:"trout"},
- {id:"n-flatbrook", name:"Big Flat Brook", place:"Layton, NJ", lat:41.17, lon:-74.85, sp:"trout"},
- {id:"n-fallingsp", name:"Falling Spring Branch", place:"Chambersburg, PA", lat:39.94, lon:-77.66, sp:"trout"},
- {id:"n-pine", name:"Pine Creek", place:"Slate Run, PA", lat:41.47, lon:-77.5, sp:"trout"},
- {id:"n-westfield", name:"East Branch Westfield", place:"Chesterfield, MA", lat:42.4, lon:-72.85, sp:"trout"},
- {id:"n-deerfield", name:"Deerfield River", place:"Charlemont, MA", lat:42.63, lon:-72.87, sp:"trout"},
- {id:"n-kettle", name:"Kettle Creek", place:"Cross Fork, PA", lat:41.48, lon:-77.83, sp:"trout"},
- {id:"n-willimantic", name:"Willimantic River", place:"Coventry, CT", lat:41.8, lon:-72.32, sp:"trout"},
- {id:"n-croton", name:"West Branch Croton", place:"Croton Falls, NY", lat:41.34, lon:-73.72, sp:"trout"},
- {id:"n-salmonct", name:"Salmon River", place:"Colchester, CT", lat:41.56, lon:-72.44, sp:"trout"},
- {id:"n-swift", name:"Swift River", place:"Belchertown, MA", lat:42.27, lon:-72.35, sp:"trout"},
- {id:"n-gunpowder", name:"Gunpowder Falls", place:"Monkton, MD", lat:39.57, lon:-76.67, sp:"trout"},
- {id:"n-winooski", name:"Winooski River", place:"Waterbury, VT", lat:44.34, lon:-72.75, sp:"trout"},
- {id:"n-white", name:"White River", place:"Stockbridge, VT", lat:43.77, lon:-72.68, sp:"trout"},
- {id:"n-loyalsock", name:"Loyalsock Creek", place:"Forksville, PA", lat:41.49, lon:-76.6, sp:"trout"},
- {id:"n-lamoille", name:"Lamoille River", place:"Johnson, VT", lat:44.64, lon:-72.68, sp:"trout"},
- {id:"n-tully", name:"Tulpehocken Creek", place:"Reading, PA", lat:40.35, lon:-75.98, sp:"trout"},
- {id:"n-yough", name:"Youghiogheny River", place:"Confluence, PA", lat:39.81, lon:-79.35, sp:"trout"},
- {id:"n-wcanada", name:"West Canada Creek", place:"Trenton Falls, NY", lat:43.29, lon:-75.13, sp:"trout"},
- {id:"n-savage", name:"Savage River", place:"Bloomington, MD", lat:39.5, lon:-79.12, sp:"trout"},
- {id:"n-allegheny", name:"Allegheny River", place:"Kinzua tailwater, Warren, PA", lat:41.84, lon:-79.14, sp:"trout"},
- {id:"n-pemi", name:"Pemigewasset River", place:"Woodstock, NH", lat:43.98, lon:-71.68, sp:"trout"},
- {id:"n-nbpotomac", name:"North Branch Potomac", place:"Barnum, WV", lat:39.44, lon:-79.15, sp:"trout"},
- {id:"n-oilck", name:"Oil Creek", place:"Titusville, PA", lat:41.63, lon:-79.67, sp:"trout"},
- {id:"n-wiscoy", name:"Wiscoy Creek", place:"Pike, NY", lat:42.55, lon:-78.13, sp:"trout"},
- {id:"n-saco", name:"Saco River", place:"North Conway, NH", lat:44.05, lon:-71.13, sp:"trout"},
- {id:"n-cttrophy", name:"Connecticut River, Trophy Stretch", place:"Pittsburg, NH", lat:45.09, lon:-71.28, sp:"trout"},
- {id:"n-androscoggin", name:"Androscoggin River", place:"Errol, NH", lat:44.78, lon:-71.13, sp:"trout"},
- {id:"n-oatka", name:"Oatka Creek", place:"Mumford, NY", lat:43.0, lon:-77.87, sp:"trout"},
- {id:"n-rapid", name:"Rapid River", place:"Upton, ME", lat:44.72, lon:-70.9, sp:"trout"},
- {id:"n-kennebec", name:"Kennebec River", place:"Bingham, ME", lat:45.05, lon:-69.88, sp:"trout"},
- {id:"n-roach", name:"Roach River", place:"Kokadjo, ME", lat:45.66, lon:-69.28, sp:"trout"},
-];
+const SP_OF = {t:"trout", s:"steelhead", b:"both"};
+const RIVERS = [
+ ["Kenai River","Soldotna, AK",60.49,-151.06,"b"],
+ ["Little Red River","Heber Springs, AR",35.52,-92.02,"t"],
+ ["Norfork River","Norfork, AR",36.2,-92.28,"t"],
+ ["White River","Cotter, AR",36.28,-92.53,"t"],
+ ["Colorado River at Lees Ferry","Marble Canyon, AZ",36.87,-111.59,"t"],
+ ["American River","Sacramento, CA",38.6,-121.35,"b"],
+ ["East Walker River","Bridgeport, CA",38.2,-119.2,"t"],
+ ["Eel River","Fortuna, CA",40.6,-124.15,"s"],
+ ["Fall River","Fall River Mills, CA",41.0,-121.45,"t"],
+ ["Feather River","Oroville, CA",39.5,-121.55,"b"],
+ ["Hat Creek","Cassel, CA",40.9,-121.55,"t"],
+ ["Klamath River","Happy Camp, CA",41.8,-123.38,"b"],
+ ["Lower Sacramento River","Redding, CA",40.53,-122.35,"b"],
+ ["McCloud River","McCloud, CA",41.2,-122.13,"t"],
+ ["Owens River","Bishop, CA",37.37,-118.4,"t"],
+ ["Pit River","Fall River Mills, CA",41.0,-121.48,"t"],
+ ["Putah Creek","Winters, CA",38.52,-122.1,"t"],
+ ["Smith River","Crescent City, CA",41.8,-124.08,"s"],
+ ["Trinity River","Lewiston, CA",40.72,-122.8,"b"],
+ ["Truckee River","Truckee, CA",39.33,-120.18,"t"],
+ ["Upper Sacramento River","Dunsmuir, CA",41.22,-122.27,"t"],
+ ["Yuba River","Nevada City, CA",39.28,-121.1,"b"],
+ ["Animas River","Durango, CO",37.27,-107.88,"t"],
+ ["Arkansas River","Salida, CO",38.53,-106.0,"t"],
+ ["Big Thompson River","Estes Park, CO",40.37,-105.42,"t"],
+ ["Blue River","Silverthorne, CO",39.63,-106.07,"t"],
+ ["Cache la Poudre River","Fort Collins, CO",40.68,-105.35,"t"],
+ ["Colorado River","Hot Sulphur Springs, CO",40.07,-106.1,"t"],
+ ["Eagle River","Edwards, CO",39.64,-106.6,"t"],
+ ["Fryingpan River","Basalt, CO",39.37,-107.0,"t"],
+ ["Gunnison River","Almont, CO",38.67,-106.85,"t"],
+ ["Rio Grande","South Fork, CO",37.67,-106.63,"t"],
+ ["Roaring Fork River","Basalt, CO",39.37,-107.03,"t"],
+ ["South Platte River","Deckers, CO",39.25,-105.2,"t"],
+ ["Taylor River","Almont, CO",38.72,-106.75,"t"],
+ ["Yampa River","Steamboat Springs, CO",40.48,-106.83,"t"],
+ ["Naugatuck River","Thomaston, CT",41.67,-73.07,"t"],
+ ["Salmon River","Colchester, CT",41.56,-72.44,"t"],
+ ["Willimantic River","Coventry, CT",41.8,-72.32,"t"],
+ ["Chattooga River","Clayton, GA",34.88,-83.3,"t"],
+ ["Toccoa River","Blue Ridge, GA",34.85,-84.28,"t"],
+ ["Bloody Run Creek","Marquette, IA",43.02,-91.2,"t"],
+ ["French Creek","Lansing, IA",43.35,-91.28,"t"],
+ ["Big Wood River","Ketchum, ID",43.68,-114.36,"t"],
+ ["Clearwater River","Orofino, ID",46.48,-116.25,"b"],
+ ["Coeur d'Alene River","Kingston, ID",47.55,-116.13,"t"],
+ ["Henry's Fork","Island Park, ID",44.42,-111.37,"t"],
+ ["Salmon River","Stanley, ID",44.22,-114.93,"b"],
+ ["Silver Creek","Picabo, ID",43.31,-114.1,"t"],
+ ["South Fork Snake River","Swan Valley, ID",43.45,-111.35,"t"],
+ ["St. Joe River","Avery, ID",47.25,-115.8,"t"],
+ ["Teton River","Driggs, ID",43.72,-111.11,"t"],
+ ["Deerfield River","Charlemont, MA",42.63,-72.87,"t"],
+ ["East Branch Westfield","Chesterfield, MA",42.4,-72.85,"t"],
+ ["Swift River","Belchertown, MA",42.27,-72.35,"t"],
+ ["Casselman River","Grantsville, MD",39.7,-79.15,"t"],
+ ["Gunpowder Falls","Monkton, MD",39.57,-76.67,"t"],
+ ["Savage River","Bloomington, MD",39.5,-79.12,"t"],
+ ["Kennebec River","Bingham, ME",45.05,-69.88,"t"],
+ ["Rapid River","Upton, ME",44.72,-70.9,"t"],
+ ["Roach River","Kokadjo, ME",45.66,-69.28,"t"],
+ ["Au Sable River","Grayling, MI",44.66,-84.71,"t"],
+ ["Betsie River","Benzonia, MI",44.62,-86.1,"b"],
+ ["Big Manistee River","Wellston, MI",44.24,-85.98,"b"],
+ ["Black River","Onaway, MI",45.35,-84.2,"t"],
+ ["Boardman River","Traverse City, MI",44.7,-85.6,"t"],
+ ["Chocolay River","Marquette, MI",46.5,-87.3,"b"],
+ ["Dowagiac River","Niles, MI",41.9,-86.2,"b"],
+ ["Escanaba River","Gwinn, MI",46.28,-87.44,"t"],
+ ["Fox River","Seney, MI",46.35,-85.95,"t"],
+ ["Grand River","Grand Rapids, MI",42.96,-85.67,"b"],
+ ["Huron River","Big Bay, MI",46.75,-87.95,"b"],
+ ["Jordan River","East Jordan, MI",45.1,-85.1,"t"],
+ ["Kalamazoo River","Allegan, MI",42.53,-85.85,"b"],
+ ["Little Manistee River","Irons, MI",44.1,-85.85,"b"],
+ ["Manistique River","Manistique, MI",46.0,-86.25,"b"],
+ ["Muskegon River","Newaygo, MI",43.42,-85.8,"b"],
+ ["North Branch Au Sable","Lovells, MI",44.79,-84.48,"t"],
+ ["Ocqueoc River","Ocqueoc, MI",45.48,-84.05,"b"],
+ ["Ontonagon River","Ontonagon, MI",46.75,-89.3,"b"],
+ ["Paint River","Crystal Falls, MI",46.1,-88.33,"t"],
+ ["Pere Marquette River","Baldwin, MI",43.9,-85.85,"b"],
+ ["Pigeon River","Vanderbilt, MI",45.15,-84.55,"t"],
+ ["Pine River","Wellston, MI",44.26,-85.8,"t"],
+ ["Platte River","Honor, MI",44.66,-86.0,"b"],
+ ["Rifle River","Sterling, MI",44.03,-84.02,"b"],
+ ["Rogue River","Rockford, MI",43.12,-85.56,"b"],
+ ["South Branch Au Sable","Roscommon, MI",44.52,-84.55,"t"],
+ ["St. Joseph River","Berrien Springs, MI",41.95,-86.35,"b"],
+ ["Sturgeon River","Wolverine, MI",45.28,-84.6,"t"],
+ ["Thunder Bay River","Alpena, MI",45.06,-83.44,"b"],
+ ["Two Hearted River","Newberry, MI",46.68,-85.35,"b"],
+ ["Upper Manistee River","Grayling, MI",44.6,-84.85,"t"],
+ ["White River","Hesperia, MI",43.57,-86.04,"b"],
+ ["Whitefish River","Rapid River, MI",45.95,-86.98,"b"],
+ ["Baptism River","Silver Bay, MN",47.3,-91.2,"s"],
+ ["Knife River","Knife River, MN",46.95,-91.78,"s"],
+ ["Root River","Lanesboro, MN",43.72,-91.98,"t"],
+ ["South Branch Root River","Preston, MN",43.67,-92.08,"t"],
+ ["Straight River","Park Rapids, MN",46.95,-95.0,"t"],
+ ["Sucker River","Duluth, MN",46.9,-91.9,"s"],
+ ["Whitewater River","Elba, MN",44.09,-92.02,"t"],
+ ["Current River","Montauk, MO",37.45,-91.68,"t"],
+ ["Eleven Point River","Alton, MO",36.7,-91.4,"t"],
+ ["Lake Taneycomo","Branson, MO",36.65,-93.23,"t"],
+ ["Meramec River","St. James, MO",37.98,-91.55,"t"],
+ ["Niangua River","Lebanon, MO",37.78,-92.75,"t"],
+ ["Roaring River","Cassville, MO",36.58,-93.83,"t"],
+ ["Beaverhead River","Dillon, MT",45.22,-112.63,"t"],
+ ["Big Hole River","Wise River, MT",45.79,-112.98,"t"],
+ ["Bighorn River","Fort Smith, MT",45.32,-107.93,"t"],
+ ["Bitterroot River","Hamilton, MT",46.25,-114.16,"t"],
+ ["Blackfoot River","Ovando, MT",46.98,-113.13,"t"],
+ ["Boulder River","Big Timber, MT",45.83,-110.0,"t"],
+ ["Clark Fork","Missoula, MT",46.87,-113.99,"t"],
+ ["Gallatin River","Big Sky, MT",45.28,-111.25,"t"],
+ ["Jefferson River","Twin Bridges, MT",45.55,-112.33,"t"],
+ ["Kootenai River","Libby, MT",48.39,-115.55,"t"],
+ ["Madison River","Ennis, MT",45.35,-111.73,"t"],
+ ["Missouri River","Craig, MT",47.08,-111.98,"t"],
+ ["North Fork Flathead River","Columbia Falls, MT",48.37,-114.18,"t"],
+ ["Rock Creek","Clinton, MT",46.75,-113.68,"t"],
+ ["Ruby River","Alder, MT",45.32,-112.1,"t"],
+ ["Smith River","White Sulphur Springs, MT",46.55,-111.1,"t"],
+ ["Stillwater River","Absarokee, MT",45.52,-109.44,"t"],
+ ["Yellowstone River","Livingston, MT",45.66,-110.56,"t"],
+ ["Davidson River","Brevard, NC",35.28,-82.78,"t"],
+ ["Nantahala River","Bryson City, NC",35.35,-83.62,"t"],
+ ["South Toe River","Burnsville, NC",35.85,-82.22,"t"],
+ ["Tuckasegee River","Dillsboro, NC",35.37,-83.25,"t"],
+ ["Wilson Creek","Collettsville, NC",35.98,-81.75,"t"],
+ ["Androscoggin River","Errol, NH",44.78,-71.13,"t"],
+ ["Connecticut River, Trophy Stretch","Pittsburg, NH",45.09,-71.28,"t"],
+ ["Pemigewasset River","Woodstock, NH",43.98,-71.68,"t"],
+ ["Saco River","North Conway, NH",44.05,-71.13,"t"],
+ ["Big Flat Brook","Layton, NJ",41.17,-74.85,"t"],
+ ["Pequest River","Belvidere, NJ",40.87,-74.98,"t"],
+ ["Rio Chama","Abiquiu, NM",36.3,-106.65,"t"],
+ ["Rio Grande","Pilar, NM",36.32,-105.78,"t"],
+ ["San Juan River","Navajo Dam, NM",36.8,-107.65,"t"],
+ ["Truckee River","Reno, NV",39.52,-119.82,"t"],
+ ["Callicoon Creek","Callicoon, NY",41.76,-75.06,"t"],
+ ["East Branch Ausable","Jay, NY",44.36,-73.72,"t"],
+ ["Oatka Creek","Mumford, NY",43.0,-77.87,"t"],
+ ["Rondout Creek","Sundown, NY",41.93,-74.42,"t"],
+ ["Schoharie Creek","Hunter, NY",42.21,-74.22,"t"],
+ ["West Branch Croton","Croton Falls, NY",41.34,-73.72,"t"],
+ ["West Canada Creek","Trenton Falls, NY",43.29,-75.13,"t"],
+ ["Wiscoy Creek","Pike, NY",42.55,-78.13,"t"],
+ ["Ashtabula River","Ashtabula, OH",41.85,-80.79,"s"],
+ ["Chagrin River","Willoughby, OH",41.64,-81.4,"s"],
+ ["Grand River","Painesville, OH",41.72,-81.24,"s"],
+ ["Rocky River","Cleveland, OH",41.44,-81.85,"s"],
+ ["Vermilion River","Vermilion, OH",41.4,-82.36,"s"],
+ ["Clackamas River","Estacada, OR",45.29,-122.33,"s"],
+ ["Crooked River","Prineville, OR",44.15,-120.9,"t"],
+ ["Deschutes River","Maupin, OR",45.18,-121.08,"b"],
+ ["Fall River","La Pine, OR",43.77,-121.63,"t"],
+ ["Grande Ronde River","Troy, OR",45.95,-117.45,"b"],
+ ["John Day River","Fossil, OR",44.95,-120.2,"b"],
+ ["McKenzie River","Blue River, OR",44.16,-122.33,"t"],
+ ["Metolius River","Camp Sherman, OR",44.47,-121.64,"t"],
+ ["North Umpqua River","Idleyld Park, OR",43.35,-123.0,"b"],
+ ["Owyhee River","Adrian, OR",43.4,-117.2,"t"],
+ ["Rogue River","Grants Pass, OR",42.44,-123.33,"b"],
+ ["Sandy River","Sandy, OR",45.4,-122.27,"s"],
+ ["Williamson River","Chiloquin, OR",42.58,-121.87,"t"],
+ ["Allegheny River","Kinzua tailwater, Warren, PA",41.84,-79.14,"t"],
+ ["Big Spring Creek","Newville, PA",40.17,-77.4,"t"],
+ ["Brodhead Creek","Analomink, PA",41.05,-75.2,"t"],
+ ["Bushkill Creek","Easton, PA",40.7,-75.22,"t"],
+ ["Falling Spring Branch","Chambersburg, PA",39.94,-77.66,"t"],
+ ["Kettle Creek","Cross Fork, PA",41.48,-77.83,"t"],
+ ["Lackawaxen River","Rowland, PA",41.47,-74.98,"t"],
+ ["Loyalsock Creek","Forksville, PA",41.49,-76.6,"t"],
+ ["Oil Creek","Titusville, PA",41.63,-79.67,"t"],
+ ["Pine Creek","Slate Run, PA",41.47,-77.5,"t"],
+ ["Tulpehocken Creek","Reading, PA",40.35,-75.98,"t"],
+ ["Youghiogheny River","Confluence, PA",39.81,-79.35,"t"],
+ ["Clinch River","Norris, TN",36.22,-84.09,"t"],
+ ["Hiwassee River","Reliance, TN",35.18,-84.5,"t"],
+ ["Little River","Townsend, TN",35.68,-83.75,"t"],
+ ["South Holston River","Bristol, TN",36.52,-82.1,"t"],
+ ["Watauga River","Elizabethton, TN",36.35,-82.15,"t"],
+ ["Green River","Dutch John, UT",40.92,-109.42,"t"],
+ ["Logan River","Logan, UT",41.75,-111.7,"t"],
+ ["Provo River","Heber City, UT",40.52,-111.42,"t"],
+ ["Weber River","Oakley, UT",40.72,-111.3,"t"],
+ ["Jackson River","Covington, VA",37.83,-79.95,"t"],
+ ["Mossy Creek","Bridgewater, VA",38.4,-78.95,"t"],
+ ["Rapidan River","Syria, VA",38.4,-78.35,"t"],
+ ["Smith River","Bassett, VA",36.75,-79.98,"t"],
+ ["Lamoille River","Johnson, VT",44.64,-72.68,"t"],
+ ["Mettawee River","Dorset, VT",43.25,-73.1,"t"],
+ ["White River","Stockbridge, VT",43.77,-72.68,"t"],
+ ["Winooski River","Waterbury, VT",44.34,-72.75,"t"],
+ ["Bogachiel River","Forks, WA",47.9,-124.4,"s"],
+ ["Cowlitz River","Salkum, WA",46.53,-122.63,"s"],
+ ["Hoh River","Forks, WA",47.8,-124.25,"s"],
+ ["Kalama River","Kalama, WA",46.02,-122.8,"s"],
+ ["Klickitat River","Klickitat, WA",45.82,-121.15,"s"],
+ ["Methow River","Twisp, WA",48.37,-120.12,"s"],
+ ["Queets River","Amanda Park, WA",47.53,-124.0,"s"],
+ ["Sauk River","Darrington, WA",48.25,-121.6,"s"],
+ ["Skagit River","Rockport, WA",48.49,-121.6,"s"],
+ ["Skykomish River","Gold Bar, WA",47.85,-121.7,"s"],
+ ["Sol Duc River","Forks, WA",47.95,-124.3,"s"],
+ ["Yakima River","Ellensburg, WA",46.95,-120.55,"t"],
+ ["Black Earth Creek","Cross Plains, WI",43.11,-89.65,"t"],
+ ["Bois Brule River","Brule, WI",46.55,-91.55,"b"],
+ ["Castle Rock Creek","Fennimore, WI",42.95,-90.6,"t"],
+ ["Kinnickinnic River","River Falls, WI",44.86,-92.62,"t"],
+ ["Milwaukee River","Grafton, WI",43.32,-87.95,"s"],
+ ["Namekagon River","Hayward, WI",46.01,-91.48,"t"],
+ ["Oconto River","Oconto, WI",44.89,-87.87,"b"],
+ ["Peshtigo River","Crivitz, WI",45.24,-88.0,"t"],
+ ["Prairie River","Merrill, WI",45.2,-89.65,"t"],
+ ["Root River","Racine, WI",42.73,-87.85,"s"],
+ ["Rush River","Ellsworth, WI",44.73,-92.45,"t"],
+ ["Sheboygan River","Sheboygan Falls, WI",43.73,-87.82,"s"],
+ ["Timber Coulee Creek","Coon Valley, WI",43.7,-90.98,"t"],
+ ["West Fork Kickapoo River","Avalanche, WI",43.6,-90.75,"t"],
+ ["Willow River","Hudson, WI",45.02,-92.68,"t"],
+ ["Wolf River","White Lake, WI",45.17,-88.77,"t"],
+ ["Cranberry River","Richwood, WV",38.28,-80.55,"t"],
+ ["Elk River","Webster Springs, WV",38.48,-80.42,"t"],
+ ["North Branch Potomac","Barnum, WV",39.44,-79.15,"t"],
+ ["Seneca Creek","Seneca Rocks, WV",38.85,-79.38,"t"],
+ ["Williams River","Marlinton, WV",38.35,-80.35,"t"],
+ ["Bighorn River","Thermopolis, WY",43.65,-108.21,"t"],
+ ["Firehole River","Yellowstone, WY",44.55,-110.85,"t"],
+ ["Green River","Pinedale, WY",42.87,-109.87,"t"],
+ ["Lamar River","Yellowstone, WY",44.9,-110.25,"t"],
+ ["North Platte River","Saratoga, WY",41.45,-106.81,"t"],
+ ["Snake River","Jackson, WY",43.48,-110.76,"t"],
+ ["Wind River","Dubois, WY",43.53,-109.63,"t"],
+].map(([name, place, lat, lon, sp])=>({name, place, lat, lon, sp:SP_OF[sp]}));
 
 /* --- hatches -------------------------------------------------
    win   : [startDOY, peakDOY, endDOY]  (Catskill baseline)
@@ -3739,6 +3932,8 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
              : ownGauge  ? `The flow bands are this gauge's own.`
                          : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
     pickedGauge: point.pickedGauge || null,
+    pickedKey: point.pickedKey || null,
+    both: !!point.both,
     spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
   };
 }
@@ -4916,19 +5111,51 @@ async function setPin(lat, lon, label){
   await loadAccess(lat, lon);
 }
 
-/* The rivers around the pin, and which one the angler picked. Kept off the
-   access lookup deliberately: Overpass being slow or down should not stop
-   USGS answering, and the river list is the more important of the two. */
+/* The rivers around the pin. Named rivers first — that list needs no
+   network at all, so Baldwin answers instantly — and USGS's gauged
+   streams only as the fallback for country nobody has named. */
+const RIVER_NEAR_MI = 90;      // how far out a named river is still "near here"
+const RIVER_SHOW    = 12;
+
+function namedRiversNear(lat, lon){
+  const out=[];
+  for(const w of WATERS)
+    out.push({key:"book:"+w.id, book:w.id, name:w.name, place:w.place, lat:w.lat, lon:w.lon,
+              sp:w.sp==="steelhead"?"steelhead":"trout", d:haversine(lat,lon,w.lat,w.lon)});
+  for(const r of RIVERS)
+    out.push({key:"riv:"+r.name+"|"+r.place, name:r.name, place:r.place, lat:r.lat, lon:r.lon,
+              sp:r.sp, d:haversine(lat,lon,r.lat,r.lon)});
+  const seen=new Set(), keep=[];
+  for(const r of out.sort((a,b)=>a.d-b.d)){
+    if(r.d>RIVER_NEAR_MI) break;
+    const k=r.name+"|"+r.place;
+    if(seen.has(k)) continue;               // a written water and its own row are one river
+    seen.add(k); keep.push(r);
+  }
+  return keep.slice(0, RIVER_SHOW);
+}
+
 async function loadRivers(lat, lon){
   const key = lat.toFixed(3)+","+lon.toFixed(3);
   if(state.rivers.key===key && state.rivers.status==="ok") return;
-  state.rivers={status:"loading", list:[], key};
+
+  const named = namedRiversNear(lat, lon);
+  if(named.length>=3){
+    state.rivers={status:"ok", src:"named", list:named, key, sp:state.rivers.sp};
+    renderRiverCard();
+    return;
+  }
+  /* Nothing named within ninety miles. Ask USGS what is gauged out here
+     instead — a river that reports its flow is one Riffle can still read. */
+  state.rivers={status:"loading", src:"usgs", list:named, key, sp:state.rivers.sp};
   renderRiverCard();
   let list=[];
   try{ list = await nearbyRivers(lat, lon); }
-  catch(e){ state.rivers={status:"error", list:[], key}; renderRiverCard(); return; }
+  catch(e){ state.rivers={status:"error", src:"usgs", list:named, key}; renderRiverCard(); return; }
   if(state.rivers.key!==key) return;                 // the pin moved while we asked
-  state.rivers={status: list.length?"ok":"empty", list, key};
+  const rows = named.concat(list.map(g=>({key:"gauge:"+g.id, name:g.river, place:`USGS ${g.id}`,
+                lat:g.lat, lon:g.lon, sp:"trout", gauge:g, d:g.dist/1609.34})));
+  state.rivers={status: rows.length?"ok":"empty", src:"usgs", list:rows.sort((a,b)=>a.d-b.d).slice(0,RIVER_SHOW), key, sp:state.rivers.sp};
   renderRiverCard();
 }
 
@@ -4973,20 +5200,16 @@ function milesOf(m){
 }
 
 /* --- the rivers around the pin ------------------------------
-   The list an angler wants after typing a town, and the one thing
-   in this app that was never going to come from a curated table.
-   Every row is a USGS gauge: a real river, with live flow, that
-   Riffle can actually read. Picking one hands the plays that gauge.
+   The list an angler wants after typing a town. Named rivers first,
+   because that is what the question means — ask anyone what you fish
+   near Baldwin and you get the Pere Marquette, not a list of gauges.
+   Picking one sends Riffle to find its gauge, and that gauge is what
+   the plays are ranked on.
 
-   The fishery is the angler's to say. Riffle offers steelhead only
-   where a Great Lakes run is plausible and never assumes it — the
-   whole Montana bug was the app deciding on its own that a trout
-   river was a steelhead river.
+   The fishery stays the angler's to say. A river marked as both reads
+   as trout water and offers the run as a tap; the app never decides
+   on its own that a trout river is a steelhead river.
 ------------------------------------------------------------ */
-function glPlausible(lat, lon){
-  // Great Lakes drainage, roughly: the lakes and the country that drains to them
-  return lat>=41.0 && lat<=47.5 && lon>=-92.5 && lon<=-74.5;
-}
 
 function renderRiverCard(){
   const el=$("#riverCard"); if(!el) return;
@@ -4994,64 +5217,66 @@ function renderRiverCard(){
   const where = state.pin ? (state.pin.label ? String(state.pin.label).split(",")[0].trim()
                                              : `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`) : null;
   if(!state.pin || st.status==="idle"){ el.innerHTML=""; return; }
-  const head=`<h3>Rivers near ${esc(where)}</h3>`;
+  const head=`<h3>Trout and steelhead near ${esc(where)}</h3>`;
   const wrap=(inner)=>{ el.innerHTML=`<div class="wcard">${head}${inner}</div>`; };
 
-  if(st.status==="loading"){ wrap(`<p class="muted">Asking USGS which rivers here have a gauge on them…</p>`); return; }
-  if(st.status==="error"){
-    wrap(`<p class="muted">The USGS site lookup did not answer. The book below still works, and the pin itself can be read.</p>`);
-    return;
-  }
-  if(st.status==="empty"){
-    wrap(`<p class="muted">USGS has no gauged stream within about 50 miles of that point. Riffle can only read a river
-      that reports its flow, so there is nothing here to pick — move the pin, or use the book below.</p>`);
-    return;
-  }
+  if(st.status==="loading"&&!st.list.length){ wrap(`<p class="muted">Looking for the rivers around that point…</p>`); return; }
+  if(st.status==="error"&&!st.list.length){
+    wrap(`<p class="muted">Nothing named within ${RIVER_NEAR_MI} miles, and the USGS lookup did not answer. The pin itself can still be read.</p>`); return; }
+  if(st.status==="empty"||!st.list.length){
+    wrap(`<p class="muted">No trout or steelhead river Riffle knows within ${RIVER_NEAR_MI} miles of that point,
+      and USGS has no gauged stream out there either. Move the pin, or read the pin itself below.</p>`); return; }
 
-  const cur = state.spot && state.spot.gauge;
-  const gl  = glPlausible(state.pin.lat, state.pin.lon);
-  const east = inEast(state.pin.lat, state.pin.lon);
+  const cur = state.spot ? ("riv:"+state.spot.name+"|"+state.spot.place)
+            : ("book:"+((water()||{}).id||""));
+  const curG = state.spot && state.spot.pickedGauge;
+  const FISH = {trout:"Trout", steelhead:"Steelhead &amp; salmon", both:"Trout &amp; steelhead"};
   wrap(`
-    <p>${st.list.length} gauged river${st.list.length===1?"":"s"} around that point, from USGS — nearest first.
-       Pick one and its gauge becomes the flow and water temperature the plays read.</p>
+    <p>Pick the river you are fishing. Riffle finds its gauge, reads the live flow and water
+       temperature off it, and ranks the plays on that.</p>
     <div class="wlist">
       ${st.list.map(r=>`
-        <button class="wbtn rvbtn" data-g="${esc(r.id)}" aria-current="${cur===r.id}">
-          <span class="wn">${esc(r.river)}<span class="wt">USGS ${esc(r.id)}${r.area?` · ${Math.round(r.area).toLocaleString()} sq mi`:""}</span></span>
-          <span class="wd">${milesOf(r.dist)}</span>
+        <button class="wbtn rvbtn" data-k="${esc(r.key)}"
+                aria-current="${r.key===cur || (r.gauge&&r.gauge.id===curG)}">
+          <span class="wn">${esc(r.name)}<span class="wt">${esc(r.place)} · ${FISH[r.sp]||"Trout"}${r.book?" · in the book":""}</span></span>
+          <span class="wd">${r.d<1?"here":Math.round(r.d)+" mi"}</span>
         </button>`).join("")}
     </div>
-    ${gl?`<div class="dactions">
-      <button type="button" class="dbtn ghost" id="rvSp" data-sp="${state.rivers.sp==="steelhead"?"trout":"steelhead"}">
-        Read these as ${state.rivers.sp==="steelhead"?"trout water":"a Great Lakes run"}</button></div>
-      <p class="muted">Currently reading them as <b>${state.rivers.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b>.
-         Many rivers here are both, at different times of year — Riffle will not guess which you mean.</p>`:""}
-    ${!east?`<p class="muted">These gauges are real and Riffle will read them, but this point is outside the range of
-       the eastern hatches the book carries, so the hatch chart and the plays that need it stay off.</p>`:""}`);
+    ${state.spot && state.spot.both ? `<div class="dactions">
+      <button type="button" class="dbtn ghost" id="rvSp" data-sp="${state.spot.sp==="steelhead"?"trout":"steelhead"}">
+        Read ${esc(state.spot.name)} as ${state.spot.sp==="steelhead"?"trout water":"a steelhead run"}</button></div>
+      <p class="muted">${esc(state.spot.name)} is both, at different times of the year. Riffle is reading it as
+        <b>${state.spot.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b> — it will not guess which you mean.</p>`:""}
+    ${st.status==="loading"?`<p class="muted">Also asking USGS what is gauged out here…</p>`:""}
+    ${!inEast(state.pin.lat, state.pin.lon)?`<p class="muted">Riffle will read any of these — the gauge, the wading
+       call and the shops all work out here. What it will not do is print a hatch chart: the book carries the eastern
+       insects and a different fauna lives on this side of the plains.</p>`:""}`);
 
   const sp=$("#rvSp");
-  if(sp) sp.addEventListener("click", async ()=>{
-    state.rivers.sp = sp.dataset.sp;
-    if(state.spot && state.spot.pickedGauge){        // re-read the chosen river as the other fishery
-      const r=(state.rivers.list||[]).find(x=>x.id===state.spot.pickedGauge);
-      if(r) return chooseRiver(r.id);
-    }
-    renderRiverCard();
-  });
-
-  document.querySelectorAll("#riverCard .rvbtn").forEach(b=>b.addEventListener("click", ()=>chooseRiver(b.dataset.g)));
+  if(sp) sp.addEventListener("click", ()=>chooseRiver(state.spot.pickedKey, sp.dataset.sp));
+  document.querySelectorAll("#riverCard .rvbtn").forEach(b=>b.addEventListener("click", ()=>chooseRiver(b.dataset.k)));
 }
 
-async function chooseRiver(gaugeId){
-  const r=(state.rivers.list||[]).find(x=>x.id===gaugeId);
+/* A river with two seasons in it is not one Riffle gets to decide between.
+   Rivers marked "both" are read as trout water and offer the run as a tap;
+   the app never picks the fishery on the angler's behalf. */
+async function chooseRiver(key, spOverride){
+  const r=(state.rivers.list||[]).find(x=>x.key===key);
   if(!r) return;
+  state.access.chosen=null;
+  if(r.book && !spOverride){          // a written water reads better as itself
+    state.waterId=r.book; state.spot=null; state.live=null; state.baro=null;
+    draw(); refreshLive(water()); return;
+  }
   const card=$("#riverCard"); if(card) card.setAttribute("aria-busy","true");
   try{
     await selectSpot({
-      lat:r.lat, lon:r.lon, name:r.river, place:(state.pin&&state.pin.label)||"",
-      sp: state.rivers.sp==="steelhead" ? "steelhead" : "trout",
-      gauge:{id:r.id, name:r.station, lat:r.lat, lon:r.lon, area:r.area, dist:0},
-      pickedGauge:r.id,
+      lat:r.lat, lon:r.lon, name:r.name, place:r.place,
+      sp: spOverride || (r.sp==="steelhead" ? "steelhead" : "trout"),
+      gauge: r.gauge ? {id:r.gauge.id, name:r.gauge.station, lat:r.gauge.lat, lon:r.gauge.lon,
+                        area:r.gauge.area, dist:0} : null,
+      pickedGauge: r.gauge ? r.gauge.id : null,
+      pickedKey: key, both: r.sp==="both",
     });
   } finally {
     const c=$("#riverCard"); if(c) c.removeAttribute("aria-busy");
@@ -5136,8 +5361,7 @@ function renderWater(ctx){
      the question is "what is near me" and not "which of these did someone hand-
      write". What separates them travels with each row instead: a book water
      names the gauge it was built around, a named one says it is read live. */
-  const rows=[...WATERS.map(w=>({w, named:false})), ...NAMED.map(w=>({w, named:true}))];
-  const list=rows.map(o=>({...o, d:from?haversine(from.lat,from.lon,o.w.lat,o.w.lon):null}))
+  const list=WATERS.map(w=>({w, named:false, d:from?haversine(from.lat,from.lon,w.lat,w.lon):null}))
     .sort((a,b)=> from ? a.d-b.d : (a.w.sp===b.w.sp ? a.w.name.localeCompare(b.w.name) : (a.w.sp==="trout"?-1:1)));
 
   /* Nearest first, directly under the map — the answer to the question
@@ -5168,16 +5392,12 @@ function renderWater(ctx){
           ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
           : `Location is off, so Riffle opened on <b>${esc(ctx.w.name)}</b>. Search above, tap the map, or pick from the list.`}</p>
       <div class="wlist">
-        ${shownList.map(({w,d,named})=>`
-          <button class="wbtn" data-w="${w.id}"${named?` data-named="1" data-lat="${w.lat}" data-lon="${w.lon}" data-sp="${esc(w.sp)}"`:""}
-                  aria-current="${named ? (!!ctx.w.spot && ctx.w.name===w.name) : (!ctx.w.spot&&w.id===ctx.w.id)}">
-            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${named?"read live":esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
+        ${shownList.map(({w,d})=>`
+          <button class="wbtn" data-w="${w.id}" aria-current="${!ctx.w.spot&&w.id===ctx.w.id}">
+            <span class="wn">${esc(w.name)}<span class="wt">${esc(w.place)} · ${esc(w.type==="gl-trib"?"Great Lakes tributary":w.type)}</span></span>
             ${d!=null?`<span class="wd">${d} mi</span>`:""}
           </button>`).join("")}
       </div>
-      ${shownList.some(o=>o.named)?`<p class="muted">Rows marked <b>read live</b> are not in the hand-written book.
-         Riffle reads their gauge from USGS when you tap one and borrows the nearest written water's
-         seasonal curves — the card then says which gauge it found and what it borrowed.</p>`:""}
       ${hidden>0?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearMore">Show all ${list.length} waters</button></div>`
         : state.nearAll?`<div class="dactions"><button type="button" class="dbtn ghost" id="nearLess">Show the nearest ${NEAR_OPEN}</button></div>`:""}
     </div>`;
@@ -5187,18 +5407,6 @@ function renderWater(ctx){
 
   document.querySelectorAll("#nearWaters .wbtn").forEach(b=>b.addEventListener("click",async()=>{
     state.access.chosen=null;
-    if(b.dataset.named){
-      /* A named water has no bands of its own, so it is read the way a pin is
-         read: find its gauge, borrow the nearest hand-written water's curves,
-         and say so. That takes a round trip, so the row is marked busy. */
-      b.setAttribute("aria-busy","true");
-      const n=NAMED.find(w=>w.id===b.dataset.w);
-      try{ await selectSpot({lat:+b.dataset.lat, lon:+b.dataset.lon, sp:b.dataset.sp,
-                             name:n?n.name:b.dataset.w, place:n?n.place:""}); }
-      finally{ const el=document.querySelector(`#nearWaters .wbtn[data-w="${CSS.escape(b.dataset.w)}"]`);
-               if(el) el.removeAttribute("aria-busy"); }
-      return;
-    }
     state.waterId=b.dataset.w; state.spot=null;
     state.live=null; state.baro=null; draw();
     refreshLive(water());
