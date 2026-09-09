@@ -5079,7 +5079,6 @@ function whereShell(){
         <input id="findQ" type="search" autocomplete="off" spellcheck="false"
                placeholder="Address, town, or water" aria-label="Address, town, or water">
         <button class="findbtn" type="submit">Find</button>
-        <button class="findbtn ghost" type="button" id="findMe" title="Use my location">Near me</button>
       </form>
       <div id="findOut" class="findout" aria-live="polite"></div>
     </div>
@@ -5114,7 +5113,6 @@ function wireWhere(){
       out.innerHTML=`<p class="muted">The address lookup did not answer. Check the connection, or tap the map instead.</p>`;
     }
   });
-  $("#findMe").addEventListener("click", ()=>locate(true));
 }
 
 /* "pending" until the deferred tag settles, so a fast tap on Where waits
