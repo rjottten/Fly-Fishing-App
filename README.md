@@ -119,8 +119,11 @@ bands, and those are resolved the moment you pick one — from USGS south of the
 border and from Environment and Climate Change Canada north of it. **The bands
 come from that river's own record** where USGS keeps one: the daily
 percentiles of its history, which is exactly what a flow band is — p25 to p75
-is the water it normally runs on this date, p10 low, p90 high. Only where there
-is no record does it fall back to scaling an analogue's bands by drainage area — the gauge
+is the water it normally runs on this date, p10 low, p90 high. Where a site
+publishes only a daily mean, coarse bands are built from that instead, because
+this river's water in this river's units beats another river's absolute cubic
+feet by a wide margin. Only where there is no daily record at all does it fall
+back to scaling an analogue's bands by drainage area — the gauge
 nearest that river, and its bands scaled from the closest hand-written water's
 by the ratio of the two drainage areas. So no row in that list carries a number
 nobody verified, and the card tells you which gauge it read and what it

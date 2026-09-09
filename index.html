@@ -4277,12 +4277,14 @@ async function drainAreas(sites){
    wadeable a freestone is at twice its normal flow is a fact about
    freestones, not about any one river's size.
 ------------------------------------------------------------ */
-const STAT_PCTS = ["p10","p25","p50","p75","p90"];
-
+/* statTypeCd selects a KIND of statistic — all, mean, max, min, median —
+   and the percentile columns arrive with "all". Naming percentiles there
+   is a bad request, which fails quietly into the borrowed bands this
+   whole function exists to avoid, so ask for all and read what comes. */
 async function gaugeStats(site, when){
   try{
     const url=`https://waterservices.usgs.gov/nwis/stat/?format=rdb&sites=${encodeURIComponent(site)}`
-            + `&statReportType=daily&statTypeCd=${STAT_PCTS.join(",")}&parameterCd=00060`;
+            + `&statReportType=daily&statTypeCd=all&parameterCd=00060`;
     const res=await withTimeout(url, null, 12000);
     if(!res.ok) return null;
     const rows=parseRDB(await res.text());
@@ -4299,15 +4301,20 @@ async function gaugeStats(site, when){
       if(gap<bd){ bd=gap; best=r; }
     }
     if(!best || bd>10) return null;
-    const v={};
-    for(const k of STAT_PCTS){
-      const n=parseFloat(best[k+"_va"]);
-      if(isFinite(n) && n>=0) v[k]=n;
+    const num=(k)=>{ const n=parseFloat(best[k]); return isFinite(n)&&n>=0 ? n : undefined; };
+    const v={p10:num("p10_va"), p25:num("p25_va"), p50:num("p50_va"),
+             p75:num("p75_va"), p90:num("p90_va"), mean:num("mean_va")};
+    /* Percentiles are what a flow band actually is, so they are preferred.
+       Where a site publishes only a daily mean, that mean is still THIS
+       river's water in THIS river's units, which beats another river's
+       absolute cubic feet by a wide margin — so it is used, coarsely, and
+       the card says the bands are rough. */
+    if(isFinite(v.p25) && isFinite(v.p75) && v.p75>0) return {...v, coarse:false};
+    if(isFinite(v.mean) && v.mean>0){
+      const m=v.mean;
+      return {p10:m*0.45, p25:m*0.7, p50:m, p75:m*1.5, p90:m*2.2, mean:m, coarse:true};
     }
-    /* The middle of the record is what the bands are built on, so
-       without p25/p75 there is nothing here worth using. */
-    if(!isFinite(v.p25) || !isFinite(v.p75) || v.p75<=0) return null;
-    return v;
+    return null;
   }catch(e){ return null; }
 }
 
@@ -4543,18 +4550,26 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap, stats){
           + (gauge ? `The gauge is real: USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
                    : `No live gauge was found nearby either, so there are no numbers to show.`)
-        : `Water temperature and flow character are modeled on ${tmpl.name} — the closest match `
-          + `in the book by latitude and water type, ${Math.abs(dLat)<0.15 ? "at the same latitude"
-              : `${Math.abs(dLat).toFixed(1)}° of latitude ${dLat>0?"south":"north"} of here`}. `
+        /* What this river is measured from comes first, because that is what
+           an angler is being asked to trust. The analogue is named after
+           it, and only for the one thing it still supplies — a seasonal
+           temperature curve, used when there is no gauge reading and when
+           reading a day ahead. Leading with a river six hundred miles away
+           made the whole card look like somebody else's river. */
+        : (gauge ? `Flow and water temperature are read from USGS ${gauge.id} — `
+                 + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
+                 : `No live gauge was found near this point, so the numbers are modeled. `)
           + `The hatch calendar is this river's own, resolved for its latitude and water type. `
-          + (range==="far" ? `That is a long stretch for a borrowed thermal curve — carry a thermometer. ` : "")
-          + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
-                   + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
-                   : `No live gauge was found nearby, so the numbers are modeled. `)
-          + (own ? `Flow bands are this river's own — the daily range USGS ${gauge?gauge.id:""} has recorded for this date.`
-             : !calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
+          + (own ? (stats && stats.coarse
+                    ? `Flow bands are this river's own, from the daily mean USGS ${gauge?gauge.id:""} has recorded for this date — a coarse shape, but this river's water rather than another's.`
+                    : `Flow bands are this river's own — the daily range USGS ${gauge?gauge.id:""} has recorded for this date.`)
+             : !calibrated ? `USGS keeps no daily record for this gauge, so the flow bands are ${tmpl.name}'s and uncalibrated — read the band, not the number.`
              : ownGauge  ? `The flow bands are this gauge's own.`
-                         : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
+                         : `USGS keeps no daily record for this gauge, so the flow bands are scaled from ${tmpl.name}'s by drainage area (\u00d7${ratio.toFixed(2)}).`)
+          + ` Seasonal curves, for a day ahead or a gauge that goes quiet, come from ${tmpl.name} — `
+          + `the closest match in the book by latitude and water type, `
+          + `${Math.abs(dLat)<0.15 ? "at the same latitude" : `${Math.abs(dLat).toFixed(1)}\u00b0 of latitude ${dLat>0?"south":"north"}`}.`
+          + (range==="far" ? ` That is a long way for a borrowed thermal curve — carry a thermometer.` : "")),
     pickedGauge: point.pickedGauge || null,
     pickedKey: point.pickedKey || null,
     both: !!point.both,

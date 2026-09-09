@@ -100,6 +100,38 @@ export function yakimaStats(when){
   ].join("\n");
 }
 
+/* USGS daily statistics as the service actually answers them: statTypeCd
+   takes a KIND of statistic (all, mean, max, min, median) and the percentile
+   columns arrive with "all". Naming percentiles is a bad request — which is
+   how the flow bands quietly stayed borrowed. */
+export const STAT_COLS =
+  "agency_cd\tsite_no\tparameter_cd\tts_id\tloc_web_ds\tmonth_nu\tday_nu\tbegin_yr\tend_yr\tcount_nu\t" +
+  "max_va\tmin_va\tmean_va\tp05_va\tp10_va\tp20_va\tp25_va\tp50_va\tp75_va\tp80_va\tp90_va\tp95_va";
+const STAT_FMT =
+  "5s\t15s\t5s\t3n\t15s\t2n\t2n\t4n\t4n\t8n\t12n\t12n\t12n\t12n\t12n\t12n\t12n\t12n\t12n\t12n\t12n\t12n";
+
+/* The Pere Marquette at Scottville — a spring-fed sand river, unusually
+   steady, and nothing like the Adirondack freestone it is matched to. */
+export function pmStats(when){
+  const d=when||new Date();
+  const row=`USGS\t04122100\t00060\t12345\t\t${d.getMonth()+1}\t${d.getDate()}\t1939\t2025\t86\t` +
+            `2140\t388\t712\t455\t498\t551\t574\t672\t812\t858\t968\t1090`;
+  return ["# USGS daily statistics", STAT_COLS, STAT_FMT, row].join("\n");
+}
+export const PM_IDEAL=[574,812], PM_CFS=620;
+
+/* A site that publishes a daily mean and no percentiles at all. Coarse, but
+   still this river's water in this river's units. */
+export function meanOnlyStats(when){
+  const d=when||new Date();
+  const cols="agency_cd\tsite_no\tparameter_cd\tmonth_nu\tday_nu\tmean_va";
+  const row=`USGS\t04122100\t00060\t${d.getMonth()+1}\t${d.getDate()}\t712`;
+  return ["# USGS daily statistics", cols, "5s\t15s\t5s\t2n\t2n\t12n", row].join("\n");
+}
+
+export const SITE_PM_SCOTTVILLE =
+  "USGS\t04122100\tPERE MARQUETTE RIVER AT SCOTTVILLE MI\t43.9525\t-86.2803\t704";
+
 export const GEOCODE = [
   {display_name:"Roscoe, Sullivan County, New York, USA", lat:"41.9337", lon:"-74.9143"},
 ];

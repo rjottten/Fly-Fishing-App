@@ -68,7 +68,7 @@ const server = http.createServer((_req,res)=>{
 const json = (o)=>({status:200, contentType:"application/json", body:JSON.stringify(o)});
 const rdbOf = (rows)=>({status:200, contentType:"text/plain", body:F.rdb(rows)});
 
-async function mock(page, scenario){
+async function mock(page, scenario, statCalls=[]){
   const leaflet = readFileSync(LEAFLET);
   await page.route("**://cdnjs.cloudflare.com/**", async r => {
     if(scenario==="noleaflet") return r.abort();
@@ -148,9 +148,18 @@ async function mock(page, scenario){
   /* Daily percentiles — a river's own flow bands. The yakima scenario serves
      them; everywhere else the record is absent, which is the fall-through to
      the analogue that existed before. */
-  await page.route("**://waterservices.usgs.gov/nwis/stat/**", r =>
-    scenario==="yakima" ? r.fulfill({status:200, contentType:"text/plain", body:F.yakimaStats()})
-      : r.fulfill({status:404, contentType:"text/plain", body:"no statistics"}));
+  await page.route("**://waterservices.usgs.gov/nwis/stat/**", r => {
+    const u=r.request().url();
+    statCalls.push(u);
+    /* The real service rejects a request that names percentiles, so the
+       mock does too — otherwise the bug that started all this passes. */
+    if(!/statTypeCd=all\b/.test(u))
+      return r.fulfill({status:400, contentType:"text/plain", body:"invalid statTypeCd"});
+    if(scenario==="yakima")   return r.fulfill({status:200, contentType:"text/plain", body:F.yakimaStats()});
+    if(scenario==="michigan") return r.fulfill({status:200, contentType:"text/plain", body:F.pmStats()});
+    if(scenario==="meanonly") return r.fulfill({status:200, contentType:"text/plain", body:F.meanOnlyStats()});
+    return r.fulfill({status:404, contentType:"text/plain", body:"no statistics"});
+  });
   /* Canada's gauges. Two collections, both GeoJSON; realtime is matched
      first because the stations pattern would otherwise swallow it. */
   await page.route("**://api.weather.gc.ca/collections/hydrometric-stations/**", r =>
@@ -162,7 +171,8 @@ async function mock(page, scenario){
 
   await page.route("**://waterservices.usgs.gov/nwis/site/**", r => {
     const bbox = r.request().url().includes("bBox=");
-    if(scenario==="michigan") return r.fulfill(rdbOf(bbox ? F.MI_SITES : [F.SITE_PM_UP, F.SITE_BEAVERKILL]));
+    if(scenario==="michigan"||scenario==="meanonly")
+      return r.fulfill(rdbOf(bbox ? F.MI_SITES : [F.SITE_PM_UP, F.SITE_BEAVERKILL]));
     if(scenario==="scaled")  return r.fulfill(rdbOf(bbox ? [F.SITE_LITTLE] : [F.SITE_LITTLE, F.SITE_BEAVERKILL]));
     if(scenario==="noarea")  return r.fulfill(rdbOf([F.SITE_LITTLE_NOAREA]));
     if(scenario==="yakima")  return r.fulfill(rdbOf([F.SITE_YAKIMA, F.SITE_BEAVERKILL]));
@@ -209,7 +219,7 @@ async function walk(browser, scenario){
     ? Object.assign({permissions:["geolocation"], geolocation:GEO}, TZ)
     : Object.assign({}, TZ));
   const page = await ctx.newPage();
-  const errors = [], violations = [], refusals = [];
+  const errors = [], violations = [], refusals = [], statCalls = [];
   page.on("pageerror", e => errors.push("pageerror: " + e.message));
   page.on("console", m => {
     const t = m.text();
@@ -224,7 +234,7 @@ async function walk(browser, scenario){
        note about it is not a defect. */
     else if(m.type()==="error" && !/favicon|ERR_|504|404|503/.test(t)) errors.push("console: " + t);
   });
-  await mock(page, scenario);
+  await mock(page, scenario, statCalls);
 
   const seen = {};
   shopCalls = [];
@@ -418,9 +428,10 @@ async function walk(browser, scenario){
   if(scenario==="outofbook") await outOfBookPass(page, seen);
   if(scenario==="plays") await playsPass(page, seen);
   if(scenario==="named") await namedPass(page, seen);
-  if(scenario==="michigan") await michiganPass(page, seen);
+  if(scenario==="michigan"||scenario==="meanonly") await michiganPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
+  seen.statCalls = statCalls;
   await page.close(); await ctx.close();
   return seen;
 }
@@ -664,6 +675,17 @@ async function michiganPass(page, seen){
             saysOwnCalendar:/this river's own/.test(w.note||""),
             namesElsewhere:/Catskill|Beaverkill|baseline/i.test(w.note||"")};
   });
+  seen.miBands = await page.evaluate(()=>{
+    const w=water(), keep=state.live;
+    state.live={gauge:w.gauge, cfs:620, tempF:63, at:new Date()};
+    const ctx=buildContext();
+    const out={source:w.spot?w.spot.bandSource:null, ideal:w.flow.ideal,
+               state:ctx.fs.k, cfs:ctx.cfs,
+               plays:recommend(ctx).picked.map(p=>p.key), note:w.note||""};
+    state.live=keep;
+    return out;
+  });
+
   // and in May, when the calendar has to be doing real work
   seen.miMay = await page.evaluate(()=>{
     const keep=state.when;
@@ -1596,6 +1618,18 @@ const SCENARIOS = {
     ok(t.noLocation.dropped===false && t.noLocation.spot===true,
        "with location off there is nothing to judge on, so the river stays", t.noLocation);
   },
+  meanonly: (s)=>{
+    /* Not every gauge publishes percentiles. A daily mean is coarse, but it
+       is still this river's water in this river's units, which beats another
+       river's absolute cubic feet by a wide margin. */
+    ok(s.miBands.source==="own",
+       "a site with only a daily mean still gets bands of its own", s.miBands);
+    ok(s.miBands.ideal[0]<620 && s.miBands.ideal[1]>620,
+       "and 620 cfs sits inside them rather than reading as high water", s.miBands);
+    ok(/coarse shape/.test(s.miBands.note),
+       "the card says the shape is coarse rather than implying a record it does not have",
+       s.miBands.note.slice(0,240));
+  },
   calendar: (s)=>{
     const c=s.cal;
     eq(c.missing, [], "every hatch the truth table names is in the book");
@@ -1830,6 +1864,27 @@ const SCENARIOS = {
     ok(!s.miPick.beyond && !s.miPick.out,
        "and it is a reading, not a gate — this is the case that used to fail", s.miPick);
     ok(s.miPick.saysGauge, "the card says which gauge it actually read", s.miPick);
+    /* The report that started this: the Pere Marquette read 620 cfs as HIGH
+       and ranked the high-water play first, because its bands were an
+       Adirondack freestone's. They are its own now. */
+    ok(s.miBands.source==="own",
+       "the Pere Marquette's flow bands are its own record, not an analogue's", s.miBands);
+    eq(s.miBands.ideal, [574,812],
+       "the range USGS has recorded for this river on this date");
+    ok(s.miBands.state==="normal",
+       "so 620 cfs is a normal September flow, not high water", s.miBands);
+    ok(!s.miBands.plays.some(k=>/highwater/.test(k)),
+       "and the high-water play is not what it opens with", s.miBands.plays);
+    /* The card led with a river six hundred miles away, which made the whole
+       reading look like somebody else's. */
+    ok(/^Flow and water temperature are read from USGS/.test(s.miBands.note),
+       "the card leads with the gauge it actually reads", s.miBands.note.slice(0,90));
+    ok(s.miBands.note.indexOf("USGS") < s.miBands.note.indexOf("Ausable"),
+       "and names the analogue after it, for the one thing it still supplies",
+       s.miBands.note.slice(0,240));
+    ok(s.statCalls.length>0 && s.statCalls.every(u=>/statTypeCd=all\b/.test(u)),
+       "the statistics request asks for a kind of statistic, not for percentile names",
+       s.statCalls[0]);
     ok(s.miPick.saysOwnCalendar && !s.miPick.namesElsewhere,
        "and calls the hatch calendar this river's own, naming no other river", s.miPick);
 
