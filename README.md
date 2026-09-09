@@ -67,14 +67,22 @@ range, and inside it the calendar travels on latitude. West of the plains a
 different fauna lives, no shift in days turns one into the other, and the app
 says so instead of guessing.
 
-The calendar travels because emergence timing is mostly latitude. Each of the
-27 hand-written waters carries a `shift` — days behind or ahead of the
-Beaverkill — and all 20 trout entries were written river by river with no
-formula in mind. Fitted afterwards they come to **4.86 days per degree of
-latitude**, +5.1 for a tailwater and −2.1 for a limestoner, at R² 0.96 and a
-mean error of one day. Hopkins' bioclimatic law puts the latitude term at 4
-days per degree. So the shift is computed now, anywhere, and the 27 hand-written
-values are kept as the test that holds the formula to them.
+**Every river gets its own hatch chart, stated in its own dates.** Nothing an
+angler reads is expressed as an offset from somewhere else: on the Pere
+Marquette the Hendricksons carry Pere Marquette dates, and no panel mentions a
+river in another state. The same insect sits on different dates on different
+rivers, which is the whole point of the calendar travelling at all.
+
+It travels because emergence timing is mostly latitude. Each of the 27
+hand-written waters carries a `shift` — where its calendar sits, in days, from
+the latitude the hatch windows were recorded at — and all 20 trout entries were
+written river by river with no formula in mind. Fitted afterwards they come to
+**4.86 days per degree of latitude**, +5.1 for a tailwater and −2.1 for a
+limestoner, at R² 0.96 and a mean error of one day. Hopkins' bioclimatic law
+puts the latitude term at 4 days per degree. So the shift is computed now,
+anywhere, and the 27 hand-written values are kept as the test that holds the
+formula to them. The reference latitude is the zero of that scale and nothing
+more — no river is the standard the others are described against.
 
 The analogue a spot borrows its temperature and flow curves from is chosen the
 same way — on latitude and river type, not on distance. Baldwin, Michigan used
