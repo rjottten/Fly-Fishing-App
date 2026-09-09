@@ -56,6 +56,35 @@ panel is read through it.
 
 ## Where it works
 
+Point at a place and Riffle asks USGS which gauged rivers are around it, lists
+them nearest first, and reads whichever one you pick — that river's own gauge
+becomes the live flow and water temperature the plays are ranked on. The list
+is not curated. It is the same bBox call the app already made to find a single
+gauge, keeping the rest of the response instead of throwing it away, so a river
+appears because USGS gauges it, not because somebody wrote it down.
+
+How far that reading is honest is now a question about **insects**, not miles.
+Riffle's hatch calendar is the eastern North American one, and those species
+live from the Appalachians to the Driftless and the Ozarks — so that is the
+range, and inside it the calendar travels on latitude. West of the plains a
+different fauna lives, no shift in days turns one into the other, and the app
+says so instead of guessing.
+
+The calendar travels because emergence timing is mostly latitude. Each of the
+27 hand-written waters carries a `shift` — days behind or ahead of the
+Beaverkill — and all 20 trout entries were written river by river with no
+formula in mind. Fitted afterwards they come to **4.86 days per degree of
+latitude**, +5.1 for a tailwater and −2.1 for a limestoner, at R² 0.96 and a
+mean error of one day. Hopkins' bioclimatic law puts the latitude term at 4
+days per degree. So the shift is computed now, anywhere, and the 27 hand-written
+values are kept as the test that holds the formula to them.
+
+The analogue a spot borrows its temperature and flow curves from is chosen the
+same way — on latitude and river type, not on distance. Baldwin, Michigan used
+to match a Lake Erie steelhead creek 298 miles away and then get gated out for
+being too far; it now matches a trout freestone at its own latitude, with the
+calendar moved nine days later.
+
 Riffle reads any point you drop in the Northeast — it borrows the seasonal
 curves of the nearest of these 27 hand-written waters and rescales the flow
 bands to the gauge it finds. So your home pool does not have to be on this list
@@ -81,13 +110,13 @@ read-live water borrows from a written water of its own kind.
 How far that reaches is measured, not assumed. Spring hatch timing moves about a
 week per hundred miles, so:
 
-| distance to the nearest water in the book | what you get |
+| where you are | what you get |
 | --- | --- |
-| under 75 miles | the full reading |
-| 75–250 miles | the full reading, with the hatch calendar flagged as a guide rather than a date |
-| over 250 miles | **outside the book** — no plays, no hatch chart, no wade call, and no modeled numbers |
+| inside the eastern hatches' range, analogue within ~1.2° of latitude | the full reading |
+| inside the range, analogue further off in latitude | the full reading, with the borrowed thermal curve flagged — carry a thermometer |
+| outside the range | **outside the book** — no plays, no hatch chart, no wade call, and no modeled numbers |
 
-Past 250 miles the app says so rather than guessing. It still gives you the live
+Outside that range the app says so rather than guessing. It still gives you the live
 USGS gauge, the public access and the fly shops, because a gauge is a gauge and
 OpenStreetMap maps the whole country — but the modeled half goes quiet. The
 alternative is worse than useless: the westernmost waters in the book are Lake

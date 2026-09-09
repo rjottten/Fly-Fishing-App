@@ -132,6 +132,7 @@ async function mock(page, scenario){
 
   await page.route("**://waterservices.usgs.gov/nwis/site/**", r => {
     const bbox = r.request().url().includes("bBox=");
+    if(scenario==="michigan") return r.fulfill(rdbOf(bbox ? F.MI_SITES : [F.SITE_PM_UP, F.SITE_BEAVERKILL]));
     if(scenario==="scaled")  return r.fulfill(rdbOf(bbox ? [F.SITE_LITTLE] : [F.SITE_LITTLE, F.SITE_BEAVERKILL]));
     if(scenario==="noarea")  return r.fulfill(rdbOf([F.SITE_LITTLE_NOAREA]));
     return r.fulfill(rdbOf(bbox ? [F.SITE_BEAVERKILL, F.SITE_LITTLE] : [F.SITE_BEAVERKILL, F.SITE_WBD]));
@@ -369,6 +370,7 @@ async function walk(browser, scenario){
   if(scenario==="outofbook") await outOfBookPass(page, seen);
   if(scenario==="plays") await playsPass(page, seen);
   if(scenario==="named") await namedPass(page, seen);
+  if(scenario==="michigan") await michiganPass(page, seen);
 
   seen.errors = errors; seen.violations = violations; seen.refusals = refusals;
   await page.close(); await ctx.close();
@@ -420,10 +422,12 @@ async function shopPass(page, seen){
    the modeled half of the app off, not quietly reassign the fishery. */
 async function outOfBookPass(page, seen){
   seen.book = await page.evaluate(()=>{
-    const at=(lat,lon)=>{ const t=templateFor(lat,lon); return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp}; };
+    const at=(lat,lon)=>{ const t=templateFor(lat,lon);
+      return {name:t.w.name, miles:Math.round(t.dist/1609.34), sp:t.w.sp,
+              latGap:Math.round(t.latGap*10)/10, east:inEast(lat,lon)}; };
     const read=(lat,lon,name)=>{
       const t=templateFor(lat,lon);
-      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN);
+      state.spot=spotProfile({lat,lon,name}, t.w, t.dist, null, NaN, t.latGap);
       state.when=new Date(2026,4,20,14,0);                 // 20 May, peak hatch season
       const ctx=buildContext();
       return {miles:ctx.templateMiles, out:ctx.outOfBook, isGL:ctx.isGL, sp:ctx.w.sp,
@@ -580,6 +584,75 @@ async function namedPass(page, seen){
             beyond:!!w.beyond};
   });
   await page.evaluate(()=>{ state.spot=null; state.nearAll=false; draw(); });
+}
+
+/* Baldwin, Michigan. Under the old model this was the whole failure in one
+   place: the nearest of the 27 was a Lake Erie steelhead creek 298 miles
+   away, so the pin inherited a steelhead fishery and was then gated out for
+   being too far — wrong analogue, and no reading either way. It is the
+   worked example for every part of the new path: pick a location, get the
+   rivers that are actually there, choose one, and have its gauge be what
+   the plays read. */
+async function michiganPass(page, seen){
+  seen.pheno = await page.evaluate(()=>{
+    /* The shift is computed now. The 27 hand-written values were written
+       river by river with no formula in mind, so they are the only
+       independent check this file has on the formula that replaced them. */
+    const tr=WATERS.filter(w=>w.sp==="trout");
+    const err=tr.map(w=>({name:w.name, hand:w.shift, calc:bioShift(w.lat,w.type)}))
+                .map(o=>({...o, off:Math.abs(o.calc-o.hand)}));
+    return {worst: err.reduce((a,b)=>b.off>a.off?b:a, err[0]),
+            mean: +(err.reduce((s,o)=>s+o.off,0)/err.length).toFixed(2),
+            over4: err.filter(o=>o.off>4).map(o=>o.name),
+            baldwin: bioShift(43.90,"freestone"), letort: bioShift(40.19,"limestone"),
+            east:{baldwin:inEast(43.90,-85.85), driftless:inEast(43.60,-90.85),
+                  ozark:inEast(36.30,-93.20), bozeman:inEast(45.68,-111.04),
+                  gallatinLon:inEast(43.90,-111.04)}};
+  });
+
+  await page.click("#tab-plan");
+  await page.waitForSelector("#findQ");
+  await page.evaluate(()=>{ state.spot=null; });
+  await page.evaluate(()=>setPin(43.9022, -85.8517, "Baldwin, Lake County, Michigan"));
+  await page.waitForSelector("#riverCard .rvbtn", {timeout:10000});
+
+  seen.mi = await page.evaluate(()=>({
+    head: (document.querySelector("#riverCard h3")||{}).textContent,
+    rivers: [...document.querySelectorAll("#riverCard .rvbtn .wn")].map(n=>n.childNodes[0].textContent.trim()),
+    gauges: [...document.querySelectorAll("#riverCard .rvbtn")].map(b=>b.dataset.g),
+    subs: [...document.querySelectorAll("#riverCard .rvbtn .wt")].map(n=>n.textContent.trim()),
+    glOffered: !!document.getElementById("rvSp"),
+    glText: (document.getElementById("rvSp")||{}).textContent,
+  }));
+
+  // pick the top river and see what the plays are actually reading
+  await page.click("#riverCard .rvbtn");
+  await page.waitForFunction(()=>!!state.spot, {timeout:10000}).catch(()=>{});
+  seen.miPick = await page.evaluate(()=>{
+    const w=water(), ctx=buildContext();
+    return {name:w.name, sp:w.sp, gauge:w.gauge, tmpl:w.spot.template.name, tmplSp:w.spot.template.sp,
+            latGap:w.latGap, shift:w.shift, beyond:!!w.beyond, out:ctx.outOfBook,
+            hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.length,
+            saysGauge:/USGS 041/.test(w.note||""), saysShift:/day/.test(w.note||"")};
+  });
+  // and in May, when the calendar has to be doing real work
+  seen.miMay = await page.evaluate(()=>{
+    const keep=state.when;
+    state.when=new Date(2026,4,20,14,0);
+    const ctx=buildContext();
+    const out={hatches:activeHatches(ctx).length, plays:recommend(ctx).picked.map(p=>p.key),
+               top:(activeHatches(ctx)[0]||{}).hx, temp:Math.round(ctx.temp)};
+    state.when=keep;
+    return {hatches:out.hatches, plays:out.plays, top:out.top?out.top.name:null, temp:out.temp};
+  });
+  // the fishery is the angler's call, never the app's
+  await page.click("#rvSp");
+  await page.waitForFunction(()=>water().sp==="steelhead", {timeout:10000}).catch(()=>{});
+  seen.miGL = await page.evaluate(()=>{
+    const w=water();
+    return {sp:w.sp, tmplSp:w.spot.template.name && w.spot.template.sp, gauge:w.gauge};
+  });
+  await page.evaluate(()=>{ state.spot=null; state.pin=null; state.rivers={status:"idle",list:[],key:null}; draw(); });
 }
 
 /* Two things this app cannot check by reading its own source: that the
@@ -1090,8 +1163,15 @@ const SCENARIOS = {
     ok(s.names.length>1, "with the access flow unaffected", s.names);
   },
   outofbook: (s)=>{
-    ok(s.book.nearest.bozeman.sp==="steelhead" && s.book.nearest.bozeman.miles>1000,
-       "the nearest water to Montana really is a steelhead tributary 1,500 miles off", s.book.nearest);
+    /* The analogue is chosen on climate now, so Bozeman gets a trout freestone
+       at nearly its own latitude rather than the least-far river of any kind.
+       That is the right analogue — and it is still not a reading, because the
+       gate is about which insects live there, not how far the analogue sits. */
+    ok(s.book.nearest.bozeman.sp==="trout" && s.book.nearest.bozeman.latGap<1.5,
+       "Montana matches a trout river at its own latitude, not the least-far one",
+       s.book.nearest.bozeman);
+    ok(s.book.nearest.bozeman.east===false,
+       "and it is still outside the range of the book's insects", s.book.nearest.bozeman);
     ok(s.book.montana.out===true, "so that pin is marked outside the book", s.book.montana);
     ok(s.book.montana.sp!=="steelhead" && s.book.montana.isGL===false,
        "and does not inherit the fishery of whichever river happened to be least far", s.book.montana);
@@ -1226,6 +1306,63 @@ const SCENARIOS = {
     ok(!s.namedPick.beyond, "inside the book, so the plays and the hatch chart stay on", s.namedPick);
     ok(s.namedPick.saysGauge, "the card names the gauge it actually found", s.namedPick);
     ok(s.namedPick.saysBorrowed, "and which written water it borrowed from", s.namedPick);
+
+    ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
+    ok(s.errors.length===0, "no console or page errors", s.errors);
+  },
+
+  michigan: (s)=>{
+    const p=s.pheno;
+    // the formula against the 27 values it replaced
+    ok(p.mean<=1.5, "the computed shift lands within a day and a half of the hand-written 27", p.mean);
+    ok(p.worst.off<=4, "and never more than four days off any one of them", p.worst);
+    eq(p.over4, [], "no river the formula gets badly wrong");
+    ok(p.baldwin>=7 && p.baldwin<=12,
+       "Baldwin runs a week to a fortnight behind the Beaverkill", p.baldwin);
+    ok(p.letort<=-9, "and the Letort runs well ahead of it", p.letort);
+
+    // the gate is a range now, not a radius
+    ok(p.east.baldwin && p.east.driftless && p.east.ozark,
+       "Michigan, the Driftless and the Ozarks are all inside the book's insects", p.east);
+    ok(!p.east.bozeman && !p.east.gallatinLon,
+       "Montana is not, at any latitude", p.east);
+
+    // the list, from USGS, for a town nobody wrote down
+    ok(/Baldwin/.test(s.mi.head), "the card names the place you searched", s.mi.head);
+    ok(s.mi.rivers.length>=3, "and lists the gauged rivers around it", s.mi.rivers);
+    ok(s.mi.rivers[0]==="Pere Marquette River",
+       "nearest first, with the river's name and not the gauge's", s.mi.rivers);
+    ok(new Set(s.mi.rivers).size===s.mi.rivers.length,
+       "one row per river, not one per gauge", s.mi.rivers);
+    ok(!s.mi.rivers.some(n=>/Unnamed Drain/i.test(n)),
+       "and a three-square-mile ditch is not a fishery", s.mi.rivers);
+    ok(s.mi.subs.every(t=>/^USGS \d/.test(t)), "every row shows the gauge behind it", s.mi.subs);
+    ok(s.mi.glOffered && /Great Lakes run/i.test(s.mi.glText||""),
+       "a Great Lakes run is offered here, not assumed", s.mi);
+
+    // what picking one actually reads
+    ok(s.miPick.name==="Pere Marquette River",
+       "picking a river reads that river", s.miPick);
+    ok(s.miPick.gauge===s.mi.gauges[0],
+       "on the gauge that row named, not whichever was nearest the pin", s.miPick);
+    ok(s.miPick.sp==="trout" && s.miPick.tmplSp==="trout",
+       "as trout water, borrowed from a trout river", s.miPick);
+    ok(s.miPick.latGap<=1.6,
+       "matched to a river at nearly its own latitude", s.miPick);
+    ok(s.miPick.shift>=7 && s.miPick.shift<=12,
+       "with the calendar moved for that latitude", s.miPick);
+    ok(!s.miPick.beyond && !s.miPick.out,
+       "and it is a reading, not a gate — this is the case that used to fail", s.miPick);
+    ok(s.miPick.saysGauge && s.miPick.saysShift,
+       "the card says which gauge it read and how far it moved the calendar", s.miPick);
+
+    ok(s.miMay.hatches>0 && s.miMay.plays.length===3,
+       "in May it has a hatch chart and three ranked plays", s.miMay);
+    ok(!s.miMay.plays.some(k=>k.startsWith("gl-")),
+       "none of them a steelhead play", s.miMay.plays);
+
+    ok(s.miGL.sp==="steelhead" && s.miGL.gauge===s.mi.gauges[0],
+       "and saying it is a run re-reads the same gauge as steelhead water", s.miGL);
 
     ok(s.violations.length===0, "no Content-Security-Policy violations", s.violations);
     ok(s.errors.length===0, "no console or page errors", s.errors);

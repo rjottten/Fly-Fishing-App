@@ -1590,6 +1590,7 @@ const state = {
   spot:null,                                   // water-shaped profile synthesized for that point
   access:{status:"idle", list:[], radius:8000, chosen:null},
   shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
+  rivers:{status:"idle", list:[], key:null},   // gauged rivers around the pin, from USGS
   nearAll:false,                               // whether the whole book is open under the map
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plan", checked:new Set(),
@@ -3496,6 +3497,68 @@ async function nearestGauge(lat, lon){
   return null;
 }
 
+/* --- what rivers are near here -------------------------------
+   This is the same bBox call nearestGauge already makes; it used to
+   keep the closest row and throw the rest of the response away. The
+   rest of the response is a list of the gauged rivers around a point,
+   from USGS, with a name, a position and a drainage area on each —
+   which is exactly the list an angler wants after typing a town, and
+   exactly the list nobody should be writing by hand.
+
+   A gauge is also the thing that makes a river readable: it is where
+   the live flow and water temperature that drive the plays come from.
+   So a river that appears here is one Riffle can actually read, and
+   picking it hands the plays that gauge rather than whichever one
+   happened to be nearest the pin.
+------------------------------------------------------------ */
+
+/* USGS station names carry the gauge's business, not the river's:
+   "BEAVER KILL AT COOKS FALLS NY". The river is the part before the
+   locator, and that is what belongs on a button. */
+const AT_SPLIT = /\s+(?:AT|NEAR|NR|ABOVE|ABV|BELOW|BLW|BL)\s+/i;
+function riverNameOf(station){
+  const raw = String(station||"").split(AT_SPLIT)[0].replace(/,.*$/,"").trim();
+  if(!raw) return "Unnamed gauge";
+  /* USGS shouts. Title-case it, but leave initialisms and directions alone. */
+  return raw.toLowerCase().replace(/\b[a-z]/g, c=>c.toUpperCase())
+            .replace(/\b(Ef|Wf|Nf|Sf|Mf)\b/g, m=>m.toUpperCase());
+}
+
+/* Rivers big enough to be worth a drive. A gauge on a 3 sq mi headwater
+   ditch is a real gauge and not a fishery, and the list is more useful
+   short. */
+const RIVER_MIN_AREA = 8;      // square miles of drainage
+const RIVER_MAX      = 12;
+
+async function nearbyRivers(lat, lon){
+  const out=new Map();
+  for(const pad of [0.35, 0.8]){
+    const bbox=[(lon-pad).toFixed(4),(lat-pad).toFixed(4),(lon+pad).toFixed(4),(lat+pad).toFixed(4)].join(",");
+    const url=`https://waterservices.usgs.gov/nwis/site/?format=rdb&bBox=${bbox}`
+            + `&siteType=ST&siteStatus=active&hasDataTypeCd=iv&parameterCd=00060&siteOutput=expanded`;
+    try{
+      const res=await withTimeout(url, null, 12000);
+      if(!res.ok) continue;
+      for(const r of parseRDB(await res.text())){
+        const la=parseFloat(r.dec_lat_va), lo=parseFloat(r.dec_long_va);
+        if(!isFinite(la)||!isFinite(lo)) continue;
+        const area=parseFloat(r.drain_area_va);
+        if(isFinite(area) && area>0 && area<RIVER_MIN_AREA) continue;
+        const name=riverNameOf(r.station_nm);
+        const dist=metres(lat,lon,la,lo);
+        /* One row per river, not per gauge: a river with four gauges on it
+           is one button, and the button is the gauge nearest the angler. */
+        const prev=out.get(name);
+        if(!prev || dist<prev.dist)
+          out.set(name, {id:r.site_no, river:name, station:(r.station_nm||"").trim(),
+                         lat:la, lon:lo, area:isFinite(area)?area:null, dist});
+      }
+      if(out.size>=4) break;         // the tight box answered; no need to widen
+    }catch(e){ /* try the wider box, then give up */ }
+  }
+  return [...out.values()].sort((a,b)=>a.dist-b.dist).slice(0, RIVER_MAX);
+}
+
 /* Drainage area for a pair of sites, so flow bands can be scaled. */
 async function drainAreas(sites){
   try{
@@ -3513,41 +3576,91 @@ async function drainAreas(sites){
 
 /* --- the spot profile ---------------------------------------- */
 /* --- how far the book reaches -------------------------------
-   The 27 waters are hand-written for the Northeast, and a spot
-   borrows the nearest one's seasonal curves, hatch calendar and
-   flow character. That is sound for a neighbouring river and
-   nonsense for a distant one: the westernmost waters in the book
-   are Lake Erie steelhead tributaries, so a pin on a Montana
-   trout river was inheriting a steelhead fishery — no hatches at
-   all, and egg patterns ranked first, in May.
+   This used to be a distance. A spot borrowed the nearest of the
+   27 waters and anything past 250 miles was switched off, which
+   put Baldwin, Michigan — the Pere Marquette — on a Lake Erie
+   steelhead creek 298 miles away, and then gated it out for being
+   too far. Both halves were wrong, and for the same reason: miles
+   are not what makes one river a reading for another.
 
-   Spring hatch timing moves roughly a week per hundred miles, so
-   the bands below are about how wrong the calendar can be before
-   it stops being a calendar.
+   Two things travel, and they travel differently.
+
+   The CALENDAR travels on latitude. The shift field on each water
+   is the number of days that river runs behind or ahead of the
+   Beaverkill, and all 20 trout entries were written by hand, river
+   by river, with no formula in mind. Fitted afterwards they come to
+   4.86 days per degree of latitude, +5.1 for a tailwater and −2.1
+   for a limestoner — R² 0.96, mean error one day. Hopkins' bio-
+   climatic law puts the latitude term at 4 days per degree, which
+   is a number nobody in this file was aiming at. So the shift is
+   computed now, and the hand-written values stay as the check.
+
+   The SPECIES do not travel at all. Hendricksons, sulphurs, Cahills
+   and the rest are the eastern North American assemblage; west of
+   the plains it is Salmonfly and PMD and a different insect fauna
+   that this book has never heard of. That is a range, not a radius
+   — so the gate is where these bugs live, and inside it a computed
+   shift carries the calendar the whole way.
 ------------------------------------------------------------ */
-const RANGE_NEAR = 75;    // miles: a genuine neighbour, same climate band
-const RANGE_MAX  = 250;   // miles: past this the book does not know this water
 
-function rangeOf(miles){
-  if(miles<=RANGE_NEAR) return "near";
-  if(miles<=RANGE_MAX)  return "borrowed";
-  return "beyond";
+/* Days a hatch runs behind the Beaverkill at 41.95° N. Fitted to the
+   27, then held to them by test. */
+const PHENOLOGY_REF_LAT = 41.95;
+const PHENOLOGY = {perDegLat: 4.86, tailwater: 5.14, limestone: -2.12, base: -0.36};
+
+function bioShift(lat, type){
+  const p = PHENOLOGY;
+  const d = p.perDegLat*(lat - PHENOLOGY_REF_LAT) + p.base
+          + (type==="tailwater" ? p.tailwater : 0)
+          + (type==="limestone" ? p.limestone : 0);
+  return Math.round(clamp(d, -30, 40));
 }
 
-/* When the fishery is known — a named water below says what it is — the
-   template has to match it. Nearest-of-all put Oatka Creek, a Finger Lakes
-   trout stream, on Oak Orchard's steelhead calendar because Oak Orchard is
-   29 miles away and the Little Juniata is 139. That is the Montana bug at
-   a scale small enough to look plausible, which is worse. */
-function templateFor(lat, lon, sp){
+/* The range of the bugs in this book: eastern North America, from the
+   Southern Appalachians to the boreal edge, and from the Atlantic to
+   the western limit of the eastern mayfly fauna out past the Driftless
+   and the Ozarks. Inside it the calendar is the same calendar, moved
+   by latitude. Outside it the app says so rather than guessing, because
+   a Montana river is not a late Catskill river — it is a different
+   fauna, and no shift in days will turn one into the other. */
+const EAST = {latMin:33.5, latMax:50.0, lonMin:-97.0, lonMax:-52.0};
+const inEast = (lat, lon)=> lat>=EAST.latMin && lat<=EAST.latMax
+                         && lon>=EAST.lonMin && lon<=EAST.lonMax;
+
+/* How far the borrowed *thermal* curve is being stretched. The calendar
+   is handled by the shift; this is about the temperature and flow curves,
+   which are a real river's numbers and get less like yours the further
+   the analogue sits in latitude. */
+function rangeOf(latGap){
+  if(latGap<=1.2) return "near";       // about 80 miles of latitude
+  if(latGap<=4.0) return "borrowed";
+  return "far";
+}
+
+/* Which water in the book is the best READING for this point — not the
+   closest one. Latitude dominates, because it sets both the thermal
+   season and the calendar; water type matters nearly as much, since a
+   bottom-release tailwater and a limestone spring creek at the same
+   latitude are different rivers all year; longitude barely matters at
+   all, and only as a proxy for how continental the climate is.
+
+   Nearest-by-miles put Oatka Creek, a trout stream, on Oak Orchard's
+   steelhead calendar, and Baldwin on Conneaut Creek. Both go away when
+   the question is "what is this river like" instead of "what is near". */
+function climateDist(lat, lon, type, w){
+  return Math.abs(lat - w.lat)
+       + (type && type!==w.type ? 0.8 : 0)
+       + Math.abs(lon - w.lon)*0.12;
+}
+function templateFor(lat, lon, sp, type){
   const pool = sp ? WATERS.filter(w=>w.sp===sp) : WATERS;
   const from = pool.length ? pool : WATERS;
   let best=from[0], bd=Infinity;
   for(const w of from){
-    const d=metres(lat,lon,w.lat,w.lon);
+    const d=climateDist(lat, lon, type, w);
     if(d<bd){ bd=d; best=w; }
   }
-  return {w:best, dist:bd};
+  return {w:best, dist:metres(lat,lon,best.lat,best.lon), latGap:Math.abs(lat-best.lat)};
 }
 
 /* Flow scales roughly with the area that drains into the gauge,
@@ -3570,50 +3683,62 @@ function gaugeAway(m){
   return `${mi<10?mi.toFixed(1):Math.round(mi)} miles from the pin`;
 }
 
-function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
+function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
   const calibrated = isFinite(ratio) && ratio>0;
   const bands = calibrated ? scaleBands(tmpl, ratio) : {flow:tmpl.flow, wade:tmpl.wade};
   const miles = Math.round(tmplDistM/1609.34);
   const away  = miles<1 ? "on it" : `${miles} mile${miles===1?"":"s"} away`;
   const ownGauge = !!gauge && gauge.id===tmpl.gauge;
-  const range = rangeOf(miles);
-  const beyond = range==="beyond";
+
+  /* The calendar is gated on where these bugs live, not on how far the
+     analogue is. Inside their range the shift carries it; outside, the
+     seasonal half goes quiet and the measured half stays. */
+  const east   = inEast(point.lat, point.lon);
+  const beyond = !east;
+  const type   = point.type || (beyond ? "unknown" : tmpl.type);
+  const range  = beyond ? "far" : rangeOf(latGap==null ? 0 : latGap);
+  const shift  = beyond ? 0 : bioShift(point.lat, type);
+  const dLat   = Math.round((point.lat - tmpl.lat)*10)/10;
+
   return {
     id: "spot:"+point.lat.toFixed(4)+","+point.lon.toFixed(4),
     hatchKey: tmpl.id,                       // borrow this water's hatch calendar
     name: point.name || "Selected spot",
     place: point.place || "",
     lat: point.lat, lon: point.lon,
-    range, beyond, templateMiles: miles,
-    /* Beyond the book, the template's species is an accident of which
-       of 27 Northeast rivers happens to be least far away. Inheriting
-       it is how a Montana trout river came to be read as a Lake Erie
-       steelhead run, so out here the spot claims no fishery at all. */
-    type: beyond ? "unknown" : tmpl.type,
-    sp:   beyond ? "unknown" : tmpl.sp,
-    size: tmpl.size,
+    range, beyond, templateMiles: miles, latGap: latGap==null?null:Math.round(latGap*10)/10,
+    /* Outside the eastern fauna the book has no species to claim, so it
+       claims none — that is how a Montana trout river came to be read as
+       a Lake Erie steelhead run. */
+    type,
+    sp:   beyond ? "unknown" : (point.sp || tmpl.sp),
+    size: point.size || tmpl.size,
     gauge: gauge ? gauge.id : tmpl.gauge,
     unit: "cfs",
     flow: bands.flow, wade: bands.wade, float: tmpl.float,
     temps: tmpl.temps, swing: tmpl.swing, flowIx: tmpl.flowIx, stepped: tmpl.stepped,
-    shift: tmpl.shift, char: tmpl.char,
+    shift, char: tmpl.char,
     note: (beyond
-        ? `This point is ${away} from the nearest water in Riffle's book, which is `
-          + `hand-written for the Northeast. Nothing seasonal travels that far, so the `
-          + `hatch chart and the plays are switched off here rather than borrowed from `
-          + `${tmpl.name}. `
+        ? `This point is outside the range of the insects in Riffle's book, which are the `
+          + `eastern North American hatches. A different fauna lives here and no shift in `
+          + `days turns one into the other, so the hatch chart and the plays that read it `
+          + `are switched off rather than borrowed. `
           + (gauge ? `The gauge is real: USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}.`
                    : `No live gauge was found nearby either, so there are no numbers to show.`)
-        : `Seasonal temperature, hatch timing and flow character are modeled on `
-          + `${tmpl.name} — the nearest water in the book, and you are ${away}. `
-          + (range==="borrowed" ? `That is far enough that hatch dates will run a week or two out — read the calendar as a guide, not a date. ` : "")
+        : `Seasonal temperature and flow character are modeled on ${tmpl.name} — the closest `
+          + `match in the book by latitude and river type, ${Math.abs(dLat)<0.15 ? "at the same latitude"
+              : `${Math.abs(dLat).toFixed(1)}° of latitude ${dLat>0?"south":"north"} of here`}. `
+          + `Hatch dates are moved ${shift===0?"not at all":`${Math.abs(shift)} day${Math.abs(shift)===1?"":"s"} ${shift>0?"later":"earlier"}`} `
+          + `for this latitude and river type. `
+          + (range==="far" ? `That is a long stretch for a borrowed thermal curve — carry a thermometer. ` : "")
           + (gauge ? `Flow and water temperature read from USGS ${gauge.id} — `
                    + `${(gauge.name||"unnamed gauge").toLowerCase()}, ${gaugeAway(gauge.dist)}. `
                    : `No live gauge was found nearby, so the numbers are modeled. `)
           + (!calibrated ? `Flow bands are ${tmpl.name}'s, uncalibrated for this gauge — read them as rough.`
              : ownGauge  ? `The flow bands are this gauge's own.`
                          : `Flow bands are scaled from ${tmpl.name}'s by drainage area (×${ratio.toFixed(2)}).`)),
+    pickedGauge: point.pickedGauge || null,
     spot: {template:tmpl, templateMiles:miles, away, gauge, ratio: calibrated?ratio:null, calibrated},
   };
 }
@@ -3622,9 +3747,12 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio){
    degradations, never dead ends: worst case the angler still
    gets the nearest water in the book, modeled. */
 async function buildSpot(point){
-  const {w:tmpl, dist} = templateFor(point.lat, point.lon, point.sp);
-  let gauge=null, ratio=NaN;
-  try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; }
+  const {w:tmpl, dist, latGap} = templateFor(point.lat, point.lon, point.sp, point.type);
+  let ratio=NaN;
+  /* A river picked off the list already knows its gauge — it IS a gauge.
+     Only a bare pin has to go looking for one. */
+  let gauge = point.gauge || null;
+  if(!gauge){ try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; } }
   if(gauge && gauge.id!==tmpl.gauge){
     const areas = await drainAreas([gauge.id, tmpl.gauge]);
     const a=areas[gauge.id], b=areas[tmpl.gauge];
@@ -3634,7 +3762,7 @@ async function buildSpot(point){
   } else if(gauge && gauge.id===tmpl.gauge){
     ratio=1;
   }
-  return spotProfile(point, tmpl, dist, gauge, ratio);
+  return spotProfile(point, tmpl, dist, gauge, ratio, latGap);
 }
 
 /* ============================================================
@@ -3971,15 +4099,16 @@ function outOfBookCard(ctx){
       : `The gauge reads <b>${t.toFixed(0)} °F</b>. Trout stress above 65 and should not be fished above 68, on any river.`;
   return `<div class="gate">
     <h2>Outside the book</h2>
-    <p>Riffle's 27 waters are hand-written for the Northeast, and the nearest of them
-       is <b>${ctx.templateMiles} miles</b> from here. Hatch dates, seasonal water
-       temperature, flow character and wade thresholds are all that water's, not this
-       one's — so there are no plays, no hatch chart and no wade call here. A guess
-       would look exactly like a reading.</p>
+    <p>Riffle's hatch calendar is the <b>eastern North American</b> one — Hendricksons,
+       sulphurs, Cahills, Isonychia. Those insects do not live here. What hatches on this
+       water is a different fauna the book has never carried, and no amount of shifting
+       dates turns one into the other — so the hatch chart and the plays that read it are
+       off rather than borrowed. A guess would look exactly like a reading.</p>
     <p><b>What still holds:</b> a USGS gauge is a USGS gauge, and the access points and
        fly shops come from OpenStreetMap, which maps the whole country. ${thermal}</p>
-    <p>Pick a water from the book on <b>Plan</b> for the full reading, or use this one
-       for the gauge, the access and the shops.</p>
+    <p>Anywhere from the Appalachians to the Driftless and the Ozarks gets the full
+       reading — the calendar travels on latitude. Out here, use this for the gauge,
+       the access and the shops.</p>
   </div>`;
 }
 
@@ -4672,6 +4801,7 @@ function whereShell(){
       <div id="map" role="application" aria-label="Map. Tap to choose where you are fishing."></div>
       <p class="mapnote" id="mapNote">Tap the map to move the pin.</p>
     </div>
+    <div id="riverCard"></div>
     <div id="nearWaters"></div>
     <div class="wcard" id="accessCard"></div>`;
   wireWhere();
@@ -4782,7 +4912,24 @@ async function setPin(lat, lon, label){
       }
     });
   }
+  loadRivers(lat, lon);          // the river list and the access list are independent asks
   await loadAccess(lat, lon);
+}
+
+/* The rivers around the pin, and which one the angler picked. Kept off the
+   access lookup deliberately: Overpass being slow or down should not stop
+   USGS answering, and the river list is the more important of the two. */
+async function loadRivers(lat, lon){
+  const key = lat.toFixed(3)+","+lon.toFixed(3);
+  if(state.rivers.key===key && state.rivers.status==="ok") return;
+  state.rivers={status:"loading", list:[], key};
+  renderRiverCard();
+  let list=[];
+  try{ list = await nearbyRivers(lat, lon); }
+  catch(e){ state.rivers={status:"error", list:[], key}; renderRiverCard(); return; }
+  if(state.rivers.key!==key) return;                 // the pin moved while we asked
+  state.rivers={status: list.length?"ok":"empty", list, key};
+  renderRiverCard();
 }
 
 async function loadAccess(lat, lon){
@@ -4823,6 +4970,92 @@ async function selectSpot(point){
 function milesOf(m){
   const mi=m/1609.34;
   return mi<0.1 ? Math.round(m)+" m" : (mi<10 ? mi.toFixed(1) : Math.round(mi))+" mi";
+}
+
+/* --- the rivers around the pin ------------------------------
+   The list an angler wants after typing a town, and the one thing
+   in this app that was never going to come from a curated table.
+   Every row is a USGS gauge: a real river, with live flow, that
+   Riffle can actually read. Picking one hands the plays that gauge.
+
+   The fishery is the angler's to say. Riffle offers steelhead only
+   where a Great Lakes run is plausible and never assumes it — the
+   whole Montana bug was the app deciding on its own that a trout
+   river was a steelhead river.
+------------------------------------------------------------ */
+function glPlausible(lat, lon){
+  // Great Lakes drainage, roughly: the lakes and the country that drains to them
+  return lat>=41.0 && lat<=47.5 && lon>=-92.5 && lon<=-74.5;
+}
+
+function renderRiverCard(){
+  const el=$("#riverCard"); if(!el) return;
+  const st=state.rivers||{status:"idle"};
+  const where = state.pin ? (state.pin.label ? String(state.pin.label).split(",")[0].trim()
+                                             : `${state.pin.lat.toFixed(3)}, ${state.pin.lon.toFixed(3)}`) : null;
+  if(!state.pin || st.status==="idle"){ el.innerHTML=""; return; }
+  const head=`<h3>Rivers near ${esc(where)}</h3>`;
+  const wrap=(inner)=>{ el.innerHTML=`<div class="wcard">${head}${inner}</div>`; };
+
+  if(st.status==="loading"){ wrap(`<p class="muted">Asking USGS which rivers here have a gauge on them…</p>`); return; }
+  if(st.status==="error"){
+    wrap(`<p class="muted">The USGS site lookup did not answer. The book below still works, and the pin itself can be read.</p>`);
+    return;
+  }
+  if(st.status==="empty"){
+    wrap(`<p class="muted">USGS has no gauged stream within about 50 miles of that point. Riffle can only read a river
+      that reports its flow, so there is nothing here to pick — move the pin, or use the book below.</p>`);
+    return;
+  }
+
+  const cur = state.spot && state.spot.gauge;
+  const gl  = glPlausible(state.pin.lat, state.pin.lon);
+  const east = inEast(state.pin.lat, state.pin.lon);
+  wrap(`
+    <p>${st.list.length} gauged river${st.list.length===1?"":"s"} around that point, from USGS — nearest first.
+       Pick one and its gauge becomes the flow and water temperature the plays read.</p>
+    <div class="wlist">
+      ${st.list.map(r=>`
+        <button class="wbtn rvbtn" data-g="${esc(r.id)}" aria-current="${cur===r.id}">
+          <span class="wn">${esc(r.river)}<span class="wt">USGS ${esc(r.id)}${r.area?` · ${Math.round(r.area).toLocaleString()} sq mi`:""}</span></span>
+          <span class="wd">${milesOf(r.dist)}</span>
+        </button>`).join("")}
+    </div>
+    ${gl?`<div class="dactions">
+      <button type="button" class="dbtn ghost" id="rvSp" data-sp="${state.rivers.sp==="steelhead"?"trout":"steelhead"}">
+        Read these as ${state.rivers.sp==="steelhead"?"trout water":"a Great Lakes run"}</button></div>
+      <p class="muted">Currently reading them as <b>${state.rivers.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b>.
+         Many rivers here are both, at different times of year — Riffle will not guess which you mean.</p>`:""}
+    ${!east?`<p class="muted">These gauges are real and Riffle will read them, but this point is outside the range of
+       the eastern hatches the book carries, so the hatch chart and the plays that need it stay off.</p>`:""}`);
+
+  const sp=$("#rvSp");
+  if(sp) sp.addEventListener("click", async ()=>{
+    state.rivers.sp = sp.dataset.sp;
+    if(state.spot && state.spot.pickedGauge){        // re-read the chosen river as the other fishery
+      const r=(state.rivers.list||[]).find(x=>x.id===state.spot.pickedGauge);
+      if(r) return chooseRiver(r.id);
+    }
+    renderRiverCard();
+  });
+
+  document.querySelectorAll("#riverCard .rvbtn").forEach(b=>b.addEventListener("click", ()=>chooseRiver(b.dataset.g)));
+}
+
+async function chooseRiver(gaugeId){
+  const r=(state.rivers.list||[]).find(x=>x.id===gaugeId);
+  if(!r) return;
+  const card=$("#riverCard"); if(card) card.setAttribute("aria-busy","true");
+  try{
+    await selectSpot({
+      lat:r.lat, lon:r.lon, name:r.river, place:(state.pin&&state.pin.label)||"",
+      sp: state.rivers.sp==="steelhead" ? "steelhead" : "trout",
+      gauge:{id:r.id, name:r.station, lat:r.lat, lon:r.lon, area:r.area, dist:0},
+      pickedGauge:r.id,
+    });
+  } finally {
+    const c=$("#riverCard"); if(c) c.removeAttribute("aria-busy");
+  }
 }
 
 function renderAccessCard(){
@@ -4918,10 +5151,18 @@ function renderWater(ctx){
   const shownList = state.nearAll ? list
     : list.filter((o,i)=> i<NEAR_OPEN || o.w.id===ctx.w.id);
   const hidden = list.length - shownList.length;
+  /* Past this the book is not a list of places to fish this weekend, and
+     saying "nearest waters to Baldwin" over a river 300 miles away is the
+     app talking about itself instead of about the water. */
+  const FAR_BOOK = 150;
+  const nearestMi = from && list.length && list[0].d!=null ? list[0].d : 0;
   $("#nearWaters").innerHTML=`
     <div class="wcard">
-      <h3>${from?`Nearest waters to ${esc(from.what)}`:"Waters in the book"}</h3>
-      <p>${ctx.w.spot
+      <h3>${!from || nearestMi>FAR_BOOK ? "Waters in the book" : `Nearest waters to ${esc(from.what)}`}</h3>
+      <p>${nearestMi>FAR_BOOK
+          ? `The book itself is a Northeast one and its nearest water is <b>${nearestMi} miles</b> away, so these
+             are here to read, not to drive to. The rivers around your pin are in the card above.`
+          : ctx.w.spot
           ? `Reading <b>${esc(ctx.w.name)}</b>, picked off the map. Tap a water below to read that one instead.`
           : from
           ? `Reading <b>${esc(ctx.w.name)}</b> \u2014 <b>${haversine(from.lat,from.lon,ctx.w.lat,ctx.w.lon)} miles</b> from ${esc(from.what)}.`
@@ -5044,7 +5285,7 @@ function locate(explicit){
          nearest one put a phone in Bozeman on Conneaut Creek, 1,554 miles
          off, with its steelhead run and its hatch chart intact. Beyond the
          book's reach, open on nothing and let Plan say how far away it is. */
-      if(best && rangeOf(bd)!=="beyond"){
+      if(best && inEast(state.geo.lat, state.geo.lon)){
         state.waterId=best.id; state.live=null; state.baro=null; refreshLive(best);
       }
     }
@@ -5075,6 +5316,7 @@ function draw(){
   renderFish(res,ctx);
   renderShop(res,ctx);
   renderWater(ctx);
+  renderRiverCard();
   renderDiary(ctx);
   warmShops();
 }
