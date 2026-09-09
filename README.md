@@ -48,7 +48,8 @@ panel is read through it.
   actually like. Then the wade-or-float call, then ranked, confidence-scored
   plays — each with the flies, sizes, rig specs and how to fish it — and last,
   what is hatching and what starts within four weeks.
-- **Shop** — the fly shops mapped nearest the water, with a link to each, and
+- **Shop** — the fly shops for that water, ranked by what they are known for
+  rather than distance alone, with a link to each, and
   then the flies and terminal tackle the plays actually call for, as a
   checkable list to hand across the counter.
 - **Report** — what you can see that the model cannot (flow, clarity, sky, the
@@ -203,6 +204,27 @@ Each is scored from the reading, nudged by the barometer, and moved by your own
 logged days like any other play.
 
 </details>
+
+## Shops, and why "popular" is hand-written
+
+OpenStreetMap knows where a shop is. It does not know which one the guides
+actually use, and no free service will tell us: Google Places, Yelp and
+Foursquare all need an API key, and a key in a page with no backend is a
+published key. So Riffle does not scrape a star rating. It carries a
+hand-written list of the shops anglers name for a given river — the same kind
+of knowledge the river list is — and ranks those first, with a tap to fall back
+to plain distance. Ask anyone where to buy a fly for the Yakima and the answer
+is Red's, whatever the map says.
+
+That list is fallible and says so: town-level positions, no invented phone
+numbers, and the search link stays on the card because it is not the whole
+truth either.
+
+Where one of those shops publishes a river report, **Fish** links to it above
+the plays. Riffle cannot read the page — a shop's website sends no CORS header,
+so a browser cannot fetch it, and opening the policy to arbitrary domains to
+try would undo the point of having one. It does not need to: read what they saw
+this week, then tap the matching chip on **Report** and the plays re-rank on it.
 
 ## Canada
 

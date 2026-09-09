@@ -195,6 +195,11 @@ button{font:inherit;color:inherit;cursor:pointer}
   border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--raised);
 }
 .shoplinks a:hover{border-color:var(--accent);color:var(--accent-ink)}
+.knownmark{
+  display:inline-block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  font-weight:600;color:var(--verd);border:1px solid var(--verd);background:var(--verd-soft);
+  border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:2px;
+}
 
 /* ---------- conditions, on the Report tab ---------- */
 .panel .refine{margin-top:16px}
@@ -1670,6 +1675,102 @@ const RIVERS = [
  ["Exploits River","Grand Falls, NL",48.94,-55.66,"s"],
 ].map(([name, place, lat, lon, sp])=>({name, place, lat, lon, sp:SP_OF[sp]}));
 
+/* --- the shops worth ringing --------------------------------
+   OpenStreetMap knows where a shop is. It does not know which one
+   the guides actually use, and there is no free review service
+   that would tell us: Google Places, Yelp and Foursquare all
+   require a key, and a key in a page with no backend is a
+   published key. So "popular" here is not a star rating scraped
+   from anywhere — it is the same kind of knowledge the river list
+   is. Ask anyone where to buy a fly for the Yakima and the answer
+   is Red's, whatever the map says.
+
+   Hand-written, and therefore fallible: a town-level position, no
+   invented phone numbers, and the search link stays on the card
+   because this list is not the whole truth either. Shops that also
+   publish a river report carry it, and the Fish tab links to it —
+   a report written this week beats anything modelled here.
+
+   waters: matched against the river's name, loosely.
+------------------------------------------------------------ */
+const SHOPS = [
+ ["Red's Fly Shop","Ellensburg, WA",46.86,-120.47,"https://redsflyfishing.com",
+  "https://redsflyfishing.com/blogs/yakima-river-fishing-report",["Yakima"]],
+ ["The Evening Hatch","Ellensburg, WA",47.00,-120.55,"https://eveninghatch.com",null,["Yakima"]],
+ ["Deschutes Angler","Maupin, OR",45.18,-121.08,"https://deschutesangler.com",null,["Deschutes"]],
+ ["Fly & Field Outfitters","Bend, OR",44.06,-121.31,"https://flyandfield.com",null,["Deschutes","Crooked","Metolius","Fall River"]],
+ ["The Caddis Fly Angling Shop","Eugene, OR",44.05,-123.09,"https://thecaddisfly.com",null,["McKenzie","Willamette"]],
+ ["The Fly Shop","Redding, CA",40.58,-122.39,"https://theflyshop.com",null,["Sacramento","Fall River","Hat Creek","Pit","Trinity"]],
+ ["Blue Ribbon Flies","West Yellowstone, MT",44.66,-111.10,"https://blueribbonflies.com",null,["Madison","Firehole","Gallatin","Gibbon"]],
+ ["Yellowstone Angler","Livingston, MT",45.66,-110.56,"https://yellowstoneangler.com",null,["Yellowstone","Paradise"]],
+ ["Dan Bailey's Fly Shop","Livingston, MT",45.66,-110.56,"https://dan-bailey.com",null,["Yellowstone"]],
+ ["Montana Troutfitters","Bozeman, MT",45.68,-111.04,"https://troutfitters.com",null,["Gallatin","Madison","Yellowstone"]],
+ ["Gallatin River Guides","Big Sky, MT",45.28,-111.31,"https://montanaflyfishing.com",null,["Gallatin","Madison"]],
+ ["Henry's Fork Anglers","Last Chance, ID",44.50,-111.36,"https://henrysforkanglers.com",null,["Henrys Fork","Henry's Fork"]],
+ ["TroutHunter","Island Park, ID",44.49,-111.36,"https://trouthunt.com",null,["Henrys Fork","Henry's Fork"]],
+ ["Jack Dennis Fly Shop","Jackson, WY",43.48,-110.76,"https://jackdennis.com",null,["Snake","Green"]],
+ ["Taylor Creek Fly Shop","Basalt, CO",39.37,-107.03,"https://taylorcreek.com",null,["Frying Pan","Roaring Fork","Colorado"]],
+ ["Frying Pan Anglers","Basalt, CO",39.37,-107.03,"https://fryingpananglers.com",null,["Frying Pan","Roaring Fork"]],
+ ["Duranglers","Durango, CO",37.27,-107.88,"https://duranglers.com",null,["Animas","San Juan","Piedra"]],
+ ["Trouts Fly Fishing","Denver, CO",39.74,-104.98,"https://troutsflyfishing.com",null,["South Platte","Blue","Colorado"]],
+ ["The Blue Quill Angler","Evergreen, CO",39.63,-105.32,"https://bluequillangler.com",null,["South Platte","Clear Creek"]],
+ ["Western Rivers Flyfisher","Salt Lake City, UT",40.76,-111.89,"https://wrflyfisher.com",null,["Green","Provo","Weber"]],
+ ["Trout Bum 2","Park City, UT",40.65,-111.50,"https://troutbum2.com",null,["Provo","Weber"]],
+ ["Dally's Ozark Fly Fisher","Cotter, AR",36.28,-92.53,"https://theozarkflyfisher.com",null,["White","Norfork"]],
+ ["Dette Flies","Roscoe, NY",41.93,-74.91,"https://detteflies.com",null,["Beaverkill","Willowemoc","Delaware"]],
+ ["The Beaverkill Angler","Roscoe, NY",41.93,-74.91,"https://beaverkillangler.com",null,["Beaverkill","Willowemoc"]],
+ ["West Branch Angler","Deposit, NY",42.06,-75.43,"https://westbranchangler.com",null,["West Branch Delaware","Delaware"]],
+ ["Whitaker's Sport Store","Pulaski, NY",43.57,-76.13,"https://whitakers.com",null,["Salmon River"]],
+ ["Fat Nancy's Tackle Shop","Pulaski, NY",43.57,-76.13,"https://fatnancys.com",null,["Salmon River"]],
+ ["TCO Fly Shop","State College, PA",40.79,-77.86,"https://tcoflyfishing.com",null,["Spring Creek","Little Juniata","Penns"]],
+ ["Flyfisher's Paradise","State College, PA",40.79,-77.86,"https://flyfishersparadise.com",null,["Spring Creek","Little Juniata"]],
+ ["The Feathered Hook","Coburn, PA",40.85,-77.47,"https://featheredhook.com",null,["Penns","Elk Creek"]],
+ ["Yellow Breeches Outfitters","Boiling Springs, PA",40.15,-77.13,"https://yellowbreechesoutfitters.com",null,["Yellow Breeches","Letort"]],
+ ["Gates Au Sable Lodge","Grayling, MI",44.66,-84.71,"https://gatesausablelodge.com",null,["Au Sable"]],
+ ["Schmidt Outfitters","Wellston, MI",44.22,-85.98,"https://schmidtoutfitters.com",null,["Manistee","Pere Marquette"]],
+ ["Baldwin Bait & Tackle","Baldwin, MI",43.90,-85.85,"https://baldwinbaitandtackle.com",null,["Pere Marquette"]],
+ ["The Driftless Angler","Viroqua, WI",43.59,-90.89,"https://driftlessangler.com",null,["Timber Coulee","West Fork Kickapoo","Kickapoo"]],
+ ["Orvis Manchester","Manchester, VT",43.16,-73.07,"https://orvis.com",null,["Battenkill"]],
+ ["Housatonic River Outfitters","Cornwall Bridge, CT",41.82,-73.37,"https://dryflies.com",null,["Housatonic"]],
+ ["Davidson River Outfitters","Pisgah Forest, NC",35.28,-82.70,"https://davidsonflyfishing.com",null,["Davidson","Nantahala","Tuckasegee"]],
+ ["Little River Outfitters","Townsend, TN",35.68,-83.76,"https://littleriveroutfitters.com",null,["Little River","Smoky"]],
+ ["Fish Tales Fly Shop","Calgary, AB",51.05,-114.09,"https://fishtalesflyshop.com",null,["Bow"]],
+ ["Bow River Troutfitters","Calgary, AB",51.05,-114.09,"https://bowrivertroutfitters.com",null,["Bow"]],
+ ["Grand River Troutfitters","Fergus, ON",43.71,-80.38,"https://grandrivertroutfitters.com",null,["Grand"]],
+ ["Pacific Angler","Vancouver, BC",49.26,-123.14,"https://pacificangler.ca",null,["Vedder","Chilliwack","Squamish","Capilano"]],
+].map(([name, place, lat, lon, site, report, waters])=>({name, place, lat, lon, site, report, waters}));
+
+/* Curated shops near a point, in the shape flyShops() returns so the two
+   lists merge without either side knowing about the other. */
+function knownShops(lat, lon, radiusM){
+  return SHOPS
+    .map(sh=>({...sh, dist: metres(lat, lon, sh.lat, sh.lon)}))
+    .filter(sh=> sh.dist<=radiusM)
+    .sort((a,b)=>a.dist-b.dist)
+    .map(sh=>({
+      id:"known/"+sh.name, name:sh.name, kind:"fishing", kindLabel:"Fly shop",
+      pri:0, known:true, report:safeUrl(sh.report), where:sh.place,
+      site:safeUrl(sh.site), tel:null,
+      map:`https://www.openstreetmap.org/search?query=${encodeURIComponent(sh.name+" "+sh.place)}`,
+      lat:sh.lat, lon:sh.lon, dist:sh.dist, waters:sh.waters,
+    }));
+}
+
+/* Which of them writes up this river. A report from this week beats
+   every model in this file, including the good parts. */
+function shopReportFor(w){
+  if(!w || !w.name) return null;
+  const n=String(w.name).toLowerCase();
+  let best=null, bd=Infinity;
+  for(const sh of SHOPS){
+    if(!sh.report) continue;
+    if(!(sh.waters||[]).some(x=>n.includes(String(x).toLowerCase()))) continue;
+    const d=metres(w.lat, w.lon, sh.lat, sh.lon);
+    if(d<bd){ bd=d; best={name:sh.name, url:safeUrl(sh.report), dist:d}; }
+  }
+  return best && best.url ? best : null;
+}
+
 /* --- hatches -------------------------------------------------
    win   : [startDOY, peakDOY, endDOY] at the reference latitude of
            41.95 N. No water reads these numbers directly: each one
@@ -1932,6 +2033,7 @@ const state = {
   spot:null,                                   // water-shaped profile synthesized for that point
   access:{status:"idle", list:[], radius:8000, chosen:null},
   shops:{status:"idle", list:[], radius:0, key:null},  // fly shops near the water, looked up on demand
+  shopSort:"known",                            // "known" — the shop for this river first — or "near"
   rivers:{status:"idle", list:[], key:null},   // gauged rivers around the pin, from USGS
   ov:{flow:null, clarity:null, sky:null, baro:null},  // optional one-tap overrides
   tab:"plan", checked:new Set(),
@@ -4770,10 +4872,30 @@ function ladderHTML(ctx){
    are asked on the bank: what is the river doing, can I get in
    it, what do I tie on, and what is coming off the water.
 ------------------------------------------------------------ */
+/* A shop's own write-up of this river, where one of the hand-written shops
+   publishes it. Riffle cannot read the page — a shop's site sends no CORS
+   header, so a browser cannot fetch it, and opening connect-src to arbitrary
+   domains to try would undo the whole point of the policy. What it can do is
+   put the link where the plays are, because the loop that follows is already
+   built: read what they saw this week, then tap the chips on Report and the
+   plays re-rank on it. */
+function reportHTML(ctx){
+  const r=shopReportFor(ctx.w);
+  if(!r) return "";
+  return `<div class="hint" role="note" id="shopReport">
+    <span>\u2691</span>
+    <span><b>${esc(r.name)} writes up this river.</b>
+      <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Read their latest report</a> —
+      a week-old report from someone who was standing in it beats everything below.
+      Where it disagrees, believe them and tap the matching chip on <b>Report</b>; the plays re-rank on it.</span>
+  </div>`;
+}
+
 function renderFish(res, ctx){
   const el=$("#panel-fish");
   el.innerHTML=`
   ${conditionsHTML(ctx)}
+  ${reportHTML(ctx)}
   ${ctx.outOfBook?"":tacticHTML(ctx)}
   ${ctx.outOfBook?"":ladderHTML(ctx)}
   ${gateCard(ctx)}
@@ -5169,21 +5291,61 @@ async function loadShops(){
     } else if(!list.length){
       radius=90000; list=await placesShops(c.lat, c.lon, radius) || [];
     }
-    state.shops={status:list.length?"ok":"empty", list, radius, key};
+    /* The hand-written shops merge in here rather than replacing anything:
+       a shop the map also knows keeps the map's details and gains the
+       "known" mark. Distance is still distance; what changes is that
+       being the shop people actually name now counts for something. */
+    const known=knownShops(c.lat, c.lon, radius);
+    /* "The Beaverkill Angler" and "Beaverkill Angler" are one shop, and
+       listing it twice is worse than either name alone. */
+    const norm=(n)=>String(n).toLowerCase().replace(/^the\s+/,"").replace(/[^a-z0-9]/g,"");
+    const byName=new Map(list.map(sh=>[norm(sh.name), sh]));
+    const merged=[...list];
+    for(const k of known){
+      const hit=byName.get(norm(k.name));
+      if(hit){ hit.known=true; hit.report=hit.report||k.report; hit.waters=k.waters;
+               hit.site=hit.site||k.site; }
+      else merged.push(k);
+    }
+    state.shops={status:merged.length?"ok":"empty", list:merged, radius, key};
   }catch(e){
     state.shops={status:"error", list:[], radius:0, key:null};   // null key, so opening the tab tries again
   }
   renderShopsCard();
 }
 
+/* Two orderings, because they answer different questions. "Nearest" is
+   the one you want standing on the bank with an hour of light left.
+   "Best known" is the one you want the night before a drive — and it is
+   not a star rating, because no free service publishes those without a
+   key. It is whether this is a shop anglers name for this river, then
+   whether the listing looks like a going concern (a website, a phone,
+   posted hours) rather than a pin somebody dropped once. */
+function shopScore(sh){
+  let n=0;
+  if(sh.known) n+=100;
+  if(sh.report) n+=20;
+  if(sh.site) n+=6;
+  if(sh.tel) n+=4;
+  if(sh.hours) n+=3;
+  if(sh.kind==="fishing") n+=5;
+  return n;
+}
+function sortShops(list, mode){
+  const l=[...list];
+  if(mode==="near") return l.sort((a,b)=>a.dist-b.dist);
+  return l.sort((a,b)=> (shopScore(b)-shopScore(a)) || (a.dist-b.dist));
+}
+
 function shopRow(sh){
   const links=[
+    sh.report?`<a href="${esc(sh.report)}" target="_blank" rel="noopener noreferrer">River report</a>`:"",
     sh.site?`<a href="${esc(sh.site)}" target="_blank" rel="noopener noreferrer">Website</a>`:"",
     sh.tel?`<a href="tel:${esc(sh.tel.replace(/[^0-9+]/g,""))}">${esc(sh.tel)}</a>`:"",
     `<a href="${esc(sh.map)}" target="_blank" rel="noopener noreferrer">Map</a>`,
   ].filter(Boolean).join("");
   return `<div class="shoprow">
-    <span class="sn">${esc(sh.name)}
+    <span class="sn">${esc(sh.name)}${sh.known?` <span class="knownmark">known for this water</span>`:""}
       <span>${esc(sh.kindLabel)}${sh.where?` \u00b7 ${esc(sh.where)}`:""}</span>
       <span class="shoplinks">${links}</span>
     </span>
@@ -5218,13 +5380,28 @@ function renderShopsCard(){
   if(st.status!=="ok"){ el.innerHTML=head+`<p class="muted">Opening this tab looks up the counters nearest the water you are reading.</p>`; return; }
   /* Three is the number you would actually ring round before a drive.
      Past that it is a directory, and the flies below are the point. */
-  const near=st.list.slice(0,3);
-  const rest=st.list.length-near.length;
+  const mode=state.shopSort==="near" ? "near" : "known";
+  const sorted=sortShops(st.list, mode);
+  const near=sorted.slice(0,3);
+  const rest=sorted.length-near.length;
+  const anyKnown=st.list.some(sh=>sh.known);
+  const toggle=`<div class="dactions" style="margin-top:2px">
+      <button type="button" class="dbtn ghost" id="shopSort" data-to="${mode==="known"?"near":"known"}">
+        ${mode==="known"?"Sort by nearest":"Sort by best known"}</button>
+    </div>`;
+  const lead = mode==="known"
+    ? (anyKnown
+        ? `The shops anglers name for this water first, then the nearest. Call ahead — hours on a river road are their own thing.`
+        : `Nothing hand-written for this river yet, so this is the nearest the map has. Call ahead — hours on a river road are their own thing.`)
+    : `Nearest first. Call ahead — hours on a river road are their own thing.`;
   el.innerHTML=head
-    + `<p class="muted">The ${near.length===1?"nearest":`nearest ${near.length===2?"two":"three"}`}, from OpenStreetMap. Call ahead — hours on a river road are their own thing.</p>`
+    + `<p class="muted">${lead}</p>`
+    + toggle
     + near.map(shopRow).join("")
-    + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} mapped further out.</p>`:"")
+    + (rest>0?`<p class="muted" style="margin-top:9px">${rest} more ${rest===1?"is":"are"} listed further out.</p>`:"")
     + findMore;
+  const t=$("#shopSort");
+  if(t) t.addEventListener("click", ()=>{ state.shopSort=t.dataset.to; renderShopsCard(); });
 }
 
 /* --- shop list --------------------------------------------- */

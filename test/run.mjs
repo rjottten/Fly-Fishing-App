@@ -451,11 +451,13 @@ async function shopPass(page, seen){
                   && (card.compareDocumentPosition(document.querySelector("#panel-shop .shopcard"))&Node.DOCUMENT_POSITION_FOLLOWING)>0,
       guide: /hiring a local guide/i.test(document.getElementById("panel-shop").textContent),
       photo: /Take a photo of this/i.test(document.getElementById("panel-shop").textContent),
-      note: card.textContent.match(/\d+ more (?:is|are) mapped further out/)?.[0] || "",
+      note: card.textContent.match(/\d+ more (?:is|are) (?:mapped|listed) further out/)?.[0] || "",
+      knownMarks: rows.map(r=>!!r.querySelector(".knownmark")),
+      sortLabel: (document.getElementById("shopSort")||{}).textContent?.trim() || "",
       ql: (typeof shopQL!=="undefined") ? shopQL(41.9337,-74.9143,40000) : "",
       findMore: !!card.querySelector('a[href*="q="]'),
       // ranking and URL vetting are data concerns; the cap is a rendering one
-      all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel})),
+      all: (typeof state!=="undefined" ? state.shops.list : []).map(x=>({name:x.name, site:x.site, tel:x.tel, known:!!x.known, report:x.report||null})),
     };
   });
   seen.shopMs = Date.now()-t0;
@@ -1116,7 +1118,17 @@ async function yakimaPass(page, seen){
       state.spot=keepS; state.live=keepL;
       return out;
     };
-    return {own: await read()};
+    /* The shop half of the same river. "Popular" cannot be a star rating —
+       no free service publishes those without a key — so it is whether this
+       is the shop anglers name for this water, and whether it writes the
+       river up. On the Yakima that is Red's, which is further away than the
+       nearest counter and still the right answer. */
+    const shops = knownShops(46.95, -120.55, 40000);
+    const ranked = sortShops(shops, "known").map(x=>x.name);
+    const nearest = sortShops(shops, "near").map(x=>x.name);
+    const report = shopReportFor({name:"Yakima River", lat:46.95, lon:-120.55});
+    return {own: await read(), ranked, nearest, report,
+            noReportWhereNoneWritten: shopReportFor({name:"Beaverkill", lat:41.94, lon:-74.97})};
   });
 }
 
@@ -1176,12 +1188,26 @@ const SCENARIOS = {
     eq(s.onRiverGroups, ["Barometer","Flow","Clarity","Sky"], "all four condition groups moved with them");
     ok(s.reportHasBoth, "which carries what you can see and what came of it, in one place", s.reportHasBoth);
     ok(!s.strayControls, "nothing is left under the dashboard");
-    ok(s.shops.all.length===8 && !s.shops.all.some(x=>!x.name),
+    /* The eight the map knows are all still here; the hand-written ones
+       merge in beside them rather than replacing them. */
+    const MAPPED=["Beaverkill Angler","Poisoned Tackle","Catskill Outfitters","Willowemoc Fly Shop",
+                  "Border Water Tackle","Cross Current Outfitters","West Branch Angler",
+                  "Deposit Hardware & Supply"];
+    const have=new Set(s.shops.all.map(x=>x.name.replace(/^The /,"")));
+    ok(MAPPED.every(n=>have.has(n)) && !s.shops.all.some(x=>!x.name),
        "every shop that reads as a fly shop is ranked, and an unnamed one is not a shop",
        s.shops.all.map(x=>x.name));
-    ok(s.shops.names.length===3 && s.shops.names[0]==="Beaverkill Angler",
-       "the nearest three are listed, nearest first — past that it is a directory", s.shops.names);
-    ok(/5 more are mapped further out/.test(s.shops.note),
+    ok(!s.shops.all.some(x=>/^the beaverkill angler$/i.test(x.name)) ||
+       !s.shops.all.some(x=>/^beaverkill angler$/i.test(x.name)),
+       "and a shop the map and the book both know is listed once, not twice",
+       s.shops.all.map(x=>x.name));
+    /* Default order puts the shop anglers name for this water first. */
+    ok(s.shops.knownMarks[0]===true,
+       "the list leads with a shop known for this river, not merely the closest one",
+       {names:s.shops.names, known:s.shops.knownMarks});
+    ok(/Sort by nearest/.test(s.shops.sortLabel),
+       "with one tap back to plain distance", s.shops.sortLabel);
+    ok(/\d+ more (?:is|are) listed further out/.test(s.shops.note),
        "and the ones held back are accounted for", s.shops.note);
     ok(/Fly shops near Roscoe/.test(s.shops.head), "under the place you pointed at", s.shops.head);
     eq(s.shops.links[0],
@@ -1444,6 +1470,16 @@ const SCENARIOS = {
     ok(y.wadeMax>2400 && y.wadeMax<12000,
        "and the wading ceiling is in this river's units, not an Adirondack creek's", y.wadeMax);
     ok(/this river's own/.test(y.note[0]), "the card says where the bands came from", y.note[0]);
+
+    const k=s.yak;
+    ok(k.ranked[0]==="Red's Fly Shop",
+       "sorted by what it is known for, the Yakima's shop is Red's", k.ranked);
+    ok(k.nearest[0]!=="Red's Fly Shop" && k.nearest.includes("Red's Fly Shop"),
+       "sorted by distance it is not first — which is the whole reason for the other sort", k.nearest);
+    ok(k.report && /redsflyfishing\.com/.test(k.report.url) && k.report.name==="Red's Fly Shop",
+       "and its river report is the one the Fish tab links to", k.report);
+    ok(k.noReportWhereNoneWritten===null,
+       "where no shop in the book writes one up, nothing is invented", k.noReportWhereNoneWritten);
   },
   calendar: (s)=>{
     const c=s.cal;
@@ -1544,12 +1580,17 @@ const SCENARIOS = {
     /* OpenStreetMap is a map of the landscape, not a business directory.
        The shops on this river are in a directory and not in the map, so
        the directory answers first where one is configured. */
-    eq(s.shops.names, ["West Branch Angler","Cross Current Outfitters"],
-       "the directory's shops are what the tab lists, nearest first");
-    ok(!s.shops.all.some(x=>/Beaverkill Angler/.test(x.name)),
+    const dir=s.shops.all.filter(x=>!x.known || /West Branch Angler|Cross Current/.test(x.name));
+    ok(dir.some(x=>x.name==="West Branch Angler") && dir.some(x=>x.name==="Cross Current Outfitters"),
+       "the directory's shops are what the tab lists", dir.map(x=>x.name));
+    ok(!s.shops.all.some(x=>/^Beaverkill Angler$/.test(x.name)),
        "and OpenStreetMap is not asked at all when it answers", s.shops.all.map(x=>x.name));
-    ok(s.shops.links[0].some(h=>/google\.com\/maps/.test(h)),
-       "each carries somewhere to go", s.shops.links[0]);
+    /* The West Branch Angler is in the directory AND hand-written, so it
+       carries the mark without being listed twice. */
+    ok(s.shops.all.filter(x=>x.name==="West Branch Angler").length===1,
+       "a shop in both the directory and the book appears once", s.shops.all.map(x=>x.name));
+    ok(s.shops.links.some(l=>l.some(h=>/google\.com\/maps/.test(h))),
+       "the directory rows carry somewhere to go", s.shops.links);
     ok(s.shops.links.every(l=>l.every(h=>/^(https?:|tel:)/.test(h))),
        "and every href is still one the app built or vetted", s.shops.links);
     ok(s.shops.guide, "the guide card is unaffected by where the shops came from");
