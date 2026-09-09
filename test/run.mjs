@@ -137,6 +137,13 @@ async function mock(page, scenario){
     return r.fulfill(json(isShop ? F.SHOPS : overpass));
   });
   await page.route("**://api.open-meteo.com/**", r=>r.fulfill(json(F.meteo())));
+  /* Elevation shares a host with the pressure reading, and Playwright gives
+     the last-registered route precedence — so this must come after the
+     general one or the calendar silently loses its elevation term.
+     ELEV_FT is metres in, feet out: 1,463 m is Bozeman at 4,800 ft. */
+  await page.route("**://api.open-meteo.com/v1/elevation**", r =>
+    scenario==="noelevation" ? r.fulfill(json({}))
+      : r.fulfill(json({elevation:[F.ELEV_M]})));
   await page.route("**://waterservices.usgs.gov/nwis/iv/**", r=>r.fulfill(json(F.IV)));
 
   await page.route("**://waterservices.usgs.gov/nwis/site/**", r => {
@@ -379,6 +386,11 @@ async function walk(browser, scenario){
   seen.strayControls = await page.evaluate(()=>!!document.getElementById("controls"));
 
   await shopPass(page, seen);
+  await calendarPass(page, seen);
+  /* This one picks a river and leaves the app on it, so it runs only where
+     that is the point — otherwise it changes the water out from under the
+     scenarios that follow. */
+  if(scenario==="elevation"||scenario==="noelevation") await elevationPass(page, seen);
   await reachPass(page, seen);
 
   if(scenario==="diary") await diaryPass(page, seen);
@@ -953,6 +965,91 @@ async function reachPass(page, seen){
   });
 }
 
+/* Whether the calendar is right where the fish are, measured the only way
+   that means anything: against hatches these rivers are known for. The
+   engine keys on the PEAK — that is what the intensity curve is built
+   around — so peak error in days is the number, not window edges.
+
+   Truth here is the hatch each river is famous for, at the date anglers
+   fish it. It is hand-written and coarse to a week; the test allows for
+   that by asking about the mean across ten cases rather than any one. */
+const HATCH_TRUTH = [
+  // river,          lat,     lon,      type,       ft,    hatch,                      peak
+  ["Beaverkill NY",  41.94,  -74.97,  "freestone", 1150, "Hendrickson & Red Quill", [4,28]],
+  ["Madison MT",     45.48, -111.53,  "freestone", 4900, "Salmonfly",               [6,28]],
+  ["Deschutes OR",   44.75, -121.25,  "freestone", 1400, "Salmonfly",               [5,25]],
+  ["Big Hole MT",    45.72, -112.75,  "freestone", 5100, "Salmonfly",               [6,20]],
+  ["Madison MT",     45.48, -111.53,  "freestone", 4900, "Western Green Drake",     [7, 5]],
+  ["Frying Pan CO",  39.36, -106.82,  "tailwater", 7800, "Western Green Drake",     [8, 5]],
+  ["Madison MT",     45.48, -111.53,  "freestone", 4900, "Pale Morning Dun",        [7,10]],
+  ["Bow R AB",       51.03, -114.05,  "tailwater", 3400, "Pale Morning Dun",        [7,15]],
+  ["Green R UT",     40.91, -109.42,  "tailwater", 5500, "Pale Morning Dun",        [7,10]],
+  ["Au Sable MI",    44.66,  -84.70,  "freestone", 1100, "Hexagenia (Hex)",         [7, 5]],
+];
+
+/* Elevation has to reach the spot, the calendar and the Plan card — and
+   when the lookup fails, the calendar has to fall back to latitude rather
+   than to sea level, which would drag every date nine days early. */
+async function elevationPass(page, seen){
+  /* Pick a river first — elevation is a property of a chosen point, and the
+     walk has not chosen one by here. */
+  /* The list fills in as USGS answers, and the written waters arrive first,
+     so waiting on the card alone picks a book river every time. */
+  const ready = await page.waitForFunction(
+    ()=>(state.rivers&&state.rivers.list||[]).some(r=>!r.book),
+    {timeout:15000}).then(()=>true,()=>false);
+  if(ready){
+    /* A river that is one of the 27 reads as itself and clears the spot, so
+       elevation never comes into it. Ask the app to read one it has to
+       synthesize — the same call the button makes. */
+    const picked = await page.evaluate(()=>{
+      const r=(state.rivers&&state.rivers.list||[]).find(x=>!x.book);
+      if(!r) return null;
+      window.__pick=r.name;
+      chooseRiver(r.key);
+      return r.name;
+    });
+    seen.elevPicked = picked;
+    await page.waitForFunction(()=>state.spot!==null, {timeout:12000}).catch(()=>{});
+    await page.waitForTimeout(700);
+  }
+  seen.elev = await page.evaluate(()=>{
+    const sp=state.spot;
+    const gd=HATCHES.find(x=>x.name==="Western Green Drake");
+    const w=water();
+    const at=(ft)=>{ const t=Object.assign({}, w, {elevFt:ft});
+                     return gd.anchor?speciesShift(gd.anchor,t):t.shift; };
+    return {
+      picked: window.__pick||null,
+      onSpot: sp ? sp.elevFt : null,
+      known: !!sp && typeof sp.elevFt==="number" && isFinite(sp.elevFt),
+      card: (document.querySelector("#riverCard")||{}).textContent||"",
+      /* the term is real: a thousand feet is about ten days */
+      lowVsHigh: at(8000) - at(3000),
+      unknownIsAnchorNotZero: at(NaN) !== at(0),
+    };
+  });
+}
+
+async function calendarPass(page, seen){
+  seen.cal = await page.evaluate((truth)=>{
+    const DOY=(m,d)=>{const t=[0,31,59,90,120,151,181,212,243,273,304,334];return t[m-1]+d;};
+    const rows=truth.map(([name,lat,lon,type,ft,hatch,pk])=>{
+      const h=HATCHES.find(x=>x.name===hatch);
+      if(!h) return {name, hatch, missing:true};
+      const w={lat,lon,type,elevFt:ft,shift:bioShift(lat,type)};
+      const anchored=h.anchor?speciesShift(h.anchor,w):w.shift;
+      const target=DOY(pk[0],pk[1]);
+      return {name, hatch, anchored:Math.abs(h.win[1]+anchored-target),
+              latOnly:Math.abs(h.win[1]+w.shift-target), lives:inRange(h,lat,lon)};
+    });
+    const mean=(k)=>rows.reduce((a,r)=>a+(r[k]||0),0)/rows.length;
+    return {rows, meanAnchored:+mean("anchored").toFixed(1), meanLatOnly:+mean("latOnly").toFixed(1),
+            missing:rows.filter(r=>r.missing).map(r=>r.hatch),
+            notLiving:rows.filter(r=>!r.missing && !r.lives).map(r=>r.name+": "+r.hatch)};
+  }, HATCH_TRUTH);
+}
+
 /* ---------- what each scenario must prove ---------- */
 const SCENARIOS = {
   happy: (s)=>{
@@ -1204,6 +1301,55 @@ const SCENARIOS = {
     ok(s.playsAt < CDN_LAG, `and in ${s.playsAt} ms, not the ${CDN_LAG} ms the CDN took`, s.playsAt);
     ok(s.mapRendered, "and the map still comes up once it lands", s.mapRendered);
     ok(s.names.length>1, "with the access flow unaffected", s.names);
+  },
+  elevation: (s)=>{
+    ok(s.elev.known, "a picked river carries its elevation",
+       {river:s.elev.picked, onSpot:s.elev.onSpot});
+    ok(Math.round(s.elev.onSpot)===4800,
+       "converted from the metres Open-Meteo answers in", s.elev.onSpot);
+    ok(/sits at 4,800 ft/.test(s.elev.card.replace(/\s+/g," ")),
+       "and Plan says so, where the river was chosen", s.elev.card.slice(0,120));
+    ok(s.elev.lowVsHigh>=45 && s.elev.lowVsHigh<=55,
+       "five thousand feet moves a hatch about fifty days", s.elev.lowVsHigh);
+    ok(s.elev.unknownIsAnchorNotZero,
+       "and an unknown elevation is the anchor's own height, never sea level",
+       s.elev.unknownIsAnchorNotZero);
+  },
+  noelevation: (s)=>{
+    ok(!s.elev.known, "with the lookup answering nothing, no elevation is claimed", s.elev.onSpot);
+    ok(/latitude alone/.test(s.elev.card.replace(/\s+/g," ")),
+       "Plan says the dates are latitude-only and will read early on a mountain river",
+       s.elev.card.slice(0,200));
+    ok(s.plays>0, "and everything else still reads", s.plays);
+  },
+  calendar: (s)=>{
+    const c=s.cal;
+    eq(c.missing, [], "every hatch the truth table names is in the book");
+    eq(c.notLiving, [], "and each one's range actually covers the river it is famous on");
+    /* The whole point of anchoring: a species' dates are measured from where
+       that species lives, not from a river on the far side of the continent.
+       If this ever stops being true, the calendar has drifted back east. */
+    ok(c.meanAnchored < c.meanLatOnly - 3,
+       `anchored to where each insect lives, the peak lands ${(c.meanLatOnly-c.meanAnchored).toFixed(1)} days closer on average`,
+       {anchored:c.meanAnchored, latOnly:c.meanLatOnly});
+    ok(c.meanAnchored <= 13, "and within a fortnight of the truth across ten known hatches", c.meanAnchored);
+    const by=(n,h)=>c.rows.find(r=>r.name===n && r.hatch===h);
+    /* The three the Northeast-fitted regression got worst, and why this
+       exists at all: a high southern tailwater, a river ten degrees north
+       of the fitting set, and a Midwest fly with its own country. */
+    ok(by("Bow R AB","Pale Morning Dun").anchored <= 10,
+       "the Bow's PMDs come off in July, not the middle of August", by("Bow R AB","Pale Morning Dun"));
+    ok(by("Madison MT","Western Green Drake").anchored <= 7,
+       "the Madison's Green Drakes in early July", by("Madison MT","Western Green Drake"));
+    ok(by("Au Sable MI","Hexagenia (Hex)").anchored <= 7,
+       "and the Au Sable's Hex on the Fourth of July, where it belongs", by("Au Sable MI","Hexagenia (Hex)"));
+    ok(by("Frying Pan CO","Western Green Drake").anchored < by("Frying Pan CO","Western Green Drake").latOnly,
+       "the Frying Pan is closer than it was, though a deep-release tailwater still reads early",
+       by("Frying Pan CO","Western Green Drake"));
+    /* Anchoring is not free everywhere, and the file says so rather than
+       hiding it: the salmonfly windows describe the whole West at once. */
+    ok(by("Madison MT","Salmonfly").anchored === by("Madison MT","Salmonfly").latOnly,
+       "salmonflies are deliberately left on the latitude model", by("Madison MT","Salmonfly"));
   },
   outofbook: (s)=>{
     const b=s.book;

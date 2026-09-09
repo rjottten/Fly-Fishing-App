@@ -57,6 +57,10 @@ export const SHOPS = {elements:[
   {type:"node", id:16, lat:41.9000, lon:-74.7000, tags:{shop:"sports", sport:"fishing", name:"Sullivan Sports"}},
 ]};
 
+/* Bozeman, Montana — 1,463 m, which is 4,800 ft. Open-Meteo answers the
+   elevation query in metres, and the app converts. */
+export const ELEV_M = 1463;
+
 export const GEOCODE = [
   {display_name:"Roscoe, Sullivan County, New York, USA", lat:"41.9337", lon:"-74.9143"},
 ];

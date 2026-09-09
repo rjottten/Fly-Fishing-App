@@ -1671,6 +1671,32 @@ function inRange(hx, lat, lon){
   return false;
 }
 
+/* --- and where each insect's dates were taken -----------------
+   Z says where a species lives. This says where its calendar was
+   written down, which is a different fact and just as necessary:
+   Hendrickson dates come from Catskill water at 1,000 ft,
+   salmonfly dates from the Madison at 5,000. A river is offset
+   from the anchor of the insect it is asking about — never from a
+   reference river on the far side of the continent. Species with
+   no anchor here keep the water's own shift: the eastern ones,
+   whose dates that regression was fitted on, and the two western
+   stoneflies. Salmonfly and Western Golden Stone windows span
+   seven weeks because they describe the whole West at once — the
+   Deschutes in mid May, the Big Hole in June, the Madison at the
+   end of it — and shifting a composite that wide only moves the
+   error around. Against those three rivers, anchoring put the
+   peak out by 26 and 37 days where latitude alone was out by 4
+   and 13. They want narrower windows, not a different zero.
+------------------------------------------------------------ */
+const A = {
+  catskill: {lat:41.95, ft:1000, of:"Catskill freestone"},
+  montane:  {lat:45.50, ft:5000, of:"the Madison and Yellowstone country"},
+  pnw:      {lat:44.50, ft:1500, of:"the Deschutes and the inland Northwest"},
+  midwest:  {lat:44.00, ft:800,  of:"the Au Sable and northern Michigan"},
+  stillw:   {lat:44.50, ft:4000, of:"western spring creeks and stillwaters"},
+};
+const PER_100FT = 1.0;      // days later per 100 ft — Hopkins' altitude term
+
 const HATCHES = [
  {id:"midge", name:"Midge", latin:"Chironomidae", win:[DOY(1,1),DOY(2,10),DOY(12,31)], size:[20,26], body:"black, olive, cream", hex:"#2A2A2A",
   hrs:[11,15], temp:[33,52], waters:"all", range:Z.cont, kind:"midge", winter:true,
@@ -1779,7 +1805,7 @@ const HATCHES = [
   hrs:[11,15], temp:[50,62], waters:"all", range:Z.cont, kind:"mayfly",
   dry:[["Mahogany Comparadun",[16,18]]], nymph:[["Pheasant Tail",[16,18]]], spinner:[["Mahogany Spinner",[16,18]]]},
  {id:"octcaddis", name:"October Caddis", latin:"Pycnopsyche", win:[DOY(9,1),DOY(10,8),DOY(10,31)], size:[8,12], body:"burnt orange to pumpkin", hex:"#C2622A",
-  hrs:[16,20], temp:[48,58], waters:"all", range:Z.west, kind:"caddis",
+  hrs:[16,20], temp:[48,58], waters:"all", range:Z.west, anchor:A.pnw, kind:"caddis",
   dry:[["October Caddis Stimulator",[8,10]],["Orange Elk Hair Caddis",[10,12]]],
   nymph:[["October Caddis Pupa, amber",[8,12]],["Peeking Caddis",[10,12]]], spinner:null},
  {id:"terrestrial", name:"Terrestrials", latin:"ants, beetles, hoppers, inchworms", win:[DOY(5,15),DOY(8,15),DOY(10,10)], size:[12,20], body:"black, cinnamon, tan", hex:"#3A2E24",
@@ -1796,16 +1822,16 @@ const HATCHES = [
     which are most of June and July on a Michigan river and were never
     in the book. */
  {id:"hex", name:"Hexagenia (Hex)", latin:"Hexagenia limbata", win:[DOY(6,10),DOY(6,28),DOY(7,20)], size:[4,8], body:"pale yellow-olive, huge", hex:"#D8C27A",
-  hrs:[20,24], temp:[58,74], waters:"all", range:Z.midw.concat(Z.gl, [[41,48,-79,-68]]), kind:"mayfly",
+  hrs:[20,24], temp:[58,74], waters:"all", range:Z.midw.concat(Z.gl, [[41,48,-79,-68]]), anchor:A.midwest, kind:"mayfly",
   dry:[["Hex Dun, extended body",[4,6]],["Hex Spinner, spent",[4,6]],["White Wulff",[6,8]]], nymph:[["Hex Wiggle Nymph",[4,8]],["Strip Nymph, olive",[6,8]]], spinner:[["Hex Spinner",[4,6]]]},
  {id:"graydrake", name:"Gray Drake", latin:"Siphlonurus occidentalis / alternatus", win:[DOY(5,25),DOY(6,20),DOY(7,25)], size:[10,12], body:"slate gray, olive sheen", hex:"#7C8290",
   hrs:[18,22], temp:[52,68], waters:"all", range:Z.midw.concat(Z.west), kind:"mayfly",
   dry:[["Gray Drake Spinner",[10,12]],["Parachute Adams, large",[10,12]]], nymph:[["Gray Drake Nymph, swimming",[10,12]]], spinner:[["Gray Drake Spinner, spent",[10,12]]]},
  {id:"skwala", name:"Skwala Stonefly", latin:"Skwala americana", win:[DOY(2,20),DOY(3,20),DOY(4,25)], size:[8,12], body:"olive-brown, amber belly", hex:"#7A6A38",
-  hrs:[12,17], temp:[40,52], waters:"all", range:Z.west, kind:"stone",
+  hrs:[12,17], temp:[40,52], waters:"all", range:Z.west, anchor:A.montane, kind:"stone",
   dry:[["Skwala Stimulator, olive",[8,12]],["Bullet Head Skwala",[10]]], nymph:[["Pat's Rubber Legs, olive-brown",[8,10]],["Twenty Incher",[10,12]]], spinner:null},
  {id:"wmarchbrown", name:"Western March Brown", latin:"Rhithrogena morrisoni", win:[DOY(2,25),DOY(3,25),DOY(5,5)], size:[12,16], body:"tan-olive, mottled wing", hex:"#A98A5E",
-  hrs:[11,16], temp:[42,54], waters:"all", range:Z.pnw.concat(Z.calif), kind:"mayfly", overcastLove:true,
+  hrs:[11,16], temp:[42,54], waters:"all", range:Z.pnw.concat(Z.calif), anchor:A.pnw, kind:"mayfly", overcastLove:true,
   dry:[["March Brown Comparadun",[12,14]],["Parachute March Brown",[12,16]]], nymph:[["Pheasant Tail, natural",[12,16]],["March Brown Clinger Nymph",[12,14]]], spinner:[["March Brown Spinner",[12,14]]]},
  {id:"salmonfly", name:"Salmonfly", latin:"Pteronarcys californica", win:[DOY(5,20),DOY(6,15),DOY(7,10)], size:[2,6], body:"black body, orange belly", hex:"#C8511E",
   hrs:[10,19], temp:[50,60], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"stone",
@@ -1814,13 +1840,13 @@ const HATCHES = [
   hrs:[10,20], temp:[52,64], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"stone",
   dry:[["Chubby Chernobyl, gold",[8,10]],["Yellow Stimulator",[8,12]]], nymph:[["Golden Stone Nymph, tungsten",[8,10]],["Pat's Rubber Legs, gold",[6,10]]], spinner:null},
  {id:"pmd", name:"Pale Morning Dun", latin:"Ephemerella excrucians / infrequens", win:[DOY(6,1),DOY(7,5),DOY(9,5)], size:[14,18], body:"pale yellow-olive", hex:"#E3C877",
-  hrs:[9,14], temp:[50,64], waters:"all", range:Z.west, kind:"mayfly",
+  hrs:[9,14], temp:[50,64], waters:"all", range:Z.west, anchor:A.montane, kind:"mayfly",
   dry:[["PMD Comparadun",[16,18]],["Sparkle Dun, PMD",[16,18]],["CDC Rusty Spinner",[16,18]]], nymph:[["Pheasant Tail, PMD",[16,18]],["Split Case PMD",[16,18]]], spinner:[["Rusty Spinner",[16,18]]]},
  {id:"wgreendrake", name:"Western Green Drake", latin:"Drunella grandis / doddsii", win:[DOY(6,15),DOY(7,5),DOY(8,10)], size:[10,14], body:"olive-green, dark wing", hex:"#4E6B3A",
-  hrs:[10,16], temp:[48,60], waters:"all", range:Z.rocky.concat(Z.pnw), kind:"mayfly", overcastLove:true,
+  hrs:[10,16], temp:[48,60], waters:"all", range:Z.rocky.concat(Z.pnw), anchor:A.montane, kind:"mayfly", overcastLove:true,
   dry:[["Green Drake Paradrake",[10,12]],["Hairwing Green Drake",[10,12]],["Film Critic, olive",[12]]], nymph:[["Drunella Nymph, olive",[10,14]],["Hare's Ear, dark olive",[10,12]]], spinner:null},
  {id:"callibaetis", name:"Callibaetis", latin:"Callibaetis ferrugineus", win:[DOY(5,1),DOY(7,1),DOY(9,20)], size:[14,18], body:"speckled tan-gray", hex:"#9C9276",
-  hrs:[10,16], temp:[52,70], waters:"all", range:Z.west.concat(Z.midw), kind:"mayfly",
+  hrs:[10,16], temp:[52,70], waters:"all", range:Z.west.concat(Z.midw), anchor:A.stillw, kind:"mayfly",
   dry:[["Callibaetis Cripple",[14,16]],["Parachute Adams",[14,18]],["Callibaetis Spinner, speckled",[14,16]]], nymph:[["Callibaetis Nymph, swimming",[14,18]],["Pheasant Tail, flashback",[16,18]]], spinner:[["Callibaetis Spinner",[14,16]]]},
  {id:"yellowsally", name:"Little Yellow Sally", latin:"Isoperla", win:[DOY(5,20),DOY(6,25),DOY(8,15)], size:[14,18], body:"pale yellow, lime highlights", hex:"#DCCB55",
   hrs:[14,21], temp:[52,66], waters:"all", range:Z.cont, kind:"stone",
@@ -2168,7 +2194,14 @@ function resolveBaro(w, lead){
 }
 
 /* --- which hatches are on ---------------------------------- */
-function shiftOf(hx, ctx){ return hx.waters==="all" ? ctx.w.shift : 0; }
+/* A hatch written for one water is already that water's own. Everything
+   else is offset from the anchor of the insect being asked about: an
+   anchored species from its own country, an unanchored one from the
+   water's hand-written shift, which is what it has always used. */
+function shiftOf(hx, ctx){
+  if(hx.waters!=="all") return 0;
+  return hx.anchor ? speciesShift(hx.anchor, ctx.w) : ctx.w.shift;
+}
 function hatchIntensity(hx, ctx){
   const sh=shiftOf(hx,ctx);
   const s=hx.win[0]+sh, p=hx.win[1]+sh, e=hx.win[2]+sh;
@@ -3899,6 +3932,60 @@ function bioShift(lat, type){
   return Math.round(clamp(d, -30, 40));
 }
 
+/* --- where each insect's dates were taken ---------------------
+   The line above is one regression through 27 rivers that all lie
+   in the Northeast between about 500 and 1,800 feet. Inside that
+   envelope it is excellent. Carried across the continent it is an
+   extrapolation in two directions at once, and it fails in a
+   direction worth naming: the Frying Pan runs at 7,800 ft and sits
+   SOUTH of the reference, so latitude alone moved its calendar
+   eight days EARLIER and put Green Drakes in the first week of
+   June. They come off there from the middle of July.
+
+   The fix is not another global term — a flat Hopkins altitude
+   correction fixes that river and pushes the Madison's salmonflies
+   five weeks late, because the western windows were already
+   written from western rivers. It is that a species' dates were
+   recorded SOMEWHERE, and that somewhere is where its own zero is.
+   Hendricksons were written from Catskill water at 1,000 ft.
+   Salmonflies were written from the Madison at 5,000. Measuring
+   either from the other is the mistake.
+
+   So each anchor below is a place: the latitude and elevation of
+   the water these dates are quoted from. A river is then offset
+   from the anchor of the insect it is asking about, not from a
+   reference river on the far side of the continent.
+------------------------------------------------------------ */
+
+/* Elevation only ever narrows the answer, so an unknown one is not a
+   guess of zero feet — it is the anchor's own height, which makes the
+   term vanish and leaves latitude to do the work it already did. */
+function speciesShift(a, w){
+  const p = PHENOLOGY;
+  const ft = (typeof w.elevFt==="number" && isFinite(w.elevFt)) ? w.elevFt : a.ft;
+  const d = p.perDegLat*(w.lat - a.lat)
+          + (w.type==="tailwater" ? p.tailwater : 0)
+          + (w.type==="limestone" ? p.limestone : 0)
+          + PER_100FT*(ft - a.ft)/100;
+  return Math.round(clamp(d, -45, 60));
+}
+
+/* Elevation for a point, from Open-Meteo's terrain model — already on the
+   deploy's connect-src for the pressure reading. Failing here costs the
+   elevation term and nothing else. */
+async function elevationFt(lat, lon){
+  try{
+    const url=`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`;
+    const res=await withTimeout(url, null, 7000);
+    if(!res.ok) return NaN;
+    const j=await res.json();
+    const m=j && Array.isArray(j.elevation) ? j.elevation[0] : undefined;
+    /* isFinite(null) is true, and sea level is a real elevation, so a
+       response with no elevation field cannot be told apart by value. */
+    return (typeof m==="number" && isFinite(m)) ? m*3.28084 : NaN;
+  }catch(e){ return NaN; }
+}
+
 /* Does any insect in the table live here? This used to be a hand-drawn box
    around eastern North America, because every hatch in the book was eastern.
    Now that each species carries its own range, the question answers itself
@@ -3986,7 +4073,8 @@ function spotProfile(point, tmpl, tmplDistM, gauge, ratio, latGap){
     name: point.name || "Selected spot",
     place: point.place || "",
     lat: point.lat, lon: point.lon,
-    range, beyond, templateMiles: miles, latGap: latGap==null?null:Math.round(latGap*10)/10,
+    range, beyond, templateMiles: miles,
+    elevFt: (typeof point.elevFt==="number" && isFinite(point.elevFt)) ? point.elevFt : NaN, latGap: latGap==null?null:Math.round(latGap*10)/10,
     /* Outside the eastern fauna the book has no species to claim, so it
        claims none — that is how a Montana trout river came to be read as
        a Lake Erie steelhead run. */
@@ -4031,7 +4119,15 @@ async function buildSpot(point){
   /* A river picked off the list already knows its gauge — it IS a gauge.
      Only a bare pin has to go looking for one. */
   let gauge = point.gauge || null;
-  if(!gauge){ try{ gauge = await nearestGauge(point.lat, point.lon); }catch(e){ gauge=null; } }
+  /* Gauge and elevation are both facts about the point, and neither waits
+     on the other. Elevation feeds the hatch calendar; a failure costs the
+     elevation term and nothing else. */
+  const [g2, elevFt] = await Promise.all([
+    gauge ? Promise.resolve(gauge) : nearestGauge(point.lat, point.lon).catch(()=>null),
+    elevationFt(point.lat, point.lon),
+  ]);
+  gauge = g2;
+  point = Object.assign({}, point, {elevFt});
   if(gauge && gauge.id!==tmpl.gauge){
     const areas = await drainAreas([gauge.id, tmpl.gauge]);
     const a=areas[gauge.id], b=areas[tmpl.gauge];
@@ -4557,7 +4653,7 @@ function harvestDiaryForm(){
    two weeks late is exactly the thing worth writing down. */
 function hatchChoices(w, iso){
   const day=dayOfISO(iso);
-  const sh=(hx)=> hx.waters==="all" ? w.shift : 0;
+  const sh=(hx)=> hx.waters!=="all" ? 0 : (hx.anchor ? speciesShift(hx.anchor, w) : w.shift);
   return HATCHES
     .filter(hx => hx.waters==="all" ? w.sp==="trout" : hx.waters.includes(hatchKeyOf(w)))
     .map(hx=>{
@@ -5342,6 +5438,17 @@ function renderRiverCard(){
         Read ${esc(state.spot.name)} as ${state.spot.sp==="steelhead"?"trout water":"a steelhead run"}</button></div>
       <p class="muted">${esc(state.spot.name)} is both, at different times of the year. Riffle is reading it as
         <b>${state.spot.sp==="steelhead"?"steelhead and salmon water":"trout water"}</b> — it will not guess which you mean.</p>`:""}
+    ${(()=>{ const sp=state.spot; if(!sp) return "";
+       /* Height is half of why a hatch is late, and on a western river it is
+          most of it. Say it where the river was chosen, since that is the
+          number the calendar on Fish was resolved against. */
+       if(typeof sp.elevFt==="number" && isFinite(sp.elevFt))
+         return `<p class="muted"><b>${esc(sp.name)}</b> sits at <b>${Math.round(sp.elevFt).toLocaleString()} ft</b>.
+           Elevation moves a hatch about a day per hundred feet, so it sets the dates on <b>Fish</b> as
+           much as latitude does.</p>`;
+       return `<p class="muted">The elevation lookup did not answer for this point, so the hatch dates on
+         <b>Fish</b> are resolved from latitude alone. On a mountain river they will read early.</p>`;
+     })()}
     ${st.status==="loading"?`<p class="muted">Also asking USGS what is gauged out here…</p>`:""}
     ${!anyHatchLives(at.lat, at.lon)?`<p class="muted">Riffle will read any of these — the gauge, the
        wading call and the shops all work out here. What it will not print is a hatch chart: no insect it carries has
